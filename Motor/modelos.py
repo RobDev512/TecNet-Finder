@@ -12,7 +12,8 @@
 # diccionarios cuyos índices sean difíciles de recordar.
 #
 # Actualmente contiene los modelos utilizados por los
-# analizadores léxico y sintáctico.
+# analizadores léxico y sintáctico, el cálculo VLSM y el
+# flujo general de compilación.
 # ============================================================
 
 from dataclasses import dataclass, field  # Importa herramientas para crear clases de datos y valores predeterminados.
@@ -84,3 +85,27 @@ class SubredVLSM:  # Representa una subred calculada a partir de una solicitud d
     direccion_de_broadcast: str  # Guarda la dirección de broadcast calculada para la subred.
     ip_base: str  # Conserva la dirección IP base recibida para identificar el bloque original.
     nombre_red: str  # Conserva el nombre de la red o utiliza la IP base cuando no se indicó NAME.
+
+@dataclass  # Convierte ResultadoCompilacion en una clase de datos organizada.
+class ResultadoCompilacion:  # Agrupa en un solo objeto todo lo producido por el flujo actual de TecNet Finder.
+    resultado_lexico: ResultadoLexico  # Guarda el resultado completo producido por el analizador léxico.
+    resultado_sintactico: ResultadoSintactico  # Guarda el resultado completo producido por el analizador sintáctico.
+    subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes generadas a partir de los bloques válidos.
+
+    @property  # Permite consultar todos los diagnósticos como si fueran un atributo.
+    def diagnosticos(self) -> list[Diagnostico]:  # Reúne en una sola lista los diagnósticos producidos por las fases actuales.
+        return [  # Construye una nueva lista para no modificar las listas originales de cada analizador.
+            *self.resultado_lexico.diagnosticos,  # Agrega primero los diagnósticos encontrados durante el análisis léxico.
+            *self.resultado_sintactico.diagnosticos,  # Agrega después los diagnósticos encontrados durante el análisis sintáctico.
+        ]
+
+    @property  # Permite consultar directamente los bloques válidos del resultado global.
+    def bloques_validos(self) -> list[BloqueRed]:  # Devuelve los bloques aceptados actualmente por el analizador sintáctico.
+        return self.resultado_sintactico.bloques  # Reutiliza los bloques ya almacenados dentro del resultado sintáctico.
+
+    @property  # Permite consultar fácilmente si ocurrió algún error durante las fases actuales.
+    def tiene_errores(self) -> bool:  # Indica si al menos un diagnóstico combinado posee severidad de error.
+        return any(  # Devuelve True en cuanto encuentre un diagnóstico marcado como error.
+            diagnostico.severidad == "error"  # Comprueba la severidad del diagnóstico que se está recorriendo.
+            for diagnostico in self.diagnosticos  # Recorre conjuntamente los diagnósticos léxicos y sintácticos.
+        )
