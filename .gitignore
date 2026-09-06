@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Entorno virtual
+.entorno/
+
+# Editores
+.vscode/
+.idea/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Ejecutables generados
+*.exe
+
+# Archivos temporales
+*.tmp
+*.log
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Office
+~$*.docx
+~$*.xlsx

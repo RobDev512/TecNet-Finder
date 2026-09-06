@@ -1,0 +1,62 @@
+# CASO V1: Entrada válida completa con nombre de red
+
+IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina
+Salida esperada: caso válido. Códigos esperados: ninguno. Debe reconocer tokens, validar sintaxis, validar semántica, generar árbol sintáctico, código intermedio, optimización, código generado y tabla VLSM para Oficina.
+
+# CASO V2: Entrada válida sin nombre de red
+
+IP 192.168.2.0 MASK /24 HOSTS 100,50
+Salida esperada: caso válido con advertencia. Código esperado: ADV-007. Debe generar tabla VLSM usando la IP base como nombre de red y advertir que no se especificó NAME.
+
+# CASO V3: Entrada válida con una sola cantidad de hosts
+
+IP 172.16.0.0 MASK /27 HOSTS 25 NAME Laboratorio
+Salida esperada: caso válido. Códigos esperados: ninguno. Debe reconocer tokens, validar sintaxis y semántica, y generar una sola subred VLSM para Laboratorio.
+
+# CASO V4: Entrada válida con varias instrucciones
+
+IP 192.168.10.0 MASK /24 HOSTS 60,30 NAME Administracion
+IP 192.168.20.0 MASK /24 HOSTS 40,20,10 NAME Sistemas
+Salida esperada: caso válido. Códigos esperados: ninguno. Debe reconocer dos bloques válidos, generar producciones, derivación, árboles sintácticos, código intermedio para ambos bloques y tablas VLSM separadas por nombre de red.
+
+# CASO V5: Entrada válida con hosts en desorden para probar optimización
+
+IP 192.168.30.0 MASK /24 HOSTS 10,50,30 NAME Optimizada
+Salida esperada: caso válido. Códigos esperados: ninguno. En optimización debe ordenar los hosts de mayor a menor: 50,30,10 antes de generar la tabla VLSM.
+
+# CASO V6: Entrada válida con palabras reservadas pegadas al valor
+
+IP192.168.40.0 MASK/24 HOSTS50 NAME Pegada
+Salida esperada: caso válido con advertencia. Código esperado: ADV-002. Debe reconocer la entrada, generar tabla VLSM y advertir que una palabra reservada aparece pegada al valor siguiente.
+
+# CASO V7: Entrada válida con nombre de red repetido
+
+IP 192.168.50.0 MASK /24 HOSTS 50 NAME Oficina
+IP 10.10.0.0 MASK /25 HOSTS 100 NAME Oficina
+Salida esperada: caso válido con advertencia. Código esperado: ADV-003. Ambas instrucciones son válidas, pero debe advertir que el nombre de red Oficina está repetido.
+
+# CASO V8: Entrada válida con hosts repetidos
+
+IP 192.168.60.0 MASK /24 HOSTS 50,50,30 NAME Duplicados
+Salida esperada: caso válido con advertencia. Código esperado: ADV-004. Debe generar tabla VLSM, pero advertir que hay cantidades de hosts repetidas dentro de la misma instrucción.
+
+# CASO V9: Entrada válida con red base sobredimensionada
+
+IP 10.0.0.0 MASK /8 HOSTS 10 NAME Sobrada
+Salida esperada: caso válido con advertencia. Código esperado: ADV-005. Debe generar tabla VLSM, pero advertir que la red base es demasiado grande para la cantidad de hosts solicitados.
+
+# CASO V10: Entrada válida con nombre de red genérico
+
+IP 192.168.70.0 MASK /24 HOSTS 50 NAME Red
+Salida esperada: caso válido con advertencia. Código esperado: ADV-006. Debe generar tabla VLSM, pero advertir que el nombre de red es demasiado genérico.
+
+# CASO V11: Entrada válida sin nombre explícito
+
+IP 192.168.80.0 MASK /24 HOSTS 50,30
+Salida esperada: caso válido con advertencia. Código esperado: ADV-007. Debe generar tabla VLSM, pero advertir que no se especificó NAME.
+
+# CASO V12: Entrada válida con varias advertencias juntas
+
+IP 10.20.0.0 MASK /8 HOSTS 10,10 NAME Red
+IP 192.168.90.0 MASK /24 HOSTS 50
+Salida esperada: caso válido con varias advertencias. Códigos esperados: ADV-004, ADV-005, ADV-006, ADV-007. Debe procesar los bloques válidos y mostrar advertencias por hosts repetidos, red sobredimensionada, nombre genérico y falta de nombre de red.
