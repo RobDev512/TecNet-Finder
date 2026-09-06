@@ -100,3 +100,46 @@ def prueba_orden_incorrecto_y_recuperacion():  # Comprueba SIN-008 y que el modo
     assert len(resultado_sintactico.bloques) == 1  # Verifica que el modo pánico haya recuperado la segunda instrucción.
     assert resultado_sintactico.bloques[0].direccion_ip == "10.0.0.0"  # Comprueba que el bloque recuperado sea la segunda red.
     assert resultado_sintactico.bloques[0].nombre == "Segunda"  # Comprueba también el nombre del bloque recuperado.
+
+
+def prueba_genera_arbol_sintactico():  # Comprueba que un bloque válido produzca un árbol con la misma estructura básica de la versión anterior.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50,30 NAME Oficina"  # Define una instrucción válida con varios hosts y nombre.
+    _, resultado_sintactico = analizar_codigo(codigo_fuente)  # Ejecuta el flujo léxico y sintáctico completo.
+    assert len(resultado_sintactico.arboles) == 1  # Comprueba que exista exactamente un árbol para el único bloque válido.
+    arbol = resultado_sintactico.arboles[0]  # Obtiene la raíz del árbol generado.
+    assert arbol.etiqueta == "BloqueRed: Oficina"  # Verifica que la raíz incluya el nombre de la red.
+    assert [hijo.etiqueta for hijo in arbol.hijos] == ["IP", "IP_ADDRESS", "MASK", "SUBNET_MASK", "HOSTS", "HOSTS_LIST", "NAME", "IDENTIFIER"]  # Comprueba el orden principal de los nodos del bloque.
+
+
+def prueba_arbol_conserva_hosts_y_comas():  # Comprueba que HOSTS_LIST represente tanto los números como las comas de la lista.
+    codigo_fuente = "IP 10.0.0.0 MASK /24 HOSTS 100,50,20"  # Define una instrucción válida con tres cantidades.
+    _, resultado_sintactico = analizar_codigo(codigo_fuente)  # Ejecuta ambas fases de análisis.
+    arbol = resultado_sintactico.arboles[0]  # Obtiene el único árbol generado.
+    nodo_hosts = next(hijo for hijo in arbol.hijos if hijo.etiqueta == "HOSTS_LIST")  # Localiza el nodo que agrupa la lista de hosts.
+    assert [hijo.etiqueta for hijo in nodo_hosts.hijos] == ["NUMBER", "COMMA", "NUMBER", "COMMA", "NUMBER"]  # Verifica que la estructura mantenga los separadores originales.
+
+
+def prueba_genera_producciones_usadas():  # Comprueba que el resultado sintáctico incluya la gramática base y las reglas realmente aplicadas.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50,30 NAME Oficina"  # Define un bloque que obliga a usar C y la producción opcional de NAME.
+    _, resultado_sintactico = analizar_codigo(codigo_fuente)  # Ejecuta el análisis completo de la entrada.
+    assert "S → B A" in resultado_sintactico.producciones_usadas  # Comprueba que aparezca la producción inicial de la gramática.
+    assert "C → COMMA NUMBER C" in resultado_sintactico.producciones_usadas  # Comprueba que se registre la continuación de la lista de hosts.
+    assert "N → NAME IDENTIFIER" in resultado_sintactico.producciones_usadas  # Comprueba que se registre la producción usada por el nombre opcional.
+
+
+def prueba_genera_derivacion_con_valores_reales():  # Comprueba que la derivación sustituya los terminales por los valores concretos de la entrada.
+    codigo_fuente = "IP 172.16.0.0 MASK /20 HOSTS 200,40 NAME Campus"  # Define una instrucción con valores fáciles de localizar en la derivación.
+    _, resultado_sintactico = analizar_codigo(codigo_fuente)  # Ejecuta el flujo de análisis.
+    assert "⇒ IP 172.16.0.0 MASK /20 HOSTS 200,40 NAME Campus" in resultado_sintactico.derivacion  # Verifica que la cadena terminal final contenga los valores originales.
+
+
+def prueba_solo_bloques_validos_generan_representaciones():  # Comprueba que un bloque incorrecto no produzca árbol ni derivación propia mientras otro válido sí se conserva.
+    codigo_fuente = (  # Define una primera instrucción inválida y una segunda correctamente formada.
+        "IP 192.168.1. MASK /24 HOSTS 50\n"
+        "IP 10.0.0.0 MASK /24 HOSTS 20 NAME Correcta"
+    )
+    _, resultado_sintactico = analizar_codigo(codigo_fuente)  # Ejecuta el análisis y permite que el modo pánico recupere la segunda línea.
+    assert len(resultado_sintactico.arboles) == 1  # Comprueba que solamente el bloque válido produzca un árbol.
+    assert "BloqueRed: Correcta" in resultado_sintactico.arbol_textual  # Verifica que la representación textual corresponda al bloque recuperado.
+    assert "10.0.0.0" in resultado_sintactico.derivacion  # Comprueba que la derivación incluya el bloque válido.
+    assert "192.168.1." not in resultado_sintactico.derivacion  # Comprueba que la instrucción sintácticamente incorrecta no se derive.

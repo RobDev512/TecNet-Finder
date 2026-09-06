@@ -21,7 +21,7 @@
 # ============================================================
 
 from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Importa el modelo y la función usados para producir errores sintácticos.
-from Motor.modelos import BloqueRed, ResultadoSintactico, Token  # Importa los modelos que recibe y devuelve el parser.
+from Motor.modelos import BloqueRed, NodoSintactico, ResultadoSintactico, Token  # Importa los modelos que recibe y devuelve el parser.
 
 
 DESCRIPCIONES_TOKEN = {  # Relaciona cada tipo de token con una descripción más fácil de mostrar al usuario.
@@ -61,6 +61,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                 errores_antes = len(self.diagnosticos)  # Guarda cuántos diagnósticos existían antes de analizar este bloque.
                 bloque = self.analizar_bloque()  # Intenta construir una instrucción completa siguiendo la gramática.
                 bloque_tiene_errores = len(self.diagnosticos) > errores_antes  # Detecta si hubo errores locales dentro del bloque actual.
+
                 firma = (  # Construye una representación comparable de los datos principales de la instrucción.
                     bloque.direccion_ip,  # Incluye la dirección IP del bloque.
                     bloque.mascara_subred,  # Incluye la máscara CIDR del bloque.
@@ -70,6 +71,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
 
                 if firma in bloques_vistos:  # Comprueba si exactamente la misma instrucción ya había sido aceptada.
                     token_inicio = self.tokens[posicion_inicio]  # Recupera el primer token para ubicar el duplicado en el código fuente.
+
                     self.diagnosticos.append(  # Agrega un diagnóstico SIN-007 sin conservar una segunda copia del bloque.
                         crear_diagnostico(  # Construye el diagnóstico estructurado de instrucción duplicada.
                             codigo="SIN-007",  # Identifica el error como una instrucción repetida.
@@ -84,6 +86,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                             fragmento=token_inicio.valor,  # Conserva el texto del token donde comienza la instrucción duplicada.
                         )
                     )
+
                 elif not bloque_tiene_errores:  # Comprueba que el bloque no sea duplicado ni haya sufrido errores locales.
                     bloques_vistos.add(firma)  # Registra la firma para detectar futuras repeticiones.
                     bloques.append(bloque)  # Conserva el bloque como una instrucción sintácticamente válida.
@@ -95,9 +98,18 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
             if self.posicion == posicion_inicio:  # Comprueba que alguna parte del parser haya avanzado al menos un token.
                 self.posicion += 1  # Fuerza un avance para evitar un ciclo infinito ante una condición inesperada.
 
+        arboles = [self.construir_arbol_bloque(bloque) for bloque in bloques]  # Genera un árbol solamente para cada bloque sintácticamente válido.
+        producciones_usadas = self.generar_producciones_usadas(bloques)  # Genera la gramática base y las reglas aplicadas a la entrada válida.
+        derivacion = self.generar_derivacion(bloques)  # Genera la derivación del programa y de cada bloque aceptado.
+        arbol_textual = self.generar_arbol_textual(arboles)  # Convierte los árboles estructurados en una representación legible con ramas.
+
         return ResultadoSintactico(  # Devuelve el resultado completo de la fase sintáctica.
             bloques=bloques,  # Entrega todos los bloques sintácticamente válidos.
             diagnosticos=self.diagnosticos.copy(),  # Entrega una copia de todos los diagnósticos encontrados.
+            arboles=arboles,  # Entrega los árboles correspondientes únicamente a los bloques válidos.
+            producciones_usadas=producciones_usadas,  # Entrega el texto de gramática y producciones utilizadas.
+            derivacion=derivacion,  # Entrega la derivación generada a partir de los bloques válidos.
+            arbol_textual=arbol_textual,  # Entrega la versión textual de los árboles sintácticos.
         )
 
     def sincronizar(self, posicion_inicio: int | None = None) -> None:  # Implementa el modo pánico buscando el inicio de otra instrucción.
@@ -132,6 +144,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                 )
 
             token = self.tokens[self.posicion]  # Obtiene el token que apareció en lugar de IP_ADDRESS.
+
             self.lanzar_error(  # Genera SIN-001 usando la posición exacta del token encontrado.
                 codigo="SIN-001",  # Identifica el problema como dirección IP incompleta o mal formada.
                 mensaje=(  # Construye un mensaje que compara lo esperado con lo encontrado.
@@ -158,6 +171,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                 )
 
             token = self.tokens[self.posicion]  # Obtiene el token incorrecto que apareció después de HOSTS.
+
             self.lanzar_error(  # Genera SIN-004 usando la posición exacta del token encontrado.
                 codigo="SIN-004",  # Identifica el error como ausencia de una cantidad numérica válida.
                 mensaje=(  # Construye un mensaje que compara el NUMBER esperado con el token encontrado.
@@ -244,6 +258,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                         fragmento=token_coma.valor,  # Conserva la coma como fragmento relacionado con el error.
                     )
                 )
+
                 return cantidades  # Devuelve las cantidades válidas reconocidas antes de encontrar el error local.
 
             token = self.tokens[self.posicion]  # Obtiene el token ubicado inmediatamente después de la coma.
@@ -289,6 +304,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
 
             descripcion = self.describir_token_esperado(tipo_esperado, token)  # Obtiene una explicación legible del elemento que hacía falta.
             codigo = self.codigo_token_esperado(tipo_esperado)  # Selecciona el código SIN correspondiente al token esperado.
+
             self.lanzar_error(  # Detiene el bloque actual mediante un diagnóstico estructurado.
                 codigo=codigo,  # Usa el código específico obtenido para este tipo de ausencia.
                 mensaje=(  # Construye un mensaje que compara lo esperado con lo encontrado.
@@ -300,6 +316,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
 
         descripcion = self.describir_token_esperado(tipo_esperado)  # Obtiene la descripción del elemento faltante cuando ya no existen tokens.
         codigo = self.codigo_token_esperado(tipo_esperado)  # Obtiene el código de diagnóstico correspondiente al tipo esperado.
+
         self.lanzar_error(  # Genera el error correspondiente al final inesperado de la entrada.
             codigo=codigo,  # Usa el código específico del token que hacía falta.
             mensaje=f"Error sintáctico: se esperaba {tipo_esperado} ({descripcion}), pero no hay más tokens.",  # Explica que la entrada terminó antes de completar la regla.
@@ -353,6 +370,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
             "NUMBER": "SIN-004",  # Asocia un número requerido después de HOSTS con SIN-004.
             "IDENTIFIER": "SIN-006",  # Asocia un identificador faltante después de NAME con SIN-006.
         }
+
         return codigos.get(tipo_esperado, "SIN-008")  # Devuelve el código específico o SIN-008 para cualquier otro error de orden.
 
     def lanzar_error(self, codigo: str, mensaje: str, token: Token | None = None) -> None:  # Crea un diagnóstico y detiene únicamente el bloque sintáctico actual.
@@ -365,6 +383,7 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
                 longitud=len(token.valor),  # Usa la longitud del texto del token para señalarlo visualmente.
                 fragmento=token.valor,  # Conserva exactamente el fragmento relacionado con el error.
             )
+
         else:  # Se ejecuta cuando el error ocurre sin un token actual, normalmente al final de la entrada.
             linea = None  # Inicializa la línea sin una ubicación concreta.
             columna = None  # Inicializa la columna sin una ubicación concreta.
@@ -384,3 +403,171 @@ class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de
             )
 
         raise ErrorSintacticoInterno(diagnostico)  # Lanza la excepción interna para que analizar active la recuperación por modo pánico.
+
+    def crear_nodo_token(self, tipo_token: str, valor: str) -> NodoSintactico:  # Crea un nodo de token con un hijo VALOR que conserva el texto reconocido.
+        nodo_valor = NodoSintactico(etiqueta="VALOR", valor=str(valor))  # Crea el nodo terminal que almacena el contenido concreto del token.
+        return NodoSintactico(etiqueta=tipo_token, hijos=[nodo_valor])  # Devuelve el nodo del tipo solicitado conectado con su valor terminal.
+
+    def construir_arbol_bloque(self, bloque: BloqueRed) -> NodoSintactico:  # Construye el árbol sintáctico correspondiente a un bloque previamente validado.
+        hijos = []  # Crea la lista donde se agregarán en orden los elementos de la instrucción.
+        hijos.append(self.crear_nodo_token("IP", "IP"))  # Agrega la palabra reservada IP al árbol.
+        hijos.append(self.crear_nodo_token("IP_ADDRESS", bloque.direccion_ip))  # Agrega la dirección IPv4 reconocida.
+        hijos.append(self.crear_nodo_token("MASK", "MASK"))  # Agrega la palabra reservada MASK.
+        hijos.append(self.crear_nodo_token("SUBNET_MASK", bloque.mascara_subred))  # Agrega la máscara CIDR del bloque.
+        hijos.append(self.crear_nodo_token("HOSTS", "HOSTS"))  # Agrega la palabra reservada HOSTS.
+
+        hijos_hosts = []  # Crea la lista de nodos que representará la secuencia NUMBER, COMMA, NUMBER dentro de HOSTS_LIST.
+
+        for indice, cantidad in enumerate(bloque.cantidades_hosts):  # Recorre las cantidades de hosts conservando su posición dentro de la lista.
+            if indice > 0:  # Comprueba si la cantidad actual necesita una coma previa dentro del árbol.
+                hijos_hosts.append(self.crear_nodo_token("COMMA", ","))  # Agrega la coma que separaba esta cantidad de la anterior.
+
+            hijos_hosts.append(self.crear_nodo_token("NUMBER", str(cantidad)))  # Agrega la cantidad actual como un nodo NUMBER.
+
+        hijos.append(NodoSintactico(etiqueta="HOSTS_LIST", hijos=hijos_hosts))  # Agrupa toda la lista de hosts dentro de un nodo sintáctico propio.
+
+        if bloque.nombre is not None:  # Comprueba si la instrucción válida utilizó la parte opcional NAME.
+            hijos.append(self.crear_nodo_token("NAME", "NAME"))  # Agrega la palabra reservada NAME al árbol.
+            hijos.append(self.crear_nodo_token("IDENTIFIER", bloque.nombre))  # Agrega el identificador utilizado como nombre de red.
+
+        etiqueta_raiz = f"BloqueRed: {bloque.nombre}" if bloque.nombre else "BloqueRed"  # Incluye el nombre en la raíz cuando la instrucción lo proporciona.
+
+        return NodoSintactico(etiqueta=etiqueta_raiz, hijos=hijos)  # Devuelve el árbol completo del bloque válido.
+
+    def obtener_gramatica_base(self) -> str:  # Devuelve la gramática fija utilizada por el analizador sintáctico de TecNet Finder.
+        return (  # Construye el texto de la gramática y la descripción de sus símbolos no terminales.
+            "=== GRAMÁTICA BASE ===\n\n"
+            "S → B A\n"
+            "A → B A | ε\n"
+            "B → IP IP_ADDRESS MASK SUBNET_MASK HOSTS L N\n"
+            "L → NUMBER C\n"
+            "C → COMMA NUMBER C | ε\n"
+            "N → NAME IDENTIFIER | ε\n\n"
+            "S = Programa completo\n"
+            "A = Continuación del programa\n"
+            "B = Bloque o instrucción de red\n"
+            "L = Lista de hosts\n"
+            "C = Continuación de la lista de hosts\n"
+            "N = Nombre opcional\n"
+        )
+
+    def generar_producciones_usadas(self, bloques: list[BloqueRed]) -> str:  # Genera las reglas de la gramática que realmente fueron necesarias para la entrada válida.
+        salida = self.obtener_gramatica_base()  # Comienza mostrando siempre la gramática completa del lenguaje.
+        salida += "\n=== PRODUCCIONES USADAS EN LA ENTRADA ===\n\n"  # Agrega el encabezado de la sección de reglas aplicadas.
+
+        if not bloques:  # Comprueba si no existe ningún bloque sintácticamente válido del cual obtener producciones.
+            return salida + "No hay bloques válidos para mostrar producciones usadas.\n"  # Informa que no fue posible aplicar reglas sobre bloques válidos.
+
+        total_bloques = len(bloques)  # Obtiene cuántas instrucciones válidas forman el programa analizado.
+        salida += "Producciones del programa completo:\n"  # Agrega un encabezado para las reglas de S y A.
+        salida += "S → B A\n"  # Registra la producción inicial utilizada para comenzar el programa.
+
+        if total_bloques > 1:  # Comprueba si la entrada válida contiene más de una instrucción.
+            salida += f"A → B A    ({total_bloques - 1} vez/veces para continuar con más instrucciones)\n"  # Registra cuántas veces A permitió continuar con otro bloque.
+
+        salida += "A → ε      (termina el programa)\n\n"  # Registra la producción que finaliza la secuencia de instrucciones.
+
+        for indice, bloque in enumerate(bloques, start=1):  # Recorre cada bloque válido para mostrar las reglas que necesitó individualmente.
+            hosts_texto = ",".join(map(str, bloque.cantidades_hosts))  # Convierte la lista numérica de hosts a la forma escrita en la instrucción.
+            entrada = f"IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_texto}"  # Reconstruye la parte obligatoria del bloque.
+            entrada += f" NAME {bloque.nombre}" if bloque.nombre else ""  # Agrega la sección NAME únicamente cuando realmente fue utilizada.
+
+            salida += f"--- Bloque {indice} ---\n"  # Identifica el bloque cuyas producciones se mostrarán a continuación.
+            salida += f"Entrada equivalente: {entrada}\n\n"  # Muestra una representación legible de la instrucción asociada.
+            salida += "B → IP IP_ADDRESS MASK SUBNET_MASK HOSTS L N\n"  # Registra la producción principal de un bloque de red.
+            salida += "L → NUMBER C\n"  # Registra la producción que inicia la lista de hosts.
+
+            hosts_adicionales = max(len(bloque.cantidades_hosts) - 1, 0)  # Calcula cuántas expansiones de C fueron necesarias después del primer NUMBER.
+
+            if hosts_adicionales > 0:  # Comprueba si la lista contenía más de una cantidad de hosts.
+                salida += f"C → COMMA NUMBER C    ({hosts_adicionales} vez/veces)\n"  # Registra las repeticiones usadas para cantidades adicionales.
+
+            salida += "C → ε\n"  # Registra la producción que termina la lista de hosts.
+            salida += "N → NAME IDENTIFIER\n\n" if bloque.nombre else "N → ε\n\n"  # Registra la producción usada por la parte opcional NAME.
+
+        return salida  # Devuelve el texto completo de gramática y producciones aplicadas.
+
+    def generar_derivacion(self, bloques: list[BloqueRed]) -> str:  # Genera la derivación del programa y posteriormente la de cada bloque válido.
+        salida = "=== DERIVACIÓN GENERADA ===\n\n"  # Crea el encabezado general de la derivación.
+
+        if not bloques:  # Comprueba si no existen bloques válidos para derivar.
+            return salida + "No hay bloques válidos para generar derivación.\n"  # Informa que no existe una entrada válida sobre la cual realizar sustituciones.
+
+        total_bloques = len(bloques)  # Obtiene cuántos bloques válidos forman el programa.
+        salida += "Derivación general del programa:\n\nS\n⇒ B A\n"  # Inicia la derivación desde el símbolo inicial S.
+
+        if total_bloques == 1:  # Comprueba si el programa contiene exactamente una instrucción válida.
+            salida += "⇒ B ε\n⇒ B\n"  # Sustituye A por ε para finalizar inmediatamente después del primer bloque.
+
+        else:  # Se ejecuta cuando el programa contiene dos o más bloques válidos.
+            for cantidad in range(2, total_bloques + 1):  # Expande A una vez por cada bloque adicional que debe aparecer.
+                forma = (("B " * cantidad) + "A").strip()  # Construye la forma sentencial con la cantidad actual de bloques y una A pendiente.
+                salida += f"⇒ {forma}\n"  # Agrega la forma sentencial correspondiente a esta expansión.
+
+            bloques_texto = ("B " * total_bloques).strip()  # Construye la secuencia final formada solamente por símbolos B.
+            salida += f"⇒ {bloques_texto} ε\n⇒ {bloques_texto}\n"  # Sustituye la última A por ε y muestra la forma final del programa.
+
+        salida += "\n"  # Separa la derivación general de las derivaciones individuales de cada bloque.
+
+        for indice, bloque in enumerate(bloques, start=1):  # Recorre todos los bloques válidos en el mismo orden en que aparecieron.
+            salida += self.generar_derivacion_bloque(bloque, indice)  # Agrega la derivación izquierda correspondiente al bloque actual.
+            salida += "\n"  # Separa visualmente la derivación del siguiente bloque.
+
+        return salida  # Devuelve la derivación completa del programa.
+
+    def generar_derivacion_bloque(self, bloque: BloqueRed, indice: int) -> str:  # Genera la derivación izquierda de una sola instrucción válida sustituyendo sus valores reales.
+        salida = f"--- Derivación del bloque {indice} ---\n\n"  # Crea el encabezado correspondiente al bloque actual.
+
+        if not bloque.cantidades_hosts:  # Comprueba de forma defensiva que el bloque posea al menos una cantidad de hosts.
+            return salida + "No hay hosts para derivar.\n"  # Finaliza la derivación si no existe la información mínima requerida.
+
+        hosts_actuales = str(bloque.cantidades_hosts[0])  # Comienza la lista sustituida utilizando la primera cantidad de hosts.
+        salida += "B\n"  # Inicia la derivación del bloque desde el no terminal B.
+        salida += "⇒ IP IP_ADDRESS MASK SUBNET_MASK HOSTS L N\n"  # Expande B utilizando la producción principal del bloque.
+        salida += f"⇒ IP {bloque.direccion_ip} MASK SUBNET_MASK HOSTS L N\n"  # Sustituye IP_ADDRESS por la dirección real de la entrada.
+        salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS L N\n"  # Sustituye SUBNET_MASK por la máscara real.
+        salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS NUMBER C N\n"  # Expande L mediante NUMBER C.
+        salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} C N\n"  # Sustituye el primer NUMBER por su cantidad real.
+
+        for host in bloque.cantidades_hosts[1:]:  # Recorre únicamente las cantidades adicionales de la lista de hosts.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} COMMA NUMBER C N\n"  # Expande C para permitir otra cantidad.
+            hosts_actuales += f",{host}"  # Agrega el valor real de la nueva cantidad a la lista ya sustituida.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} C N\n"  # Sustituye COMMA y NUMBER por la coma y cantidad reales.
+
+        salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} ε N\n"  # Sustituye C por ε cuando ya no quedan más cantidades.
+        salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} N\n"  # Elimina visualmente el símbolo ε de la forma sentencial.
+
+        if bloque.nombre:  # Comprueba si la instrucción utilizó la parte opcional del nombre de red.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} NAME IDENTIFIER\n"  # Expande N mediante la producción con NAME.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} NAME {bloque.nombre}\n"  # Sustituye IDENTIFIER por el nombre real de la red.
+
+        else:  # Se ejecuta cuando la instrucción no contiene la sección NAME.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales} ε\n"  # Sustituye N por ε porque el nombre es opcional.
+            salida += f"⇒ IP {bloque.direccion_ip} MASK {bloque.mascara_subred} HOSTS {hosts_actuales}\n"  # Elimina ε y muestra la cadena terminal final del bloque.
+
+        return salida  # Devuelve la derivación completa del bloque actual.
+
+    def generar_arbol_textual(self, arboles: list[NodoSintactico]) -> str:  # Genera una representación de texto para todos los árboles sintácticos válidos.
+        if not arboles:  # Comprueba si no existe ningún árbol que pueda mostrarse.
+            return "No hay árboles válidos para mostrar.\n"  # Devuelve un mensaje cuando no existen bloques aceptados.
+
+        salida = "=== REPRESENTACIÓN TEXTUAL DEL ÁRBOL SINTÁCTICO ===\n\n"  # Crea el encabezado de la representación textual.
+
+        for indice, arbol in enumerate(arboles, start=1):  # Recorre cada árbol válido en el orden de sus instrucciones.
+            salida += f"--- Árbol {indice} ---\n"  # Identifica el número del árbol actual.
+            salida += self.formatear_nodo_arbol(arbol)  # Convierte recursivamente el árbol actual en líneas con ramas.
+            salida += "\n"  # Separa visualmente un árbol del siguiente.
+
+        return salida  # Devuelve la representación textual completa.
+
+    def formatear_nodo_arbol(self, nodo: NodoSintactico, prefijo: str = "", es_ultimo: bool = True) -> str:  # Convierte recursivamente un nodo y sus hijos en una representación con ramas.
+        etiqueta = str(nodo.valor) if nodo.etiqueta == "VALOR" else nodo.etiqueta  # Muestra el contenido real cuando el nodo representa un VALOR terminal.
+        conector = "└── " if es_ultimo else "├── "  # Selecciona el conector gráfico según la posición del nodo entre sus hermanos.
+        salida = prefijo + conector + etiqueta + "\n"  # Construye la línea visible correspondiente al nodo actual.
+        nuevo_prefijo = prefijo + ("    " if es_ultimo else "│   ")  # Mantiene la alineación de las ramas para los descendientes del nodo.
+
+        for indice, hijo in enumerate(nodo.hijos):  # Recorre todos los hijos conservando su posición dentro del nodo actual.
+            hijo_es_ultimo = indice == len(nodo.hijos) - 1  # Determina si el hijo actual es el último de su nivel.
+            salida += self.formatear_nodo_arbol(hijo, nuevo_prefijo, hijo_es_ultimo)  # Agrega recursivamente la representación del hijo y sus descendientes.
+
+        return salida  # Devuelve el texto completo correspondiente al nodo actual y todo su subárbol.

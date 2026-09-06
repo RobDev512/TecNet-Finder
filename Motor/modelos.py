@@ -49,10 +49,21 @@ class BloqueRed:  # Representa una instrucción que cumplió correctamente la es
     linea_origen: int = 1  # Guarda la línea donde comenzó la instrucción.
 
 
+@dataclass  # Convierte NodoSintactico en una clase de datos organizada.
+class NodoSintactico:  # Representa un nodo del árbol sintáctico generado para una instrucción válida.
+    etiqueta: str  # Guarda el nombre visible del nodo, por ejemplo BloqueRed, IP o HOSTS_LIST.
+    valor: str | None = None  # Guarda un valor concreto cuando el nodo representa contenido terminal.
+    hijos: list["NodoSintactico"] = field(default_factory=list)  # Guarda los nodos descendientes conectados al nodo actual.
+
+
 @dataclass  # Convierte ResultadoSintactico en una clase destinada a almacenar resultados.
 class ResultadoSintactico:  # Agrupa los bloques válidos y diagnósticos producidos por el parser.
     bloques: list[BloqueRed] = field(default_factory=list)  # Guarda únicamente las instrucciones sintácticamente válidas.
     diagnosticos: list[Diagnostico] = field(default_factory=list)  # Guarda los errores o advertencias sintácticas.
+    arboles: list[NodoSintactico] = field(default_factory=list)  # Guarda un árbol sintáctico por cada bloque válido reconocido.
+    producciones_usadas: str = ""  # Guarda la gramática base y las producciones aplicadas a la entrada válida.
+    derivacion: str = ""  # Guarda la derivación generada para el programa y para cada bloque válido.
+    arbol_textual: str = ""  # Guarda una representación del árbol usando ramas de texto para facilitar su lectura.
 
     @property  # Permite consultar el método como si fuera un atributo.
     def tiene_errores(self) -> bool:  # Indica si existe al menos un diagnóstico sintáctico marcado como error.
