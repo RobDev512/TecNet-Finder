@@ -8,902 +8,379 @@
 # sintáctico del compilador de TecNet Finder.
 #
 # El analizador sintáctico recibe la lista de tokens producida
-# previamente por el analizador léxico y comprueba que dichos
-# tokens aparezcan en el orden establecido por la gramática.
+# por el lexer y comprueba que aparezcan en el orden establecido
+# por la gramática de TecNet Finder.
 #
-# La estructura general aceptada es:
-#
+# Estructura general:
 # IP <IP_ADDRESS> MASK <SUBNET_MASK>
 # HOSTS <NUMBER>[,<NUMBER>...] [NAME <IDENTIFIER>]
 #
-# El analizador también conserva mecanismos existentes desde
-# Lenguajes y Autómatas I, como:
-#
-# - Detección de instrucciones duplicadas.
-# - Recuperación local dentro de la lista de hosts.
-# - Modo pánico para continuar después de errores.
-# - Procesamiento de instrucciones válidas aunque otras fallen.
-#
-# Este archivo no realiza todavía validaciones semánticas.
+# También conserva recuperación por modo pánico, recuperación
+# local en HOSTS, detección de duplicados y procesamiento de
+# instrucciones válidas aunque otras fallen.
 # ============================================================
 
-
-# Importa la estructura Diagnostico para poder transportar
-# internamente un error sintáctico con todos sus datos.
-#
-# También importa crear_diagnostico para generar los errores
-# estructurados que posteriormente utilizará la interfaz.
-from Motor.diagnosticos import Diagnostico, crear_diagnostico
+from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Importa el modelo y la función usados para producir errores sintácticos.
+from Motor.modelos import BloqueRed, ResultadoSintactico, Token  # Importa los modelos que recibe y devuelve el parser.
 
 
-# Importa los modelos utilizados por el analizador sintáctico.
-#
-# BloqueRed representa una instrucción sintácticamente correcta.
-# ResultadoSintactico representa el resultado completo de esta fase.
-# Token representa cada elemento previamente reconocido por el lexer.
-from Motor.modelos import BloqueRed, ResultadoSintactico, Token
-
-
-# Define descripciones más fáciles de entender para los diferentes
-# tipos de token utilizados por TecNet Finder.
-#
-# Estas descripciones se utilizan principalmente para construir
-# mensajes de error sintáctico más claros.
-DESCRIPCIONES_TOKEN = {
-
-    # Describe la palabra reservada IP.
-    "IP": "palabra reservada IP",
-
-    # Describe la palabra reservada MASK.
-    "MASK": "palabra reservada MASK",
-
-    # Describe la palabra reservada HOSTS.
-    "HOSTS": "palabra reservada HOSTS",
-
-    # Describe la palabra reservada NAME.
-    "NAME": "palabra reservada NAME",
-
-    # Describe una dirección IPv4 completa.
-    "IP_ADDRESS": "dirección IP completa",
-
-    # Describe una máscara escrita en formato CIDR.
-    "SUBNET_MASK": "máscara CIDR",
-
-    # Describe un número entero.
-    "NUMBER": "número entero",
-
-    # Describe un identificador utilizado como nombre de red.
-    "IDENTIFIER": "identificador o nombre de red",
-
-    # Describe una coma utilizada dentro de la lista de hosts.
-    "COMMA": "coma separadora",
-
-    # Describe un punto individual.
-    "DOT": "punto",
+DESCRIPCIONES_TOKEN = {  # Relaciona cada tipo de token con una descripción más fácil de mostrar al usuario.
+    "IP": "palabra reservada IP",  # Describe la palabra reservada IP.
+    "MASK": "palabra reservada MASK",  # Describe la palabra reservada MASK.
+    "HOSTS": "palabra reservada HOSTS",  # Describe la palabra reservada HOSTS.
+    "NAME": "palabra reservada NAME",  # Describe la palabra reservada NAME.
+    "IP_ADDRESS": "dirección IP completa",  # Describe una dirección IPv4 reconocida como unidad.
+    "SUBNET_MASK": "máscara CIDR",  # Describe una máscara escrita con diagonal y prefijo.
+    "NUMBER": "número entero",  # Describe una cantidad numérica utilizada principalmente en HOSTS.
+    "IDENTIFIER": "identificador o nombre de red",  # Describe el nombre opcional colocado después de NAME.
+    "COMMA": "coma separadora",  # Describe el separador usado entre cantidades de hosts.
+    "DOT": "punto",  # Describe un punto individual producido por una IP incompleta.
 }
 
 
-# Define una excepción utilizada únicamente de manera interna
-# por el analizador sintáctico.
-#
-# Su propósito es detener el análisis del bloque actual cuando
-# aparece un error que impide continuar con esa instrucción.
-#
-# El error no termina todo el programa porque posteriormente
-# el modo pánico intentará encontrar la siguiente instrucción.
-class ErrorSintacticoInterno(Exception):
-
-    # Inicializa la excepción utilizando un diagnóstico estructurado.
-    def __init__(self, diagnostico: Diagnostico):
-
-        # Guarda el diagnóstico para que pueda recuperarse cuando
-        # la excepción sea capturada por el método analizar.
-        self.diagnostico = diagnostico
-
-        # Inicializa también la clase Exception de Python utilizando
-        # el mensaje descriptivo del diagnóstico.
-        super().__init__(diagnostico.mensaje)
+class ErrorSintacticoInterno(Exception):  # Define una excepción interna usada para abandonar solo el bloque sintáctico actual.
+    def __init__(self, diagnostico: Diagnostico):  # Inicializa la excepción utilizando un diagnóstico ya estructurado.
+        self.diagnostico = diagnostico  # Conserva el diagnóstico para que analizar pueda recuperarlo posteriormente.
+        super().__init__(diagnostico.mensaje)  # Inicializa también Exception usando el mensaje legible del diagnóstico.
 
 
-# Define la clase responsable de realizar el análisis sintáctico.
-class AnalizadorSintactico:
+class AnalizadorSintactico:  # Define la clase que valida el orden gramatical de los tokens recibidos.
+    def __init__(self, tokens: list[Token]):  # Inicializa el parser con la secuencia generada previamente por el lexer.
+        self.tokens = tokens  # Guarda todos los tokens que serán procesados.
+        self.posicion = 0  # Indica el índice del token que se revisa actualmente.
+        self.diagnosticos: list[Diagnostico] = []  # Guarda todos los errores sintácticos encontrados durante el análisis.
 
-    # Inicializa el analizador utilizando la lista de tokens
-    # previamente producida por el analizador léxico.
-    def __init__(self, tokens: list[Token]):
+    def analizar(self) -> ResultadoSintactico:  # Procesa toda la secuencia y devuelve bloques válidos junto con diagnósticos.
+        bloques: list[BloqueRed] = []  # Guarda únicamente las instrucciones que cumplen correctamente la gramática.
+        bloques_vistos = set()  # Guarda firmas de instrucciones válidas para detectar repeticiones exactas.
 
-        # Guarda la secuencia completa de tokens que será analizada.
-        self.tokens = tokens
+        while self.posicion < len(self.tokens):  # Continúa mientras todavía existan tokens sin procesar.
+            posicion_inicio = self.posicion  # Recuerda dónde comenzó el bloque actual para duplicados y recuperación.
 
-        # Indica la posición del token que se está revisando actualmente.
-        self.posicion = 0
-
-        # Crea la lista donde se almacenarán todos los diagnósticos
-        # sintácticos encontrados durante el análisis.
-        self.diagnosticos: list[Diagnostico] = []
-
-    # Procesa toda la secuencia de tokens y devuelve únicamente
-    # los bloques que cumplen correctamente la gramática.
-    def analizar(self) -> ResultadoSintactico:
-
-        # Crea la lista que almacenará las instrucciones válidas.
-        bloques: list[BloqueRed] = []
-
-        # Crea un conjunto utilizado para recordar las instrucciones
-        # válidas que ya aparecieron anteriormente.
-        #
-        # Esto permite detectar bloques exactamente duplicados.
-        bloques_vistos = set()
-
-        # Continúa mientras todavía queden tokens sin procesar.
-        while self.posicion < len(self.tokens):
-
-            # Guarda la posición donde comienza la instrucción actual.
-            #
-            # Este valor será utilizado tanto para detectar duplicados
-            # como para aplicar posteriormente el modo pánico.
-            posicion_inicio = self.posicion
-
-            # Intenta analizar una instrucción completa.
-            try:
-
-                # Guarda cuántos diagnósticos existían antes de entrar
-                # al bloque actual.
-                #
-                # Esto permite saber después si ocurrió un error local
-                # durante el procesamiento de la lista de hosts.
-                errores_antes = len(self.diagnosticos)
-
-                # Intenta reconocer una instrucción completa de red.
-                bloque = self.analizar_bloque()
-
-                # Comprueba si el bloque produjo algún diagnóstico
-                # durante su análisis.
-                bloque_tiene_errores = (
-                    len(self.diagnosticos) > errores_antes
+            try:  # Intenta reconocer una instrucción completa sin detener el análisis global si falla.
+                errores_antes = len(self.diagnosticos)  # Guarda cuántos diagnósticos existían antes de analizar este bloque.
+                bloque = self.analizar_bloque()  # Intenta construir una instrucción completa siguiendo la gramática.
+                bloque_tiene_errores = len(self.diagnosticos) > errores_antes  # Detecta si hubo errores locales dentro del bloque actual.
+                firma = (  # Construye una representación comparable de los datos principales de la instrucción.
+                    bloque.direccion_ip,  # Incluye la dirección IP del bloque.
+                    bloque.mascara_subred,  # Incluye la máscara CIDR del bloque.
+                    tuple(bloque.cantidades_hosts),  # Convierte los hosts a tupla para poder guardar la firma en un set.
+                    bloque.nombre,  # Incluye el nombre opcional del bloque.
                 )
 
-                # Construye una firma con los elementos principales
-                # de la instrucción.
-                #
-                # La lista de hosts se convierte temporalmente en tupla
-                # porque una lista no puede utilizarse dentro de un set.
-                firma = (
-                    bloque.direccion_ip,
-                    bloque.mascara_subred,
-                    tuple(bloque.cantidades_hosts),
-                    bloque.nombre,
-                )
-
-                # Comprueba si exactamente la misma instrucción ya
-                # había sido aceptada anteriormente.
-                if firma in bloques_vistos:
-
-                    # Recupera el primer token de la instrucción duplicada
-                    # para obtener su posición dentro del código fuente.
-                    token_inicio = self.tokens[posicion_inicio]
-
-                    # Agrega el diagnóstico correspondiente al duplicado.
-                    self.diagnosticos.append(
-                        crear_diagnostico(
-                            codigo="SIN-007",
-                            mensaje=(
-                                f"Error sintáctico: instrucción duplicada "
-                                f"en línea {token_inicio.linea}. "
-                                f"La red con IP {bloque.direccion_ip}, "
-                                f"máscara {bloque.mascara_subred} "
-                                f"y nombre {bloque.nombre} ya fue "
-                                f"declarada anteriormente."
+                if firma in bloques_vistos:  # Comprueba si exactamente la misma instrucción ya había sido aceptada.
+                    token_inicio = self.tokens[posicion_inicio]  # Recupera el primer token para ubicar el duplicado en el código fuente.
+                    self.diagnosticos.append(  # Agrega un diagnóstico SIN-007 sin conservar una segunda copia del bloque.
+                        crear_diagnostico(  # Construye el diagnóstico estructurado de instrucción duplicada.
+                            codigo="SIN-007",  # Identifica el error como una instrucción repetida.
+                            mensaje=(  # Construye un mensaje específico con los datos de la red duplicada.
+                                f"Error sintáctico: instrucción duplicada en línea {token_inicio.linea}. "
+                                f"La red con IP {bloque.direccion_ip}, máscara {bloque.mascara_subred} "
+                                f"y nombre {bloque.nombre} ya fue declarada anteriormente."
                             ),
-                            linea=token_inicio.linea,
-                            columna=token_inicio.columna,
-                            longitud=len(token_inicio.valor),
-                            fragmento=token_inicio.valor,
+                            linea=token_inicio.linea,  # Guarda la línea donde comienza la copia duplicada.
+                            columna=token_inicio.columna,  # Guarda la columna del primer token de la copia duplicada.
+                            longitud=len(token_inicio.valor),  # Señala inicialmente la longitud del token IP.
+                            fragmento=token_inicio.valor,  # Conserva el texto del token donde comienza la instrucción duplicada.
                         )
                     )
+                elif not bloque_tiene_errores:  # Comprueba que el bloque no sea duplicado ni haya sufrido errores locales.
+                    bloques_vistos.add(firma)  # Registra la firma para detectar futuras repeticiones.
+                    bloques.append(bloque)  # Conserva el bloque como una instrucción sintácticamente válida.
 
-                # Si el bloque no está duplicado y tampoco produjo
-                # errores locales, puede considerarse sintácticamente válido.
-                elif not bloque_tiene_errores:
+            except ErrorSintacticoInterno as error:  # Captura un error grave que impidió terminar el bloque actual.
+                self.diagnosticos.append(error.diagnostico)  # Guarda el diagnóstico transportado por la excepción interna.
+                self.sincronizar(posicion_inicio)  # Activa el modo pánico para intentar localizar la siguiente instrucción.
 
-                    # Registra la firma para detectar posibles
-                    # instrucciones duplicadas posteriores.
-                    bloques_vistos.add(firma)
+            if self.posicion == posicion_inicio:  # Comprueba que alguna parte del parser haya avanzado al menos un token.
+                self.posicion += 1  # Fuerza un avance para evitar un ciclo infinito ante una condición inesperada.
 
-                    # Guarda el bloque dentro de los resultados válidos.
-                    bloques.append(bloque)
-
-            # Captura un error sintáctico que impidió completar
-            # normalmente la instrucción actual.
-            except ErrorSintacticoInterno as error:
-
-                # Guarda el diagnóstico transportado por la excepción.
-                self.diagnosticos.append(error.diagnostico)
-
-                # Activa el modo pánico para intentar localizar
-                # el comienzo de otra instrucción.
-                self.sincronizar(posicion_inicio)
-
-            # Comprueba que el analizador realmente haya avanzado.
-            #
-            # Esta protección evita un ciclo infinito en caso de que
-            # una condición inesperada deje la posición sin modificar.
-            if self.posicion == posicion_inicio:
-
-                # Avanza manualmente un token para poder continuar.
-                self.posicion += 1
-
-        # Devuelve todos los bloques válidos y diagnósticos encontrados.
-        return ResultadoSintactico(
-            bloques=bloques,
-            diagnosticos=self.diagnosticos.copy(),
+        return ResultadoSintactico(  # Devuelve el resultado completo de la fase sintáctica.
+            bloques=bloques,  # Entrega todos los bloques sintácticamente válidos.
+            diagnosticos=self.diagnosticos.copy(),  # Entrega una copia de todos los diagnósticos encontrados.
         )
 
-    # Implementa el modo pánico utilizado para recuperarse de
-    # errores sintácticos graves.
-    #
-    # En TecNet Finder una nueva instrucción normalmente comienza
-    # con la palabra reservada IP.
-    def sincronizar(
-        self,
-        posicion_inicio: int | None = None,
-    ) -> None:
+    def sincronizar(self, posicion_inicio: int | None = None) -> None:  # Implementa el modo pánico buscando el inicio de otra instrucción.
+        linea_error = None  # Inicializa sin conocer todavía la línea donde comenzó el bloque incorrecto.
 
-        # Inicializa sin información la línea donde comenzó el error.
-        linea_error = None
+        if posicion_inicio is not None and posicion_inicio < len(self.tokens):  # Comprueba que se recibió una posición inicial válida.
+            linea_error = self.tokens[posicion_inicio].linea  # Obtiene la línea donde comenzó la instrucción que produjo el error.
 
-        # Comprueba si se recibió una posición inicial válida.
-        if (
-            posicion_inicio is not None
-            and posicion_inicio < len(self.tokens)
-        ):
+        while self.posicion < len(self.tokens):  # Avanza por los tokens hasta encontrar un punto adecuado de sincronización.
+            token = self.tokens[self.posicion]  # Obtiene el token que se está revisando durante la recuperación.
 
-            # Obtiene la línea de la instrucción que produjo el error.
-            linea_error = self.tokens[posicion_inicio].linea
+            if token.tipo == "IP":  # Comprueba si el token podría representar el inicio de una nueva instrucción.
+                if linea_error is None or token.linea > linea_error:  # Exige que la nueva IP esté en una línea posterior al bloque fallido.
+                    return  # Detiene la recuperación sin consumir IP para que el ciclo principal pueda procesarla.
 
-        # Continúa avanzando mientras todavía existan tokens.
-        while self.posicion < len(self.tokens):
+            self.posicion += 1  # Descarta el token actual porque todavía pertenece a la zona donde ocurrió el error.
 
-            # Obtiene el token ubicado en la posición actual.
-            token = self.tokens[self.posicion]
+    def analizar_bloque(self) -> BloqueRed:  # Reconoce una instrucción completa siguiendo la gramática de TecNet Finder.
+        linea_origen = self.tokens[self.posicion].linea  # Guarda la línea donde comienza la instrucción actual.
+        self.esperar("IP")  # Exige que cada instrucción comience con la palabra reservada IP.
 
-            # Comprueba si se encontró la palabra reservada IP.
-            if token.tipo == "IP":
+        if self.posicion >= len(self.tokens) or self.tokens[self.posicion].tipo != "IP_ADDRESS":  # Comprueba que después de IP exista una IPv4 completa.
+            ejemplo_ip = self.describir_token_esperado("IP_ADDRESS")  # Construye un ejemplo útil según la IP parcial detectada.
 
-                # Verifica que esta IP pertenezca a una línea posterior
-                # a aquella donde comenzó la instrucción incorrecta.
-                if (
-                    linea_error is None
-                    or token.linea > linea_error
-                ):
-
-                    # Detiene la sincronización sin consumir la IP.
-                    #
-                    # Así el ciclo principal podrá utilizarla como
-                    # comienzo de la siguiente instrucción.
-                    return
-
-            # Descarta el token actual porque todavía forma parte
-            # de la sección donde ocurrió el error.
-            self.posicion += 1
-
-    # Analiza una instrucción completa según la estructura
-    # definida por la gramática de TecNet Finder.
-    def analizar_bloque(self) -> BloqueRed:
-
-        # Guarda la línea donde comienza la instrucción actual.
-        linea_origen = self.tokens[self.posicion].linea
-
-        # Exige que la instrucción comience con la palabra reservada IP.
-        self.esperar("IP")
-
-        # Comprueba explícitamente que después de IP aparezca
-        # una dirección IPv4 completa.
-        #
-        # Esta validación especial permite generar el diagnóstico
-        # SIN-001 cuando una IP quedó dividida en NUMBER y DOT.
-        if (
-            self.posicion >= len(self.tokens)
-            or self.tokens[self.posicion].tipo != "IP_ADDRESS"
-        ):
-
-            # Genera un ejemplo de cómo debería verse la dirección
-            # IP que se esperaba.
-            ejemplo_ip = self.describir_token_esperado(
-                "IP_ADDRESS"
-            )
-
-            # Comprueba si el código terminó inmediatamente después de IP.
-            if self.posicion >= len(self.tokens):
-
-                # Genera un error indicando que faltó la dirección completa.
-                self.lanzar_error(
-                    codigo="SIN-001",
-                    mensaje=(
-                        "Error sintáctico: dirección IP incompleta "
-                        "o mal formada. Después de IP se esperaba "
-                        f"IP_ADDRESS ({ejemplo_ip}), pero se llegó "
-                        "al fin de la entrada."
+            if self.posicion >= len(self.tokens):  # Comprueba si la entrada terminó inmediatamente después de IP.
+                self.lanzar_error(  # Genera SIN-001 porque no existe una dirección completa.
+                    codigo="SIN-001",  # Identifica el error como una dirección IP incompleta o mal formada.
+                    mensaje=(  # Construye el mensaje correspondiente al fin inesperado de la entrada.
+                        "Error sintáctico: dirección IP incompleta o mal formada. Después de IP se esperaba "
+                        f"IP_ADDRESS ({ejemplo_ip}), pero se llegó al fin de la entrada."
                     ),
                 )
 
-            # Obtiene el token encontrado en lugar de IP_ADDRESS.
-            token = self.tokens[self.posicion]
-
-            # Genera un diagnóstico específico para la dirección
-            # incompleta o mal formada.
-            self.lanzar_error(
-                codigo="SIN-001",
-                mensaje=(
-                    "Error sintáctico: dirección IP incompleta "
-                    "o mal formada. Después de IP se esperaba "
-                    f"IP_ADDRESS ({ejemplo_ip}), pero se encontró "
-                    f"{token.tipo} ('{token.valor}') "
-                    f"en línea {token.linea}, "
-                    f"posición {token.columna}."
+            token = self.tokens[self.posicion]  # Obtiene el token que apareció en lugar de IP_ADDRESS.
+            self.lanzar_error(  # Genera SIN-001 usando la posición exacta del token encontrado.
+                codigo="SIN-001",  # Identifica el problema como dirección IP incompleta o mal formada.
+                mensaje=(  # Construye un mensaje que compara lo esperado con lo encontrado.
+                    "Error sintáctico: dirección IP incompleta o mal formada. Después de IP se esperaba "
+                    f"IP_ADDRESS ({ejemplo_ip}), pero se encontró {token.tipo} ('{token.valor}') "
+                    f"en línea {token.linea}, posición {token.columna}."
                 ),
-                token=token,
+                token=token,  # Relaciona el diagnóstico con el token incorrecto actual.
             )
 
-        # Consume la dirección IPv4 completa y guarda su valor.
-        direccion_ip = self.esperar("IP_ADDRESS")
+        direccion_ip = self.esperar("IP_ADDRESS")  # Consume y guarda la dirección IPv4 completa.
+        self.esperar("MASK")  # Exige la palabra reservada MASK después de la dirección.
+        mascara_subred = self.esperar("SUBNET_MASK")  # Consume y guarda la máscara CIDR.
+        self.esperar("HOSTS")  # Exige la palabra reservada HOSTS después de la máscara.
 
-        # Exige la palabra reservada MASK.
-        self.esperar("MASK")
-
-        # Exige una máscara escrita en formato CIDR.
-        mascara_subred = self.esperar("SUBNET_MASK")
-
-        # Exige la palabra reservada HOSTS.
-        self.esperar("HOSTS")
-
-        # Comprueba que HOSTS esté seguido por al menos
-        # una cantidad numérica.
-        if (
-            self.posicion >= len(self.tokens)
-            or self.tokens[self.posicion].tipo != "NUMBER"
-        ):
-
-            # Comprueba si el código terminó inmediatamente
-            # después de la palabra HOSTS.
-            if self.posicion >= len(self.tokens):
-
-                # Genera el diagnóstico correspondiente.
-                self.lanzar_error(
-                    codigo="SIN-004",
-                    mensaje=(
-                        "Error sintáctico: después de HOSTS se "
-                        "esperaba al menos un NUMBER con la cantidad "
-                        "de hosts, por ejemplo 50, pero se llegó al "
-                        "fin de la entrada."
+        if self.posicion >= len(self.tokens) or self.tokens[self.posicion].tipo != "NUMBER":  # Comprueba que HOSTS tenga al menos una cantidad.
+            if self.posicion >= len(self.tokens):  # Comprueba si la entrada terminó inmediatamente después de HOSTS.
+                self.lanzar_error(  # Genera SIN-004 porque no existe ninguna cantidad de hosts.
+                    codigo="SIN-004",  # Identifica el problema como ausencia de cantidad después de HOSTS.
+                    mensaje=(  # Construye el mensaje correspondiente al fin inesperado de la entrada.
+                        "Error sintáctico: después de HOSTS se esperaba al menos un NUMBER con la cantidad "
+                        "de hosts, por ejemplo 50, pero se llegó al fin de la entrada."
                     ),
                 )
 
-            # Obtiene el token incorrecto encontrado después de HOSTS.
-            token = self.tokens[self.posicion]
-
-            # Genera un diagnóstico indicando qué token apareció.
-            self.lanzar_error(
-                codigo="SIN-004",
-                mensaje=(
-                    "Error sintáctico: después de HOSTS se esperaba "
-                    "al menos un NUMBER con la cantidad de hosts, "
-                    f"por ejemplo 50, pero se encontró {token.tipo} "
-                    f"('{token.valor}') en línea {token.linea}, "
-                    f"posición {token.columna}."
+            token = self.tokens[self.posicion]  # Obtiene el token incorrecto que apareció después de HOSTS.
+            self.lanzar_error(  # Genera SIN-004 usando la posición exacta del token encontrado.
+                codigo="SIN-004",  # Identifica el error como ausencia de una cantidad numérica válida.
+                mensaje=(  # Construye un mensaje que compara el NUMBER esperado con el token encontrado.
+                    "Error sintáctico: después de HOSTS se esperaba al menos un NUMBER con la cantidad "
+                    f"de hosts, por ejemplo 50, pero se encontró {token.tipo} ('{token.valor}') "
+                    f"en línea {token.linea}, posición {token.columna}."
                 ),
-                token=token,
+                token=token,  # Relaciona el diagnóstico con el token incorrecto actual.
             )
 
-        # Procesa la primera cantidad de hosts y todos los números
-        # adicionales separados mediante comas.
-        cantidades_hosts = self.analizar_hosts()
+        cantidades_hosts = self.analizar_hosts()  # Procesa la primera cantidad y las cantidades adicionales separadas por comas.
+        nombre = None  # Inicializa el nombre como ausente porque NAME es una parte opcional de la gramática.
 
-        # Inicializa el nombre de la red como ausente.
-        #
-        # NAME es una parte opcional de la gramática.
-        nombre = None
+        if self.posicion < len(self.tokens) and self.tokens[self.posicion].tipo == "NAME":  # Comprueba si después de HOSTS aparece la sección opcional NAME.
+            token_name = self.tokens[self.posicion]  # Guarda el token NAME para conservar su posición ante posibles errores.
+            self.posicion += 1  # Consume la palabra reservada NAME.
 
-        # Comprueba si después de los hosts aparece NAME.
-        if (
-            self.posicion < len(self.tokens)
-            and self.tokens[self.posicion].tipo == "NAME"
-        ):
-
-            # Guarda el token NAME para conservar su posición.
-            token_name = self.tokens[self.posicion]
-
-            # Consume la palabra reservada NAME.
-            self.posicion += 1
-
-            # Comprueba si la entrada terminó inmediatamente
-            # después de NAME.
-            if self.posicion >= len(self.tokens):
-
-                # Genera el diagnóstico SIN-006 porque falta
-                # el identificador correspondiente.
-                self.lanzar_error(
-                    codigo="SIN-006",
-                    mensaje=(
-                        "Error sintáctico: después de NAME se "
-                        "esperaba IDENTIFIER con el nombre de la red, "
-                        "pero se llegó al fin de la entrada "
-                        f"en línea {token_name.linea}, "
-                        f"posición {token_name.columna}."
+            if self.posicion >= len(self.tokens):  # Comprueba si la entrada terminó inmediatamente después de NAME.
+                self.lanzar_error(  # Genera SIN-006 porque falta el identificador del nombre.
+                    codigo="SIN-006",  # Identifica el error como nombre de red incompleto.
+                    mensaje=(  # Construye un mensaje específico para el final inesperado de la entrada.
+                        "Error sintáctico: después de NAME se esperaba IDENTIFIER con el nombre de la red, "
+                        f"pero se llegó al fin de la entrada en línea {token_name.linea}, posición {token_name.columna}."
                     ),
-                    token=token_name,
+                    token=token_name,  # Relaciona el error con la palabra NAME que quedó incompleta.
                 )
 
-            # Obtiene el token que aparece después de NAME.
-            token = self.tokens[self.posicion]
+            token = self.tokens[self.posicion]  # Obtiene el token que aparece inmediatamente después de NAME.
 
-            # Comprueba si comenzó una nueva instrucción en una
-            # línea posterior sin haberse indicado el nombre.
-            if (
-                token.tipo == "IP"
-                and token.linea > token_name.linea
-            ):
+            if token.tipo == "IP" and token.linea > token_name.linea:  # Detecta una nueva instrucción en otra línea antes de recibir el nombre esperado.
+                self.lanzar_error(  # Genera SIN-006 porque la instrucción anterior terminó sin identificador.
+                    codigo="SIN-006",  # Identifica el error como nombre de red incompleto.
+                    mensaje=(  # Construye un mensaje que explica que comenzó otra instrucción antes del nombre.
+                        "Error sintáctico: después de NAME se esperaba IDENTIFIER con el nombre de la red, "
+                        "pero la instrucción terminó sin indicar el nombre antes de iniciar otra instrucción "
+                        f"en línea {token.linea}, posición {token.columna}."
+                    ),
+                    token=token_name,  # Señala NAME como origen de la construcción incompleta.
+                )
 
-                # Genera el diagnóstico correspondiente al nombre faltante.
-                self.lanzar_error(
-                    codigo="SIN-006",
-                    mensaje=(
-                        "Error sintáctico: después de NAME se "
-                        "esperaba IDENTIFIER con el nombre de la red, "
-                        "pero la instrucción terminó sin indicar el "
-                        "nombre antes de iniciar otra instrucción "
-                        f"en línea {token.linea}, "
+            if token.tipo != "IDENTIFIER":  # Comprueba que cualquier otro token posterior a NAME sea rechazado.
+                self.lanzar_error(  # Genera SIN-006 porque NAME no está seguido por un identificador.
+                    codigo="SIN-006",  # Identifica el error como nombre de red incompleto.
+                    mensaje=(  # Construye un mensaje que compara IDENTIFIER con el token encontrado.
+                        "Error sintáctico: después de NAME se esperaba IDENTIFIER con el nombre de la red, "
+                        f"pero se encontró {token.tipo} ('{token.valor}') en línea {token.linea}, "
                         f"posición {token.columna}."
                     ),
-                    token=token_name,
+                    token=token,  # Relaciona el diagnóstico con el token incorrecto encontrado.
                 )
 
-            # Comprueba que el token encontrado sea realmente
-            # un identificador.
-            if token.tipo != "IDENTIFIER":
+            nombre = token.valor  # Guarda el texto del identificador como nombre de la red.
+            self.posicion += 1  # Consume el IDENTIFIER que acaba de ser aceptado.
 
-                # Genera SIN-006 cuando después de NAME aparece
-                # cualquier otro tipo de token.
-                self.lanzar_error(
-                    codigo="SIN-006",
-                    mensaje=(
-                        "Error sintáctico: después de NAME se "
-                        "esperaba IDENTIFIER con el nombre de la red, "
-                        f"pero se encontró {token.tipo} "
-                        f"('{token.valor}') en línea {token.linea}, "
-                        f"posición {token.columna}."
-                    ),
-                    token=token,
-                )
-
-            # Guarda el texto del identificador como nombre de la red.
-            nombre = token.valor
-
-            # Consume el IDENTIFIER que acaba de ser procesado.
-            self.posicion += 1
-
-        # Construye y devuelve la representación organizada
-        # de la instrucción sintácticamente reconocida.
-        return BloqueRed(
-            direccion_ip=direccion_ip,
-            mascara_subred=mascara_subred,
-            cantidades_hosts=cantidades_hosts,
-            nombre=nombre,
-            linea_origen=linea_origen,
+        return BloqueRed(  # Construye la representación organizada de la instrucción reconocida.
+            direccion_ip=direccion_ip,  # Guarda la dirección IP obtenida durante el análisis.
+            mascara_subred=mascara_subred,  # Guarda la máscara CIDR obtenida durante el análisis.
+            cantidades_hosts=cantidades_hosts,  # Guarda todas las cantidades de hosts reconocidas.
+            nombre=nombre,  # Guarda el nombre opcional o None cuando no se utilizó NAME.
+            linea_origen=linea_origen,  # Guarda la línea donde comenzó la instrucción.
         )
 
-    # Procesa la lista de cantidades ubicada después de HOSTS.
-    #
-    # La estructura esperada es:
-    #
-    # NUMBER
-    #
-    # o:
-    #
-    # NUMBER , NUMBER , NUMBER ...
-    def analizar_hosts(self) -> list[int]:
+    def analizar_hosts(self) -> list[int]:  # Procesa NUMBER y las repeticiones opcionales de COMMA NUMBER después de HOSTS.
+        cantidades = []  # Crea la lista donde se almacenarán las cantidades reconocidas.
+        token = self.tokens[self.posicion]  # Obtiene el primer NUMBER cuya existencia ya comprobó analizar_bloque.
+        cantidades.append(int(token.valor))  # Convierte el primer número a entero y lo agrega a la lista.
+        self.posicion += 1  # Consume el primer NUMBER de la lista de hosts.
 
-        # Crea la lista donde se guardarán las cantidades reconocidas.
-        cantidades = []
+        while self.posicion < len(self.tokens) and self.tokens[self.posicion].tipo == "COMMA":  # Continúa mientras exista otra cantidad separada por coma.
+            token_coma = self.tokens[self.posicion]  # Guarda la coma actual para poder ubicar un error si queda incompleta.
+            self.posicion += 1  # Consume la coma antes de revisar qué aparece después.
 
-        # Obtiene el primer NUMBER.
-        #
-        # analizar_bloque ya comprobó previamente que este token existe.
-        token = self.tokens[self.posicion]
-
-        # Convierte el texto numérico a entero y lo guarda.
-        cantidades.append(int(token.valor))
-
-        # Consume el primer NUMBER.
-        self.posicion += 1
-
-        # Continúa mientras el siguiente elemento sea una coma.
-        while (
-            self.posicion < len(self.tokens)
-            and self.tokens[self.posicion].tipo == "COMMA"
-        ):
-
-            # Guarda el token COMMA para conservar su posición.
-            token_coma = self.tokens[self.posicion]
-
-            # Consume la coma.
-            self.posicion += 1
-
-            # Comprueba si la entrada terminó después de la coma.
-            if self.posicion >= len(self.tokens):
-
-                # Agrega un diagnóstico local SIN-005.
-                #
-                # Este error no utiliza el modo pánico inmediatamente
-                # porque la lista de hosts intenta recuperarse localmente.
-                self.diagnosticos.append(
-                    crear_diagnostico(
-                        codigo="SIN-005",
-                        mensaje=(
-                            "Error sintáctico: después de la coma "
-                            "se esperaba NUMBER con otra cantidad "
-                            "de hosts, pero no hay más tokens "
-                            f"en línea {token_coma.linea}, "
-                            f"posición {token_coma.columna}."
+            if self.posicion >= len(self.tokens):  # Comprueba si la entrada terminó inmediatamente después de la coma.
+                self.diagnosticos.append(  # Registra un error local sin lanzar modo pánico global.
+                    crear_diagnostico(  # Construye el diagnóstico SIN-005 de lista de hosts mal formada.
+                        codigo="SIN-005",  # Identifica el problema como una coma sin cantidad posterior.
+                        mensaje=(  # Construye un mensaje indicando la posición de la coma incompleta.
+                            "Error sintáctico: después de la coma se esperaba NUMBER con otra cantidad de hosts, "
+                            f"pero no hay más tokens en línea {token_coma.linea}, posición {token_coma.columna}."
                         ),
-                        linea=token_coma.linea,
-                        columna=token_coma.columna,
-                        longitud=len(token_coma.valor),
-                        fragmento=token_coma.valor,
+                        linea=token_coma.linea,  # Guarda la línea donde apareció la coma incompleta.
+                        columna=token_coma.columna,  # Guarda la columna donde apareció la coma incompleta.
+                        longitud=len(token_coma.valor),  # Señala la longitud de la coma problemática.
+                        fragmento=token_coma.valor,  # Conserva la coma como fragmento relacionado con el error.
                     )
                 )
+                return cantidades  # Devuelve las cantidades válidas reconocidas antes de encontrar el error local.
 
-                # Devuelve las cantidades que pudieron reconocerse
-                # antes de encontrar el error.
-                return cantidades
+            token = self.tokens[self.posicion]  # Obtiene el token ubicado inmediatamente después de la coma.
 
-            # Obtiene el token ubicado después de la coma.
-            token = self.tokens[self.posicion]
-
-            # Comprueba si después de la coma apareció algo
-            # diferente de NUMBER.
-            if token.tipo != "NUMBER":
-
-                # Guarda el diagnóstico SIN-005.
-                self.diagnosticos.append(
-                    crear_diagnostico(
-                        codigo="SIN-005",
-                        mensaje=(
-                            "Error sintáctico: después de la coma "
-                            "se esperaba NUMBER con otra cantidad "
-                            f"de hosts, pero se encontró {token.tipo} "
-                            f"('{token.valor}') en línea {token.linea}, "
+            if token.tipo != "NUMBER":  # Comprueba si después de la coma apareció algo distinto de otra cantidad.
+                self.diagnosticos.append(  # Guarda SIN-005 sin abandonar inmediatamente todo el bloque.
+                    crear_diagnostico(  # Construye el diagnóstico estructurado de lista mal formada.
+                        codigo="SIN-005",  # Identifica el error como una coma seguida por un elemento incorrecto.
+                        mensaje=(  # Construye un mensaje que compara NUMBER con el token realmente encontrado.
+                            "Error sintáctico: después de la coma se esperaba NUMBER con otra cantidad de hosts, "
+                            f"pero se encontró {token.tipo} ('{token.valor}') en línea {token.linea}, "
                             f"posición {token.columna}."
                         ),
-                        linea=token.linea,
-                        columna=token.columna,
-                        longitud=len(token.valor),
-                        fragmento=token.valor,
+                        linea=token.linea,  # Guarda la línea del token incorrecto.
+                        columna=token.columna,  # Guarda la columna del token incorrecto.
+                        longitud=len(token.valor),  # Guarda la longitud del fragmento incorrecto.
+                        fragmento=token.valor,  # Conserva exactamente el token que apareció donde no correspondía.
                     )
                 )
 
-                # Aplica una recuperación local.
-                #
-                # Descarta tokens hasta encontrar:
-                #
-                # NUMBER -> otra cantidad de hosts.
-                # NAME   -> sección opcional del nombre.
-                # IP     -> posible siguiente instrucción.
-                while (
-                    self.posicion < len(self.tokens)
-                    and self.tokens[self.posicion].tipo
-                    not in ("NUMBER", "NAME", "IP")
-                ):
+                while self.posicion < len(self.tokens) and self.tokens[self.posicion].tipo not in ("NUMBER", "NAME", "IP"):  # Descarta tokens hasta encontrar un punto local de recuperación.
+                    self.posicion += 1  # Avanza sobre cada token que no permite continuar de forma segura.
 
-                    # Descarta el token actual.
-                    self.posicion += 1
+                if self.posicion < len(self.tokens) and self.tokens[self.posicion].tipo == "NUMBER":  # Comprueba si la recuperación logró encontrar otra cantidad válida.
+                    cantidades.append(int(self.tokens[self.posicion].valor))  # Convierte y guarda el número recuperado.
+                    self.posicion += 1  # Consume la cantidad recuperada.
+                    continue  # Continúa revisando posibles comas posteriores dentro de la lista.
 
-                # Comprueba si la recuperación encontró otro NUMBER.
-                if (
-                    self.posicion < len(self.tokens)
-                    and self.tokens[self.posicion].tipo == "NUMBER"
-                ):
+                return cantidades  # Termina la lista si apareció NAME, IP o se alcanzó el final de los tokens.
 
-                    # Convierte y guarda el número recuperado.
-                    cantidades.append(
-                        int(self.tokens[self.posicion].valor)
-                    )
+            cantidades.append(int(token.valor))  # Convierte y guarda normalmente el NUMBER ubicado después de la coma.
+            self.posicion += 1  # Consume el número que acaba de ser aceptado.
 
-                    # Consume el número recuperado.
-                    self.posicion += 1
+        return cantidades  # Devuelve todas las cantidades de hosts reconocidas correctamente.
 
-                    # Continúa revisando la lista de hosts.
-                    continue
+    def esperar(self, tipo_esperado: str) -> str:  # Exige que el token actual coincida con un tipo concreto de la gramática.
+        if self.posicion < len(self.tokens):  # Comprueba que todavía exista un token disponible para comparar.
+            token = self.tokens[self.posicion]  # Obtiene el token ubicado en la posición actual.
 
-                # Si apareció NAME, IP o terminó la entrada,
-                # deja de procesar la lista de hosts.
-                return cantidades
+            if token.tipo == tipo_esperado:  # Comprueba que el token tenga exactamente el tipo esperado.
+                self.posicion += 1  # Consume el token correcto y avanza al siguiente.
+                return token.valor  # Devuelve el texto del token que cumplió la regla gramatical.
 
-            # Si el token después de la coma sí es NUMBER,
-            # convierte y almacena normalmente su valor.
-            cantidades.append(int(token.valor))
-
-            # Consume el número que acaba de procesarse.
-            self.posicion += 1
-
-        # Devuelve todas las cantidades reconocidas.
-        return cantidades
-
-    # Comprueba que el token ubicado en la posición actual
-    # corresponda exactamente al tipo esperado.
-    def esperar(self, tipo_esperado: str) -> str:
-
-        # Comprueba que todavía exista algún token disponible.
-        if self.posicion < len(self.tokens):
-
-            # Obtiene el token actual.
-            token = self.tokens[self.posicion]
-
-            # Comprueba si coincide con el tipo solicitado.
-            if token.tipo == tipo_esperado:
-
-                # Consume el token correcto.
-                self.posicion += 1
-
-                # Devuelve su valor textual.
-                return token.valor
-
-            # Obtiene una descripción legible del elemento esperado.
-            descripcion = self.describir_token_esperado(
-                tipo_esperado,
-                token,
-            )
-
-            # Determina qué código de diagnóstico corresponde
-            # al tipo de token que hacía falta.
-            codigo = self.codigo_token_esperado(tipo_esperado)
-
-            # Detiene el bloque actual mediante un error sintáctico
-            # estructurado.
-            self.lanzar_error(
-                codigo=codigo,
-                mensaje=(
-                    f"Error sintáctico: se esperaba {tipo_esperado} "
-                    f"({descripcion}), pero se encontró {token.tipo} "
-                    f"('{token.valor}') en línea {token.linea}, "
-                    f"posición {token.columna}."
+            descripcion = self.describir_token_esperado(tipo_esperado, token)  # Obtiene una explicación legible del elemento que hacía falta.
+            codigo = self.codigo_token_esperado(tipo_esperado)  # Selecciona el código SIN correspondiente al token esperado.
+            self.lanzar_error(  # Detiene el bloque actual mediante un diagnóstico estructurado.
+                codigo=codigo,  # Usa el código específico obtenido para este tipo de ausencia.
+                mensaje=(  # Construye un mensaje que compara lo esperado con lo encontrado.
+                    f"Error sintáctico: se esperaba {tipo_esperado} ({descripcion}), pero se encontró "
+                    f"{token.tipo} ('{token.valor}') en línea {token.linea}, posición {token.columna}."
                 ),
-                token=token,
+                token=token,  # Relaciona el diagnóstico con el token incorrecto actual.
             )
 
-        # Obtiene una descripción del elemento que se esperaba
-        # cuando ya no existen más tokens.
-        descripcion = self.describir_token_esperado(
-            tipo_esperado
+        descripcion = self.describir_token_esperado(tipo_esperado)  # Obtiene la descripción del elemento faltante cuando ya no existen tokens.
+        codigo = self.codigo_token_esperado(tipo_esperado)  # Obtiene el código de diagnóstico correspondiente al tipo esperado.
+        self.lanzar_error(  # Genera el error correspondiente al final inesperado de la entrada.
+            codigo=codigo,  # Usa el código específico del token que hacía falta.
+            mensaje=f"Error sintáctico: se esperaba {tipo_esperado} ({descripcion}), pero no hay más tokens.",  # Explica que la entrada terminó antes de completar la regla.
         )
 
-        # Obtiene el código correspondiente.
-        codigo = self.codigo_token_esperado(tipo_esperado)
+    def describir_token_esperado(self, tipo_esperado: str, token_actual: Token | None = None) -> str:  # Genera una descripción o ejemplo útil del token que hacía falta.
+        if tipo_esperado == "SUBNET_MASK" and token_actual is not None and token_actual.tipo == "NUMBER":  # Detecta una máscara probablemente escrita sin diagonal.
+            return f"máscara CIDR, por ejemplo /{token_actual.valor}"  # Usa el número escrito para sugerir la forma CIDR correcta.
 
-        # Genera el error indicando que terminó la entrada.
-        self.lanzar_error(
-            codigo=codigo,
-            mensaje=(
-                f"Error sintáctico: se esperaba {tipo_esperado} "
-                f"({descripcion}), pero no hay más tokens."
-            ),
-        )
+        if tipo_esperado == "IP_ADDRESS":  # Aplica una construcción especial cuando se esperaba una dirección IPv4 completa.
+            partes = []  # Crea una lista para reunir NUMBER y DOT consecutivos de una IP parcial.
+            indice = self.posicion  # Comienza a revisar temporalmente desde la posición actual sin mover el parser real.
 
-    # Genera una descripción más clara del token esperado.
-    #
-    # En algunos casos también intenta construir un ejemplo
-    # basándose en lo que escribió el usuario.
-    def describir_token_esperado(
-        self,
-        tipo_esperado: str,
-        token_actual: Token | None = None,
-    ) -> str:
+            while indice < len(self.tokens) and self.tokens[indice].tipo in ("NUMBER", "DOT"):  # Reúne todas las partes consecutivas que podrían formar una IP incompleta.
+                partes.append(self.tokens[indice].valor)  # Agrega el texto del NUMBER o DOT encontrado.
+                indice += 1  # Avanza únicamente el índice temporal utilizado para construir el ejemplo.
 
-        # Comprueba el caso especial de una máscara CIDR
-        # escrita sin la diagonal.
-        if (
-            tipo_esperado == "SUBNET_MASK"
-            and token_actual is not None
-            and token_actual.tipo == "NUMBER"
-        ):
+            ip_parcial = "".join(partes)  # Une las partes reconocidas para reconstruir la dirección parcial escrita por el usuario.
 
-            # Utiliza el número escrito para proponer el ejemplo
-            # de máscara correspondiente.
-            return (
-                f"máscara CIDR, por ejemplo /{token_actual.valor}"
-            )
+            if ip_parcial:  # Comprueba si realmente fue posible recuperar alguna parte de una IP.
+                if ip_parcial.endswith("."):  # Detecta una dirección parcial que termina justo después de un punto.
+                    ip_parcial += "0"  # Agrega temporalmente un cero para poder formar un ejemplo completo.
 
-        # Comprueba el caso especial de una dirección IPv4.
-        if tipo_esperado == "IP_ADDRESS":
+                while ip_parcial.count(".") < 3:  # Comprueba cuántos separadores faltan para completar cuatro octetos.
+                    ip_parcial += ".0"  # Agrega octetos de ejemplo hasta alcanzar tres puntos.
 
-            # Crea una lista para reconstruir las partes de una IP
-            # incompleta reconocidas por el lexer.
-            partes = []
+                octetos = ip_parcial.split(".")  # Divide la dirección reconstruida en sus componentes.
 
-            # Comienza a revisar desde la posición actual del parser.
-            indice = self.posicion
+                while len(octetos) < 4:  # Comprueba si todavía faltan elementos para representar cuatro octetos.
+                    octetos.append("0")  # Agrega un octeto de ejemplo cuando sea necesario.
 
-            # Reúne todos los NUMBER y DOT consecutivos.
-            while (
-                indice < len(self.tokens)
-                and self.tokens[indice].tipo in ("NUMBER", "DOT")
-            ):
+                octetos_corregidos = []  # Crea la lista donde se guardarán únicamente valores válidos para el ejemplo final.
 
-                # Guarda el valor textual de la parte encontrada.
-                partes.append(self.tokens[indice].valor)
+                for octeto in octetos[:4]:  # Revisa únicamente los primeros cuatro componentes de la dirección reconstruida.
+                    if octeto.isdigit() and 0 <= int(octeto) <= 255:  # Comprueba que el componente sea numérico y esté dentro del rango IPv4.
+                        octetos_corregidos.append(octeto)  # Conserva el octeto original cuando su valor es válido.
+                    else:  # Se ejecuta cuando el componente reconstruido no puede ser un octeto IPv4 válido.
+                        octetos_corregidos.append("0")  # Sustituye el valor inválido por cero únicamente dentro del ejemplo sugerido.
 
-                # Avanza temporalmente al siguiente token.
-                indice += 1
+                return "dirección IP completa, por ejemplo " + ".".join(octetos_corregidos)  # Devuelve un ejemplo completo basado en lo que alcanzó a escribir el usuario.
 
-            # Une las partes para reconstruir la dirección parcial.
-            ip_parcial = "".join(partes)
+            return "dirección IP completa, por ejemplo 192.168.1.0"  # Devuelve un ejemplo genérico cuando no existe una IP parcial aprovechable.
 
-            # Comprueba si realmente se encontró una IP parcial.
-            if ip_parcial:
+        return DESCRIPCIONES_TOKEN.get(tipo_esperado, tipo_esperado)  # Devuelve la descripción conocida o el nombre técnico si no existe una especial.
 
-                # Si termina con punto, agrega temporalmente un cero
-                # para poder construir un ejemplo completo.
-                if ip_parcial.endswith("."):
-                    ip_parcial += "0"
-
-                # Agrega octetos faltantes hasta alcanzar tres puntos.
-                while ip_parcial.count(".") < 3:
-                    ip_parcial += ".0"
-
-                # Divide la dirección en octetos.
-                octetos = ip_parcial.split(".")
-
-                # Completa cualquier octeto faltante adicional.
-                while len(octetos) < 4:
-                    octetos.append("0")
-
-                # Crea la lista que almacenará los octetos
-                # corregidos para el ejemplo.
-                octetos_corregidos = []
-
-                # Revisa únicamente los primeros cuatro octetos.
-                for octeto in octetos[:4]:
-
-                    # Comprueba que el octeto sea numérico y se
-                    # encuentre dentro del rango IPv4 permitido.
-                    if (
-                        octeto.isdigit()
-                        and 0 <= int(octeto) <= 255
-                    ):
-
-                        # Conserva el octeto válido.
-                        octetos_corregidos.append(octeto)
-
-                    # Sustituye cualquier octeto inválido por cero.
-                    else:
-                        octetos_corregidos.append("0")
-
-                # Devuelve un ejemplo de dirección IPv4 completa.
-                return (
-                    "dirección IP completa, por ejemplo "
-                    f"{'.'.join(octetos_corregidos)}"
-                )
-
-            # Devuelve un ejemplo genérico cuando no existe
-            # ninguna parte aprovechable de la dirección.
-            return (
-                "dirección IP completa, "
-                "por ejemplo 192.168.1.0"
-            )
-
-        # Busca una descripción normal dentro del catálogo local.
-        #
-        # Si no existe, devuelve directamente el nombre técnico
-        # del tipo de token.
-        return DESCRIPCIONES_TOKEN.get(
-            tipo_esperado,
-            tipo_esperado,
-        )
-
-    # Determina el código de diagnóstico correspondiente
-    # al token que el parser esperaba encontrar.
-    def codigo_token_esperado(
-        self,
-        tipo_esperado: str,
-    ) -> str:
-
-        # Define los errores específicos conocidos.
-        codigos = {
-
-            # Una dirección IP faltante corresponde a SIN-001.
-            "IP_ADDRESS": "SIN-001",
-
-            # La ausencia de MASK corresponde a SIN-002.
-            "MASK": "SIN-002",
-
-            # Una máscara CIDR faltante corresponde a SIN-003.
-            "SUBNET_MASK": "SIN-003",
-
-            # Un número faltante después de HOSTS corresponde
-            # normalmente a SIN-004.
-            "NUMBER": "SIN-004",
-
-            # Un identificador faltante después de NAME
-            # corresponde a SIN-006.
-            "IDENTIFIER": "SIN-006",
+    def codigo_token_esperado(self, tipo_esperado: str) -> str:  # Relaciona un token faltante con el código de diagnóstico sintáctico adecuado.
+        codigos = {  # Define los errores específicos que pueden seleccionarse según el elemento esperado.
+            "IP_ADDRESS": "SIN-001",  # Asocia una dirección IP faltante con SIN-001.
+            "MASK": "SIN-002",  # Asocia la palabra MASK faltante con SIN-002.
+            "SUBNET_MASK": "SIN-003",  # Asocia una máscara CIDR faltante con SIN-003.
+            "NUMBER": "SIN-004",  # Asocia un número requerido después de HOSTS con SIN-004.
+            "IDENTIFIER": "SIN-006",  # Asocia un identificador faltante después de NAME con SIN-006.
         }
+        return codigos.get(tipo_esperado, "SIN-008")  # Devuelve el código específico o SIN-008 para cualquier otro error de orden.
 
-        # Devuelve el código específico cuando existe.
-        #
-        # En cualquier otro caso se utiliza SIN-008 como error
-        # general de orden incorrecto de tokens.
-        return codigos.get(
-            tipo_esperado,
-            "SIN-008",
-        )
+    def lanzar_error(self, codigo: str, mensaje: str, token: Token | None = None) -> None:  # Crea un diagnóstico y detiene únicamente el bloque sintáctico actual.
+        if token is not None:  # Comprueba si existe un token concreto relacionado con el problema.
+            diagnostico = crear_diagnostico(  # Construye el diagnóstico usando directamente la posición del token incorrecto.
+                codigo=codigo,  # Guarda el código sintáctico recibido.
+                mensaje=mensaje,  # Guarda el mensaje específico construido por el parser.
+                linea=token.linea,  # Usa la línea del token relacionado.
+                columna=token.columna,  # Usa la columna del token relacionado.
+                longitud=len(token.valor),  # Usa la longitud del texto del token para señalarlo visualmente.
+                fragmento=token.valor,  # Conserva exactamente el fragmento relacionado con el error.
+            )
+        else:  # Se ejecuta cuando el error ocurre sin un token actual, normalmente al final de la entrada.
+            linea = None  # Inicializa la línea sin una ubicación concreta.
+            columna = None  # Inicializa la columna sin una ubicación concreta.
 
-    # Construye un diagnóstico sintáctico y utiliza una excepción
-    # interna para detener el procesamiento del bloque actual.
-    def lanzar_error(
-        self,
-        codigo: str,
-        mensaje: str,
-        token: Token | None = None,
-    ) -> None:
+            if self.posicion > 0 and self.posicion - 1 < len(self.tokens):  # Comprueba si existe un token anterior que permita aproximar la ubicación.
+                token_anterior = self.tokens[self.posicion - 1]  # Obtiene el último token procesado correctamente.
+                linea = token_anterior.linea  # Usa la misma línea del token anterior como ubicación del problema.
+                columna = token_anterior.columna + len(token_anterior.valor)  # Coloca el error inmediatamente después del final del token anterior.
 
-        # Comprueba si existe un token concreto relacionado
-        # con el problema.
-        if token is not None:
-
-            # Crea el diagnóstico utilizando directamente
-            # la posición y el contenido del token incorrecto.
-            diagnostico = crear_diagnostico(
-                codigo=codigo,
-                mensaje=mensaje,
-                linea=token.linea,
-                columna=token.columna,
-                longitud=len(token.valor),
-                fragmento=token.valor,
+            diagnostico = crear_diagnostico(  # Construye el diagnóstico correspondiente a un elemento faltante al final.
+                codigo=codigo,  # Guarda el código sintáctico recibido.
+                mensaje=mensaje,  # Guarda el mensaje específico construido por el parser.
+                linea=linea,  # Guarda la línea aproximada calculada.
+                columna=columna,  # Guarda la columna aproximada calculada.
+                longitud=1,  # Usa un carácter como longitud mínima para futuras marcas visuales.
+                fragmento="",  # Deja vacío el fragmento porque no existe un token incorrecto concreto.
             )
 
-        # Si no existe un token actual, intenta localizar el
-        # diagnóstico inmediatamente después del token anterior.
-        else:
-
-            # Inicializa la línea sin una posición concreta.
-            linea = None
-
-            # Inicializa también la columna.
-            columna = None
-
-            # Comprueba si existe un token anterior disponible.
-            if (
-                self.posicion > 0
-                and self.posicion - 1 < len(self.tokens)
-            ):
-
-                # Obtiene el token procesado inmediatamente antes.
-                token_anterior = self.tokens[
-                    self.posicion - 1
-                ]
-
-                # Utiliza la línea del token anterior.
-                linea = token_anterior.linea
-
-                # Calcula la posición ubicada justo después
-                # del final del token anterior.
-                columna = (
-                    token_anterior.columna
-                    + len(token_anterior.valor)
-                )
-
-            # Crea el diagnóstico para el final de la entrada.
-            diagnostico = crear_diagnostico(
-                codigo=codigo,
-                mensaje=mensaje,
-                linea=linea,
-                columna=columna,
-                longitud=1,
-                fragmento="",
-            )
-
-        # Lanza la excepción interna transportando el diagnóstico.
-        #
-        # El método analizar capturará posteriormente esta excepción
-        # y activará la recuperación mediante modo pánico.
-        raise ErrorSintacticoInterno(diagnostico)
+        raise ErrorSintacticoInterno(diagnostico)  # Lanza la excepción interna para que analizar active la recuperación por modo pánico.

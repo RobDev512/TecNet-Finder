@@ -3,231 +3,82 @@
 # Proyecto: TecNet Finder
 #
 # Descripción:
-# Este archivo contiene las pruebas automáticas correspondientes
-# al analizador léxico de TecNet Finder.
-#
-# Las pruebas permiten comprobar que el lexer siga reconociendo
-# correctamente las entradas válidas y detectando los errores
-# esperados después de realizar cambios en el proyecto.
-#
-# pytest ejecutará automáticamente todas las funciones cuyo nombre
-# comience con "prueba_" gracias a la configuración de pytest.ini.
+# Este archivo contiene las pruebas automáticas del analizador
+# léxico de TecNet Finder. Las pruebas verifican entradas válidas,
+# errores léxicos y comportamientos heredados de LyA I.
 # ============================================================
 
-
-# Importa el analizador léxico que será evaluado durante las pruebas.
-from Compilador.analizador_lexico import AnalizadorLexico
+from Compilador.analizador_lexico import AnalizadorLexico  # Importa el analizador léxico que será evaluado.
 
 
-# Comprueba que una instrucción completa y correctamente escrita
-# sea reconocida sin producir diagnósticos léxicos.
-def prueba_entrada_valida_completa():
+def prueba_entrada_valida_completa():  # Comprueba una instrucción válida que utiliza los elementos principales del lenguaje.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina"  # Define una instrucción válida completa.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis léxico sobre la entrada.
 
-    # Crea una instancia del analizador léxico.
-    analizador = AnalizadorLexico()
-
-    # Define una instrucción válida utilizando todos los elementos
-    # principales del lenguaje TecNet Finder.
-    codigo_fuente = (
-        "IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina"
-    )
-
-    # Ejecuta el análisis léxico sobre la entrada.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Define la secuencia exacta de tipos de token que esperamos obtener.
-    tipos_esperados = [
-        "IP",
-        "IP_ADDRESS",
-        "MASK",
-        "SUBNET_MASK",
-        "HOSTS",
-        "NUMBER",
-        "COMMA",
-        "NUMBER",
-        "COMMA",
-        "NUMBER",
-        "NAME",
-        "IDENTIFIER",
+    tipos_esperados = [  # Define la secuencia exacta de tipos de token que debe producir el lexer.
+        "IP",  # Espera la palabra reservada IP.
+        "IP_ADDRESS",  # Espera la dirección IPv4 completa.
+        "MASK",  # Espera la palabra reservada MASK.
+        "SUBNET_MASK",  # Espera la máscara CIDR.
+        "HOSTS",  # Espera la palabra reservada HOSTS.
+        "NUMBER",  # Espera la primera cantidad de hosts.
+        "COMMA",  # Espera la primera coma separadora.
+        "NUMBER",  # Espera la segunda cantidad de hosts.
+        "COMMA",  # Espera la segunda coma separadora.
+        "NUMBER",  # Espera la tercera cantidad de hosts.
+        "NAME",  # Espera la palabra reservada NAME.
+        "IDENTIFIER",  # Espera el nombre de la red.
     ]
 
-    # Extrae únicamente el tipo de cada token obtenido.
-    tipos_obtenidos = [
-        token.tipo
-        for token in resultado.tokens
-    ]
-
-    # Comprueba que los tokens obtenidos coincidan exactamente
-    # con la secuencia esperada.
-    assert tipos_obtenidos == tipos_esperados
-
-    # Comprueba que una entrada válida no genere diagnósticos léxicos.
-    assert resultado.diagnosticos == []
+    tipos_obtenidos = [token.tipo for token in resultado.tokens]  # Extrae únicamente el tipo de cada token producido.
+    assert tipos_obtenidos == tipos_esperados  # Comprueba que la secuencia obtenida coincida exactamente con la esperada.
+    assert resultado.diagnosticos == []  # Comprueba que una entrada válida no produzca diagnósticos léxicos.
 
 
-# Comprueba que un identificador escrito fuera de la sección NAME
-# sea detectado como un error léxico.
-def prueba_identificador_fuera_de_lugar():
-
-    # Crea una nueva instancia independiente del analizador.
-    analizador = AnalizadorLexico()
-
-    # Define una instrucción donde "Oficina" aparece sin utilizar
-    # previamente la palabra reservada NAME.
-    codigo_fuente = (
-        "IP 192.168.1.0 MASK /24 HOSTS 50 Oficina"
-    )
-
-    # Analiza la entrada incorrecta.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Comprueba que se haya generado exactamente un diagnóstico.
-    assert len(resultado.diagnosticos) == 1
-
-    # Comprueba que el diagnóstico corresponda al error LEX-001.
-    assert resultado.diagnosticos[0].codigo == "LEX-001"
-
-    # Comprueba que el fragmento detectado sea exactamente "Oficina".
-    assert resultado.diagnosticos[0].fragmento == "Oficina"
+def prueba_identificador_fuera_de_lugar():  # Comprueba que un identificador sin NAME produzca LEX-001.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50 Oficina"  # Coloca Oficina en una posición no permitida.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis sobre la entrada incorrecta.
+    assert len(resultado.diagnosticos) == 1  # Comprueba que se haya generado exactamente un diagnóstico.
+    assert resultado.diagnosticos[0].codigo == "LEX-001"  # Verifica que el código del error sea el esperado.
+    assert resultado.diagnosticos[0].fragmento == "Oficina"  # Verifica que el fragmento incorrecto sea Oficina.
 
 
-# Comprueba que un símbolo que no pertenece al lenguaje sea
-# identificado como un error léxico.
-def prueba_simbolo_no_reconocido():
-
-    # Crea una instancia del analizador léxico.
-    analizador = AnalizadorLexico()
-
-    # Define una entrada válida excepto por el símbolo @ colocado
-    # al final de la instrucción.
-    codigo_fuente = (
-        "IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina @"
-    )
-
-    # Ejecuta el análisis sobre la entrada.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Comprueba que solamente exista un diagnóstico.
-    assert len(resultado.diagnosticos) == 1
-
-    # Verifica que el error detectado corresponda a LEX-002.
-    assert resultado.diagnosticos[0].codigo == "LEX-002"
-
-    # Comprueba que el fragmento relacionado con el error sea @.
-    assert resultado.diagnosticos[0].fragmento == "@"
+def prueba_simbolo_no_reconocido():  # Comprueba que un símbolo ajeno al lenguaje produzca LEX-002.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina @"  # Agrega @ como símbolo no reconocido.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis sobre la entrada incorrecta.
+    assert len(resultado.diagnosticos) == 1  # Comprueba que se haya generado exactamente un diagnóstico.
+    assert resultado.diagnosticos[0].codigo == "LEX-002"  # Verifica que el código corresponda al símbolo desconocido.
+    assert resultado.diagnosticos[0].fragmento == "@"  # Verifica que el fragmento señalado sea exactamente @.
 
 
-# Comprueba que un identificador colocado correctamente después
-# de NAME sea aceptado por el analizador.
-def prueba_identificador_despues_de_name():
-
-    # Crea una instancia del analizador.
-    analizador = AnalizadorLexico()
-
-    # Define una instrucción válida que utiliza NAME correctamente.
-    codigo_fuente = (
-        "IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina"
-    )
-
-    # Ejecuta el análisis léxico.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Filtra la lista de tokens para conservar únicamente aquellos
-    # cuyo tipo sea IDENTIFIER.
-    identificadores = [
-        token
-        for token in resultado.tokens
-        if token.tipo == "IDENTIFIER"
-    ]
-
-    # Comprueba que exista exactamente un identificador reconocido.
-    assert len(identificadores) == 1
-
-    # Comprueba que el valor del identificador sea "Oficina".
-    assert identificadores[0].valor == "Oficina"
-
-    # Verifica que no se haya generado ningún diagnóstico.
-    assert resultado.diagnosticos == []
+def prueba_identificador_despues_de_name():  # Comprueba que un identificador después de NAME sea aceptado.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina"  # Define una instrucción válida con nombre.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis léxico.
+    identificadores = [token for token in resultado.tokens if token.tipo == "IDENTIFIER"]  # Filtra únicamente los identificadores reconocidos.
+    assert len(identificadores) == 1  # Comprueba que exista un solo identificador.
+    assert identificadores[0].valor == "Oficina"  # Comprueba que su valor sea el nombre esperado.
+    assert resultado.diagnosticos == []  # Verifica que no se produzcan errores léxicos.
 
 
-# Comprueba una característica conservada desde TecNet Finder de LyA I:
-# IP, MASK y HOSTS pueden aparecer directamente unidos al valor
-# siguiente cuando la expresión regular permite reconocerlos sin
-# producir ambigüedad.
-def prueba_palabras_reservadas_pegadas():
-
-    # Crea una instancia del analizador.
-    analizador = AnalizadorLexico()
-
-    # Define una entrada donde algunas palabras reservadas aparecen
-    # directamente unidas al valor que las sigue.
-    codigo_fuente = (
-        "IP192.168.40.0 MASK/24 HOSTS50 NAME Pegada"
-    )
-
-    # Ejecuta el análisis léxico.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Obtiene los tipos de todos los tokens reconocidos.
-    tipos_obtenidos = [
-        token.tipo
-        for token in resultado.tokens
-    ]
-
-    # Define la secuencia de tokens que debería producir esta entrada.
-    tipos_esperados = [
-        "IP",
-        "IP_ADDRESS",
-        "MASK",
-        "SUBNET_MASK",
-        "HOSTS",
-        "NUMBER",
-        "NAME",
-        "IDENTIFIER",
-    ]
-
-    # Comprueba que la secuencia obtenida sea correcta.
-    assert tipos_obtenidos == tipos_esperados
-
-    # Verifica que esta forma permitida no produzca errores léxicos.
-    assert resultado.diagnosticos == []
+def prueba_palabras_reservadas_pegadas():  # Comprueba que IP, MASK y HOSTS puedan aparecer unidos a su valor siguiente.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP192.168.40.0 MASK/24 HOSTS50 NAME Pegada"  # Define una entrada válida con palabras reservadas pegadas.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis léxico.
+    tipos_obtenidos = [token.tipo for token in resultado.tokens]  # Extrae los tipos de token producidos.
+    tipos_esperados = ["IP", "IP_ADDRESS", "MASK", "SUBNET_MASK", "HOSTS", "NUMBER", "NAME", "IDENTIFIER"]  # Define la secuencia esperada.
+    assert tipos_obtenidos == tipos_esperados  # Comprueba que el comportamiento heredado se conserve.
+    assert resultado.diagnosticos == []  # Verifica que esta escritura permitida no produzca errores.
 
 
-# Comprueba que una dirección IP incompleta no sea tratada
-# automáticamente como error léxico.
-#
-# Esta decisión viene del diseño realizado en Lenguajes y Autómatas I.
-# El lexer reconoce las partes posibles de la dirección mediante
-# NUMBER y DOT para que posteriormente el analizador sintáctico pueda
-# determinar que la estructura de la IP está incompleta.
-def prueba_ip_incompleta_no_es_error_lexico():
-
-    # Crea una instancia del analizador léxico.
-    analizador = AnalizadorLexico()
-
-    # Define una instrucción cuya dirección IP está incompleta.
-    codigo_fuente = (
-        "IP 192.168.1. MASK /24 HOSTS 50"
-    )
-
-    # Ejecuta el análisis.
-    resultado = analizador.analizar(codigo_fuente)
-
-    # Obtiene solamente los tipos de token reconocidos.
-    tipos_obtenidos = [
-        token.tipo
-        for token in resultado.tokens
-    ]
-
-    # Comprueba que las partes numéricas de la IP hayan sido
-    # reconocidas mediante tokens NUMBER.
-    assert "NUMBER" in tipos_obtenidos
-
-    # Comprueba que los puntos también hayan sido reconocidos.
-    assert "DOT" in tipos_obtenidos
-
-    # Verifica que el lexer no produzca un error por la IP incompleta.
-    #
-    # Posteriormente será responsabilidad del analizador sintáctico
-    # determinar que la dirección no cumple la estructura esperada.
-    assert resultado.diagnosticos == []
+def prueba_ip_incompleta_no_es_error_lexico():  # Comprueba que una IP incompleta se deje para el análisis sintáctico.
+    analizador = AnalizadorLexico()  # Crea una instancia independiente del lexer.
+    codigo_fuente = "IP 192.168.1. MASK /24 HOSTS 50"  # Define una dirección IPv4 incompleta.
+    resultado = analizador.analizar(codigo_fuente)  # Ejecuta el análisis léxico.
+    tipos_obtenidos = [token.tipo for token in resultado.tokens]  # Extrae los tipos de token reconocidos.
+    assert "NUMBER" in tipos_obtenidos  # Comprueba que las partes numéricas de la IP se hayan reconocido.
+    assert "DOT" in tipos_obtenidos  # Comprueba que los puntos de la IP también se hayan reconocido.
+    assert resultado.diagnosticos == []  # Verifica que la IP incompleta no se clasifique como error léxico.
