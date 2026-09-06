@@ -95,6 +95,201 @@ CATALOGO_DIAGNOSTICOS = {
         ),
     },
 
+        # Define el diagnóstico SIN-001.
+    #
+    # Este error ocurre cuando después de la palabra reservada IP
+    # no aparece una dirección IPv4 completa.
+    "SIN-001": {
+
+        # Indica que el diagnóstico pertenece al análisis sintáctico.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del diagnóstico.
+        "nombre": "Dirección IP incompleta o mal formada",
+
+        # Explica de manera general por qué ocurre el problema.
+        "descripcion": (
+            "Después de IP se esperaba una dirección IP completa."
+        ),
+
+        # Proporciona una recomendación para corregir la instrucción.
+        "solucion": (
+            "Escribe una dirección IPv4 completa. "
+            "Ejemplo: 192.168.1.0."
+        ),
+    },
+
+    # Define el diagnóstico SIN-002.
+    #
+    # Este error ocurre cuando después de la dirección IP
+    # no aparece la palabra reservada MASK.
+    "SIN-002": {
+
+        # Indica que pertenece a la fase sintáctica.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del problema.
+        "nombre": "Falta la palabra reservada MASK",
+
+        # Describe la estructura que se esperaba.
+        "descripcion": (
+            "Después de la dirección IP se esperaba la palabra MASK."
+        ),
+
+        # Indica cómo puede corregirse la instrucción.
+        "solucion": (
+            "Coloca MASK después de la IP. "
+            "Si escribiste MAS u otra variante, cámbiala por MASK. "
+            "Ejemplo: IP 192.168.1.0 MASK /24."
+        ),
+    },
+
+    # Define el diagnóstico SIN-003.
+    #
+    # Este error se genera cuando después de MASK no aparece
+    # una máscara escrita en notación CIDR.
+    "SIN-003": {
+
+        # Indica que el diagnóstico pertenece al análisis sintáctico.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del problema.
+        "nombre": "Máscara CIDR inválida o incompleta",
+
+        # Describe qué elemento faltó dentro de la instrucción.
+        "descripcion": (
+            "Después de MASK se esperaba una máscara con diagonal."
+        ),
+
+        # Muestra al usuario un ejemplo de la forma correcta.
+        "solucion": (
+            "Escribe la máscara en formato CIDR. "
+            "Ejemplo: /24."
+        ),
+    },
+
+    # Define el diagnóstico SIN-004.
+    #
+    # Se genera cuando HOSTS no está seguido por al menos
+    # una cantidad numérica.
+    "SIN-004": {
+
+        # Indica que el error pertenece al análisis sintáctico.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del diagnóstico.
+        "nombre": "Falta cantidad de hosts",
+
+        # Explica qué token se esperaba.
+        "descripcion": (
+            "Después de HOSTS se esperaba al menos un número."
+        ),
+
+        # Proporciona un ejemplo válido.
+        "solucion": (
+            "Escribe al menos una cantidad de hosts. "
+            "Ejemplo: HOSTS 50."
+        ),
+    },
+
+    # Define el diagnóstico SIN-005.
+    #
+    # Este error aparece cuando una lista de hosts contiene
+    # una coma que no está seguida por otro número.
+    "SIN-005": {
+
+        # Indica la fase donde se detectó el problema.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del diagnóstico.
+        "nombre": "Lista de hosts mal formada",
+
+        # Explica la regla sintáctica que se incumplió.
+        "descripcion": (
+            "Después de una coma se esperaba otro número."
+        ),
+
+        # Muestra un ejemplo correcto de una lista de hosts.
+        "solucion": (
+            "Corrige la lista de hosts. "
+            "Ejemplo correcto: HOSTS 100,200."
+        ),
+    },
+
+    # Define el diagnóstico SIN-006.
+    #
+    # Este problema ocurre cuando aparece NAME pero no existe
+    # después un identificador que represente el nombre de la red.
+    "SIN-006": {
+
+        # Indica que pertenece al análisis sintáctico.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del error.
+        "nombre": "Nombre de red incompleto",
+
+        # Describe el elemento que se esperaba después de NAME.
+        "descripcion": (
+            "Después de NAME se esperaba un identificador."
+        ),
+
+        # Explica las dos formas posibles de corregirlo.
+        "solucion": (
+            "Escribe un nombre después de NAME o elimina NAME "
+            "si no usarás nombre."
+        ),
+    },
+
+    # Define el diagnóstico SIN-007.
+    #
+    # Se utiliza cuando una instrucción completa es exactamente
+    # igual a otra instrucción válida procesada anteriormente.
+    "SIN-007": {
+
+        # Indica que el diagnóstico pertenece a la sintaxis.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del problema.
+        "nombre": "Instrucción duplicada",
+
+        # Explica qué provoca este diagnóstico.
+        "descripcion": (
+            "Se declaró una instrucción exactamente igual a otra anterior."
+        ),
+
+        # Indica qué elementos pueden modificarse para evitar el duplicado.
+        "solucion": (
+            "Elimina la instrucción repetida o cambia IP, máscara, "
+            "hosts o nombre."
+        ),
+    },
+
+    # Define el diagnóstico SIN-008.
+    #
+    # Es el error sintáctico general utilizado cuando los tokens
+    # existen, pero aparecen en un orden diferente al de la gramática.
+    "SIN-008": {
+
+        # Indica que pertenece al análisis sintáctico.
+        "categoria": "Sintáctico",
+
+        # Guarda el nombre breve del diagnóstico.
+        "nombre": "Orden incorrecto de tokens",
+
+        # Describe de manera general el problema encontrado.
+        "descripcion": (
+            "Los tokens existen, pero no aparecen en el orden esperado."
+        ),
+
+        # Muestra la estructura general de una instrucción válida
+        # de TecNet Finder.
+        "solucion": (
+            "Revisa que la instrucción siga esta estructura: "
+            "IP <IP_ADDRESS> MASK <SUBNET_MASK> "
+            "HOSTS <NUMBER>[,<NUMBER>...] [NAME <IDENTIFIER>]."
+        ),
+    },
+
     # Define un diagnóstico general de respaldo.
     # Se utiliza cuando se solicita crear un diagnóstico cuyo código todavía
     # no se encuentra registrado dentro del catálogo.

@@ -97,3 +97,70 @@ class ResultadoLexico:
             diagnostico.severidad == "error"
             for diagnostico in self.diagnosticos
         )
+
+
+# ============================================================
+# MODELOS UTILIZADOS POR EL ANALIZADOR SINTÁCTICO
+# ============================================================
+
+
+# Convierte BloqueRed en una estructura organizada de datos.
+#
+# Esta clase representa una instrucción de TecNet Finder que
+# consiguió cumplir correctamente la estructura sintáctica
+# esperada por el lenguaje.
+@dataclass
+class BloqueRed:
+
+    # Guarda la dirección IPv4 escrita después de la palabra IP.
+    direccion_ip: str
+
+    # Guarda la máscara CIDR escrita después de MASK.
+    #
+    # Algunos ejemplos posibles son /8, /16 o /24.
+    mascara_subred: str
+
+    # Guarda todas las cantidades escritas después de HOSTS.
+    #
+    # Se utiliza default_factory para crear una lista independiente
+    # para cada bloque de red.
+    cantidades_hosts: list[int] = field(default_factory=list)
+
+    # Guarda el identificador escrito después de NAME.
+    #
+    # El valor puede ser None porque NAME es una parte opcional
+    # de la gramática de TecNet Finder.
+    nombre: str | None = None
+
+    # Guarda la línea donde comenzó la instrucción.
+    #
+    # Este dato será útil posteriormente para relacionar resultados,
+    # errores y elementos de la interfaz con el código fuente.
+    linea_origen: int = 1
+
+
+# Convierte ResultadoSintactico en una estructura de datos.
+#
+# Esta clase almacena todo lo que produce el analizador sintáctico
+# después de procesar la secuencia de tokens recibida del lexer.
+@dataclass
+class ResultadoSintactico:
+
+    # Guarda únicamente los bloques que lograron cumplir
+    # correctamente las reglas sintácticas.
+    bloques: list[BloqueRed] = field(default_factory=list)
+
+    # Guarda todos los diagnósticos sintácticos encontrados.
+    diagnosticos: list[Diagnostico] = field(default_factory=list)
+
+    # Permite consultar fácilmente si ocurrió al menos un error
+    # sintáctico durante el análisis.
+    @property
+    def tiene_errores(self) -> bool:
+
+        # Devuelve True si existe al menos un diagnóstico cuya
+        # severidad esté marcada como error.
+        return any(
+            diagnostico.severidad == "error"
+            for diagnostico in self.diagnosticos
+        )
