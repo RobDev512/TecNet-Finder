@@ -71,3 +71,16 @@ class ResultadoSintactico:  # Agrupa los bloques válidos y diagnósticos produc
             diagnostico.severidad == "error"  # Comprueba la severidad del diagnóstico actual.
             for diagnostico in self.diagnosticos  # Recorre todos los diagnósticos sintácticos obtenidos.
         )
+
+@dataclass  # Convierte SubredVLSM en una clase de datos organizada.
+class SubredVLSM:  # Representa una subred calculada a partir de una solicitud de hosts.
+    hosts_solicitados: int  # Guarda la cantidad de hosts pedida para esta subred.
+    hosts_disponibles: int  # Guarda la cantidad real de hosts utilizables dentro del bloque asignado.
+    direccion_de_red: str  # Guarda la dirección de red calculada para la subred.
+    nueva_mascara: str  # Guarda el nuevo prefijo CIDR calculado según los hosts solicitados.
+    mascara_decimal: str  # Guarda la máscara equivalente en notación decimal punteada.
+    primera_ip_utilizable: str  # Guarda la primera dirección que puede asignarse a un host.
+    ultima_ip_utilizable: str  # Guarda la última dirección que puede asignarse a un host.
+    direccion_de_broadcast: str  # Guarda la dirección de broadcast calculada para la subred.
+    ip_base: str  # Conserva la dirección IP base recibida para identificar el bloque original.
+    nombre_red: str  # Conserva el nombre de la red o utiliza la IP base cuando no se indicó NAME.
