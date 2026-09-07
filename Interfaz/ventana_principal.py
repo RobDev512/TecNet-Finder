@@ -21,7 +21,7 @@ from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut  # Importa ico
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QMessageBox, QVBoxLayout, QWidget  # Importa los componentes principales utilizados por la ventana.
 
 from Interfaz.barra_titulo import BarraTitulo  # Importa la barra personalizada que sustituye la barra estándar de Windows.
-from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea.
+from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea y diagnósticos visuales.
 from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Importa la tabla estructurada de errores y advertencias.
 from Interfaz.panel_resultados import PanelResultados  # Importa el área de trabajo organizada según la interfaz original.
 from Interfaz.resaltador_sintaxis import ResaltadorSintaxis  # Importa el resaltador visual del lenguaje TecNet Finder.
@@ -34,13 +34,12 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         self.flujo = FlujoCompilacion()  # Crea el coordinador encargado de ejecutar las fases reconstruidas.
         self.ultimo_resultado = None  # Reserva una referencia para conservar el resultado más reciente.
         self.en_pantalla_completa = False  # Indica si actualmente se está utilizando el modo fullscreen.
-
         self.transicion_ventana_activa = False  # Impide iniciar varias animaciones de ventana simultáneamente.
         self.animacion_opacidad = None  # Conserva la animación activa para evitar que Python la elimine antes de terminar.
         self.cierre_autorizado = False  # Permite distinguir el cierre animado inicial del cierre definitivo.
 
         self.setWindowTitle("TecNet Finder")  # Conserva el nombre utilizado por Windows y la barra de tareas.
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)  # Elimina únicamente la barra estándar de Windows para sustituirla por la propia.
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)  # Elimina la barra estándar de Windows para sustituirla por la propia.
         self.setMinimumSize(1000, 650)  # Evita dimensiones poco utilizables durante cambios de estado internos.
 
         self._cargar_icono()  # Carga el icono oficial desde Recursos.
@@ -121,32 +120,32 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         diseno_principal.addLayout(encabezado)  # Inserta el encabezado en el contenido principal.
 
     def _configurar_atajos(self) -> None:  # Registra los controles rápidos relacionados con la ventana.
-        self.atajo_pantalla_completa = QShortcut(QKeySequence("F11"), self)  # Crea el atajo convencional utilizado por aplicaciones para fullscreen.
+        self.atajo_pantalla_completa = QShortcut(QKeySequence("F11"), self)  # Crea el atajo convencional utilizado para fullscreen.
         self.atajo_pantalla_completa.activated.connect(self.alternar_pantalla_completa)  # Hace que F11 alterne los dos estados permitidos.
 
         self.atajo_salir_pantalla_completa = QShortcut(QKeySequence("Escape"), self)  # Permite utilizar Escape para abandonar fullscreen.
-        self.atajo_salir_pantalla_completa.activated.connect(self.salir_pantalla_completa)  # Solo realiza cambios cuando el modo fullscreen está activo.
+        self.atajo_salir_pantalla_completa.activated.connect(self.salir_pantalla_completa)  # Solo realiza cambios cuando fullscreen está activo.
 
-    def _animar_opacidad(self, inicio: float, fin: float, duracion: int, al_terminar=None) -> None:  # Ejecuta una transición suave sobre la opacidad general de TecNet Finder.
+    def _animar_opacidad(self, inicio: float, fin: float, duracion: int, al_terminar=None) -> None:  # Ejecuta una transición suave sobre la opacidad general.
         if self.animacion_opacidad is not None:  # Comprueba si todavía existe una animación anterior almacenada.
-            self.animacion_opacidad.stop()  # Detiene la animación anterior para evitar que ambas intenten controlar la misma propiedad.
+            self.animacion_opacidad.stop()  # Detiene la animación anterior para evitar que ambas controlen la misma propiedad.
 
-        self.setWindowOpacity(inicio)  # Coloca inmediatamente la ventana en la opacidad desde donde comenzará la transición.
+        self.setWindowOpacity(inicio)  # Coloca inmediatamente la ventana en la opacidad inicial.
 
-        self.animacion_opacidad = QPropertyAnimation(self, b"windowOpacity", self)  # Crea una animación sobre la propiedad de opacidad de la ventana.
+        self.animacion_opacidad = QPropertyAnimation(self, b"windowOpacity", self)  # Crea una animación sobre la opacidad de la ventana.
         self.animacion_opacidad.setDuration(duracion)  # Define cuántos milisegundos durará la transición.
         self.animacion_opacidad.setStartValue(inicio)  # Define la opacidad inicial.
         self.animacion_opacidad.setEndValue(fin)  # Define la opacidad final.
         self.animacion_opacidad.setEasingCurve(QEasingCurve.Type.InOutCubic)  # Utiliza aceleración y desaceleración progresivas.
 
         if al_terminar is not None:  # Comprueba si debe ejecutarse alguna acción al concluir la animación.
-            self.animacion_opacidad.finished.connect(al_terminar)  # Ejecuta la acción únicamente después de completar la transición.
+            self.animacion_opacidad.finished.connect(al_terminar)  # Ejecuta la acción al finalizar la transición.
 
         self.animacion_opacidad.start()  # Inicia la animación configurada.
 
     def minimizar_animado(self) -> None:  # Minimiza TecNet Finder después de una transición visual breve.
         if self.transicion_ventana_activa:  # Comprueba que otro cambio de estado no se encuentre ejecutándose.
-            return  # Ignora clics adicionales hasta que termine la transición actual.
+            return  # Ignora clics adicionales hasta terminar la transición.
 
         self.transicion_ventana_activa = True  # Bloquea temporalmente otras transiciones de ventana.
 
@@ -157,36 +156,36 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
 
         self._animar_opacidad(1.0, 0.35, 130, finalizar_minimizado)  # Reduce rápidamente la presencia visual antes de minimizar.
 
-    def alternar_pantalla_completa(self) -> None:  # Alterna suavemente entre el modo maximizado y la pantalla completa.
+    def alternar_pantalla_completa(self) -> None:  # Alterna suavemente entre maximizado y pantalla completa.
         self._cambiar_pantalla_completa(not self.en_pantalla_completa)  # Solicita el estado contrario al utilizado actualmente.
 
-    def entrar_pantalla_completa(self) -> None:  # Solicita entrar a pantalla completa utilizando la transición visual común.
+    def entrar_pantalla_completa(self) -> None:  # Solicita entrar a pantalla completa utilizando la transición común.
         self._cambiar_pantalla_completa(True)  # Indica que el estado final debe ser fullscreen.
 
-    def salir_pantalla_completa(self) -> None:  # Solicita regresar al modo maximizado utilizando la misma transición.
+    def salir_pantalla_completa(self) -> None:  # Solicita regresar al modo maximizado.
         self._cambiar_pantalla_completa(False)  # Indica que el estado final debe ser maximizado.
 
-    def _cambiar_pantalla_completa(self, activar: bool) -> None:  # Realiza la transición visual y después modifica el estado real de la ventana.
+    def _cambiar_pantalla_completa(self, activar: bool) -> None:  # Realiza la transición visual y modifica después el estado real.
         if activar == self.en_pantalla_completa:  # Comprueba si la ventana ya se encuentra en el estado solicitado.
             return  # Evita realizar una transición innecesaria.
 
-        if self.transicion_ventana_activa:  # Comprueba si todavía se está ejecutando otro movimiento de ventana.
+        if self.transicion_ventana_activa:  # Comprueba si todavía se está ejecutando otro movimiento.
             return  # Ignora nuevas solicitudes hasta finalizar la transición anterior.
 
         self.transicion_ventana_activa = True  # Bloquea temporalmente los demás cambios de estado.
 
-        def aplicar_estado() -> None:  # Cambia realmente el estado una vez concluida la primera parte de la animación.
+        def aplicar_estado() -> None:  # Cambia realmente el estado una vez concluida la primera parte.
             self.en_pantalla_completa = activar  # Actualiza el estado lógico antes de modificar la ventana.
 
             if activar:  # Comprueba si el destino solicitado es pantalla completa.
                 self.showFullScreen()  # Hace que TecNet Finder ocupe completamente el monitor.
-            else:  # Se ejecuta cuando se desea volver al modo habitual de trabajo.
+            else:  # Se ejecuta cuando se desea volver al modo habitual.
                 self.showMaximized()  # Regresa directamente al estado maximizado obligatorio.
 
-            self.barra_titulo.actualizar_estado_pantalla_completa(activar)  # Actualiza la ayuda del botón ⛶ según su nueva función.
+            self.barra_titulo.actualizar_estado_pantalla_completa(activar)  # Actualiza la ayuda del botón según su nueva función.
             self.setWindowOpacity(0.72)  # Prepara una aparición progresiva después del cambio de geometría.
 
-            def finalizar_transicion() -> None:  # Finaliza completamente el cambio entre maximizado y fullscreen.
+            def finalizar_transicion() -> None:  # Finaliza completamente el cambio de estado.
                 self.setWindowOpacity(1.0)  # Garantiza que la aplicación termine totalmente visible.
                 self.transicion_ventana_activa = False  # Libera nuevamente los controles de ventana.
 
@@ -198,27 +197,26 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         super().changeEvent(evento)  # Permite que Qt procese primero el cambio solicitado.
 
         if evento.type() != QEvent.Type.WindowStateChange:  # Comprueba que el evento realmente corresponda al estado de la ventana.
-            return  # Ignora cambios de estilo, idioma u otros eventos que no afectan tamaño.
+            return  # Ignora otros tipos de evento.
 
-        if self.en_pantalla_completa:  # Evita interferir con el modo fullscreen solicitado explícitamente.
-            return  # Mantiene el estado actual sin realizar correcciones.
+        if self.en_pantalla_completa:  # Evita interferir con fullscreen solicitado explícitamente.
+            return  # Mantiene el estado actual.
 
         estado = self.windowState()  # Obtiene el nuevo estado asignado por Qt o Windows.
+        estado_anterior = evento.oldState()  # Obtiene el estado existente antes del cambio actual.
 
-        estado_anterior = evento.oldState()  # Obtiene el estado existente antes de producirse el cambio actual.
-
-        if estado_anterior & Qt.WindowState.WindowMinimized and not estado & Qt.WindowState.WindowMinimized:  # Detecta que TecNet Finder acaba de regresar desde la barra de tareas.
-            QTimer.singleShot(0, self._restaurar_animado)  # Espera a que Windows termine de restaurar y posteriormente aplica nuestra transición.
-            return  # Evita ejecutar al mismo tiempo la corrección general de maximizado.
+        if estado_anterior & Qt.WindowState.WindowMinimized and not estado & Qt.WindowState.WindowMinimized:  # Detecta que TecNet Finder regresó desde la barra de tareas.
+            QTimer.singleShot(0, self._restaurar_animado)  # Espera a que Windows termine de restaurar para aplicar la transición.
+            return  # Evita ejecutar al mismo tiempo la corrección general.
 
         if estado & Qt.WindowState.WindowMinimized:  # Comprueba si el usuario simplemente minimizó la aplicación.
-            return  # Permite minimizar normalmente hacia la barra de tareas.
+            return  # Permite minimizar normalmente.
 
-        if estado & Qt.WindowState.WindowMaximized:  # Comprueba si la ventana ya se encuentra en el modo permitido.
+        if estado & Qt.WindowState.WindowMaximized:  # Comprueba si la ventana ya está en el modo permitido.
             return  # No hace falta realizar ninguna corrección.
 
-        if self.isVisible():  # Comprueba que la ventana realmente esté mostrada antes de forzar su tamaño.
-            QTimer.singleShot(0, self.showMaximized)  # Devuelve inmediatamente cualquier intento de restauración al estado maximizado.
+        if self.isVisible():  # Comprueba que la ventana realmente esté mostrada.
+            QTimer.singleShot(0, self.showMaximized)  # Devuelve cualquier intento de restauración al estado maximizado.
 
     def _restaurar_animado(self) -> None:  # Recupera TecNet Finder desde la barra de tareas con una aparición progresiva.
         self.showMaximized()  # Garantiza que la aplicación regrese directamente al único tamaño normal permitido.
@@ -241,10 +239,11 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
             resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta léxico, sintáctico y cálculo VLSM mediante Motor.
         except Exception as error:  # Captura únicamente fallos inesperados del propio programa.
             QMessageBox.critical(self, "Error interno", f"No se pudo completar el análisis:\n{error}")  # Muestra el problema sin cerrar TecNet Finder.
-            return  # Mantiene disponible la aplicación para poder corregir o investigar el problema.
+            return  # Mantiene disponible la aplicación.
 
         self.ultimo_resultado = resultado  # Conserva el resultado global más reciente.
-        self.panel_diagnosticos.mostrar_diagnosticos(resultado.diagnosticos)  # Actualiza primero el registro estructurado de errores.
+        self.panel_diagnosticos.mostrar_diagnosticos(resultado.diagnosticos)  # Actualiza la tabla estructurada de errores y advertencias.
+        self.editor_codigo.mostrar_diagnosticos(resultado.diagnosticos)  # Dibuja los mismos diagnósticos directamente sobre el código fuente.
         self.panel_resultados.mostrar_resultado(resultado)  # Actualiza resumen, tablas y vistas sintácticas.
         self._actualizar_estado(resultado)  # Actualiza la barra superior de estado.
 
@@ -267,6 +266,7 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         self.editor_codigo.ir_a_posicion(diagnostico.linea, diagnostico.columna, diagnostico.longitud)  # Utiliza directamente los datos estructurados del diagnóstico.
 
     def _limpiar_todo(self) -> None:  # Restaura entrada y salidas sin modificar el estado de la ventana.
+        self.editor_codigo.limpiar_diagnosticos()  # Elimina primero las marcas onduladas de la compilación anterior.
         self.editor_codigo.clear()  # Elimina completamente el código fuente.
         self.panel_diagnosticos.limpiar()  # Elimina los diagnósticos anteriores.
         self.panel_resultados.limpiar()  # Restaura resumen, tablas y sintaxis.
