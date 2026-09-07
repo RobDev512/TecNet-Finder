@@ -10,164 +10,289 @@
 # visuales de la aplicación. No implementa las fases internas
 # del compilador, ya que estas son coordinadas por Motor.
 #
-# La interfaz utiliza PySide6 y conserva la identidad visual
-# utilizada durante la migración realizada en LyA I.
+# La ventana utiliza una barra de título personalizada y solo
+# permite trabajar maximizada o en modo de pantalla completa.
 # ============================================================
 
-from pathlib import Path  # Importa Path para localizar los recursos del proyecto sin depender de una ruta absoluta.
+from pathlib import Path  # Importa Path para localizar los recursos del proyecto sin depender de rutas absolutas.
 
-from PySide6.QtCore import Qt  # Importa las orientaciones y banderas utilizadas por los widgets.
-from PySide6.QtGui import QIcon, QPixmap  # Importa las clases necesarias para mostrar el logotipo y el icono de la ventana.
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QSplitter, QVBoxLayout, QWidget  # Importa los componentes utilizados para construir la ventana.
+from PySide6.QtCore import QEvent, QEasingCurve, QPropertyAnimation, QTimer, Qt  # Importa eventos, animaciones y estados utilizados para controlar suavemente la ventana.
+from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut  # Importa iconos, atajos de teclado e imágenes.
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QMessageBox, QVBoxLayout, QWidget  # Importa los componentes principales utilizados por la ventana.
 
-from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea y navegación.
-from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Importa la tabla donde se mostrarán los errores encontrados.
-from Interfaz.panel_resultados import PanelResultados  # Importa las pestañas utilizadas para presentar los resultados.
+from Interfaz.barra_titulo import BarraTitulo  # Importa la barra personalizada que sustituye la barra estándar de Windows.
+from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea.
+from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Importa la tabla estructurada de errores y advertencias.
+from Interfaz.panel_resultados import PanelResultados  # Importa el área de trabajo organizada según la interfaz original.
 from Interfaz.resaltador_sintaxis import ResaltadorSintaxis  # Importa el resaltador visual del lenguaje TecNet Finder.
-from Motor.flujo_compilacion import FlujoCompilacion  # Importa el coordinador que conecta léxico, sintáctico y VLSM.
+from Motor.flujo_compilacion import FlujoCompilacion  # Importa el coordinador central de las fases disponibles.
 
 
-class VentanaPrincipal(QMainWindow):  # Define la ventana principal que contiene todos los componentes de TecNet Finder.
-    def __init__(self):  # Inicializa la ventana y prepara el flujo utilizado para analizar el código.
-        super().__init__()  # Inicializa el comportamiento estándar de QMainWindow.
-        self.flujo = FlujoCompilacion()  # Crea el coordinador encargado de ejecutar las fases disponibles.
-        self.ultimo_resultado = None  # Reserva una referencia para conservar el resultado del análisis más reciente.
-        self.setWindowTitle("TecNet Finder")  # Establece el título mostrado por el sistema operativo.
-        self.resize(1280, 820)  # Define un tamaño inicial cómodo para editor, resultados y diagnósticos.
-        self.setMinimumSize(1000, 650)  # Impide reducir la ventana hasta un tamaño poco usable.
-        self._cargar_icono()  # Intenta utilizar el logotipo existente como icono de la aplicación.
-        self._construir_interfaz()  # Crea todos los elementos visuales de la ventana.
+class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla sus dos estados permitidos.
+    def __init__(self):  # Inicializa la aplicación, sus componentes y su comportamiento de ventana.
+        super().__init__()  # Inicializa el comportamiento base de QMainWindow.
+        self.flujo = FlujoCompilacion()  # Crea el coordinador encargado de ejecutar las fases reconstruidas.
+        self.ultimo_resultado = None  # Reserva una referencia para conservar el resultado más reciente.
+        self.en_pantalla_completa = False  # Indica si actualmente se está utilizando el modo fullscreen.
 
-    def _ruta_recurso(self, nombre_archivo: str) -> Path:  # Construye una ruta independiente del directorio desde donde se ejecute Python.
-        raiz_proyecto = Path(__file__).resolve().parent.parent  # Obtiene la carpeta raíz partiendo de la ubicación del archivo actual.
-        return raiz_proyecto / "Recursos" / nombre_archivo  # Devuelve la ruta del recurso solicitado dentro de Recursos.
+        self.transicion_ventana_activa = False  # Impide iniciar varias animaciones de ventana simultáneamente.
+        self.animacion_opacidad = None  # Conserva la animación activa para evitar que Python la elimine antes de terminar.
+        self.cierre_autorizado = False  # Permite distinguir el cierre animado inicial del cierre definitivo.
 
-    def _cargar_icono(self) -> None:  # Coloca el icono del proyecto en la barra de título cuando el archivo está disponible.
-        ruta_icono = self._ruta_recurso("LogoTNF.ico")  # Obtiene la ubicación esperada del archivo ICO.
+        self.setWindowTitle("TecNet Finder")  # Conserva el nombre utilizado por Windows y la barra de tareas.
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)  # Elimina únicamente la barra estándar de Windows para sustituirla por la propia.
+        self.setMinimumSize(1000, 650)  # Evita dimensiones poco utilizables durante cambios de estado internos.
 
-        if ruta_icono.exists():  # Comprueba que el recurso realmente exista antes de utilizarlo.
-            self.setWindowIcon(QIcon(str(ruta_icono)))  # Establece el icono de la ventana utilizando el archivo encontrado.
+        self._cargar_icono()  # Carga el icono oficial desde Recursos.
+        self._construir_interfaz()  # Construye la barra propia y el contenido de la aplicación.
+        self._configurar_atajos()  # Activa F11 y Escape para controlar fullscreen.
 
-    def _construir_interfaz(self) -> None:  # Construye el contenido completo de la ventana principal.
-        central = QWidget()  # Crea el widget que funcionará como contenido central de QMainWindow.
-        self.setCentralWidget(central)  # Asigna el widget recién creado como zona principal.
-        diseno = QVBoxLayout(central)  # Crea una distribución vertical para encabezado, estado y contenido.
-        diseno.setContentsMargins(14, 12, 14, 14)  # Deja un margen uniforme alrededor de toda la interfaz.
-        diseno.setSpacing(10)  # Define la separación entre los principales elementos de la ventana.
+    def _ruta_recurso(self, nombre_archivo: str) -> Path:  # Construye la ubicación de un recurso partiendo del propio proyecto.
+        raiz_proyecto = Path(__file__).resolve().parent.parent  # Obtiene la carpeta raíz de TecNet Finder.
+        return raiz_proyecto / "Recursos" / nombre_archivo  # Devuelve la ruta correspondiente al recurso solicitado.
 
-        self._construir_encabezado(diseno)  # Agrega el logotipo y el título del proyecto.
-        self.etiqueta_estado = QLabel("Sin análisis ejecutado.")  # Crea la barra textual que mostrará el estado del análisis.
-        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Aplica inicialmente el estilo correspondiente al estado neutro.
-        diseno.addWidget(self.etiqueta_estado)  # Coloca la barra de estado debajo del encabezado.
+    def _cargar_icono(self) -> None:  # Carga el icono usado por Windows y por la barra personalizada.
+        ruta_icono = self._ruta_recurso("LogoTNF.ico")  # Obtiene la ubicación del archivo ICO existente.
 
-        divisor = QSplitter(Qt.Orientation.Vertical)  # Crea un divisor vertical para permitir redimensionar editor, resultados y diagnósticos.
-        diseno.addWidget(divisor, 1)  # Agrega el divisor utilizando todo el espacio restante de la ventana.
+        if ruta_icono.exists():  # Comprueba que el recurso esté disponible antes de utilizarlo.
+            self.setWindowIcon(QIcon(str(ruta_icono)))  # Establece el icono general de la ventana.
 
-        panel_editor = self._crear_panel_editor()  # Construye el panel superior donde se escribirá el código.
-        self.panel_resultados = PanelResultados()  # Crea las pestañas que mostrarán tokens, VLSM y sintaxis.
-        self.panel_diagnosticos = PanelDiagnosticos()  # Crea la tabla inferior destinada a errores y advertencias.
+    def _construir_interfaz(self) -> None:  # Construye toda la ventana sin incluir lógica de compilación.
+        central = QWidget()  # Crea el widget raíz que ocupará toda la ventana sin marco.
+        central.setObjectName("VentanaCentral")  # Permite aplicar el fondo general desde estilos.py.
+        self.setCentralWidget(central)  # Asigna el widget como contenido principal.
 
-        divisor.addWidget(panel_editor)  # Coloca el editor como primera sección del divisor.
-        divisor.addWidget(self.panel_resultados)  # Coloca los resultados como segunda sección.
-        divisor.addWidget(self.panel_diagnosticos)  # Coloca los diagnósticos como tercera sección.
-        divisor.setSizes([230, 420, 170])  # Define una proporción inicial razonable entre las tres zonas.
+        diseno_general = QVBoxLayout(central)  # Organiza barra personalizada y contenido de forma vertical.
+        diseno_general.setContentsMargins(0, 0, 0, 0)  # Permite que la barra llegue exactamente a los bordes de la pantalla.
+        diseno_general.setSpacing(0)  # Evita cualquier separación entre barra y contenido.
 
-        self.panel_diagnosticos.diagnostico_activado.connect(self._ir_a_diagnostico)  # Conecta el doble clic sobre un error con la navegación dentro del editor.
+        self.barra_titulo = BarraTitulo(self, self._ruta_recurso("LogoTNF.ico"))  # Crea la barra propia utilizando el mismo icono de la aplicación.
+        diseno_general.addWidget(self.barra_titulo)  # Coloca la barra personalizada en la parte superior permanente.
 
-    def _construir_encabezado(self, diseno_principal: QVBoxLayout) -> None:  # Construye la sección superior con logotipo, nombre y descripción.
-        encabezado = QHBoxLayout()  # Crea una distribución horizontal para imagen y textos.
-        encabezado.setSpacing(12)  # Define la separación visual entre logotipo y título.
-        ruta_logo = self._ruta_recurso("LogoTNF.png")  # Obtiene la ruta del logotipo PNG guardado en Recursos.
+        contenido = QWidget()  # Crea el contenedor donde se mostrará realmente TecNet Finder.
+        contenido.setObjectName("ContenidoPrincipal")  # Permite diferenciarlo de la barra superior.
+        diseno_contenido = QVBoxLayout(contenido)  # Organiza encabezado, estado y pestañas.
+        diseno_contenido.setContentsMargins(14, 10, 14, 14)  # Mantiene el espacio visual utilizado por la interfaz actual.
+        diseno_contenido.setSpacing(9)  # Define una separación uniforme entre las secciones.
 
-        if ruta_logo.exists():  # Comprueba si el archivo de imagen se encuentra disponible.
-            etiqueta_logo = QLabel()  # Crea el widget que contendrá la imagen.
-            imagen = QPixmap(str(ruta_logo)).scaled(58, 58, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)  # Ajusta el logotipo conservando su proporción.
-            etiqueta_logo.setPixmap(imagen)  # Coloca la imagen escalada dentro de la etiqueta.
-            encabezado.addWidget(etiqueta_logo)  # Agrega el logotipo al lado izquierdo del encabezado.
+        self._construir_encabezado(diseno_contenido)  # Agrega el logotipo y nombre grande utilizados por la versión anterior.
 
-        caja_titulos = QVBoxLayout()  # Crea una distribución vertical para nombre y descripción.
+        self.etiqueta_estado = QLabel("Sin análisis ejecutado.")  # Crea la barra informativa situada debajo del encabezado.
+        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Aplica inicialmente el estado visual neutro.
+        diseno_contenido.addWidget(self.etiqueta_estado)  # Coloca el estado encima del área principal de pestañas.
+
+        self.editor_codigo = EditorCodigo()  # Crea el editor especializado de TecNet Finder.
+        self.resaltador_sintaxis = ResaltadorSintaxis(self.editor_codigo.document())  # Conecta el resaltador con el documento del editor.
+        self.panel_diagnosticos = PanelDiagnosticos()  # Crea la tabla estructurada de errores y advertencias.
+
+        self.panel_resultados = PanelResultados(  # Construye el área de trabajo completa utilizando el acomodo inspirado en LyA I.
+            editor_codigo=self.editor_codigo,
+            panel_diagnosticos=self.panel_diagnosticos,
+            accion_analizar=self._analizar_codigo,
+            accion_limpiar=self._limpiar_todo,
+        )
+
+        diseno_contenido.addWidget(self.panel_resultados, 1)  # Permite que las pestañas utilicen todo el espacio restante.
+        diseno_general.addWidget(contenido, 1)  # Coloca el contenido debajo de la barra personalizada.
+
+        self.panel_diagnosticos.diagnostico_activado.connect(self._ir_a_diagnostico)  # Permite navegar desde un diagnóstico hasta el código fuente.
+
+    def _construir_encabezado(self, diseno_principal: QVBoxLayout) -> None:  # Construye el encabezado grande conservado de la interfaz anterior.
+        encabezado = QHBoxLayout()  # Organiza horizontalmente logotipo y textos.
+        encabezado.setSpacing(12)  # Mantiene una separación cómoda entre ambos elementos.
+        ruta_logo = self._ruta_recurso("LogoTNF.png")  # Obtiene la ruta del logotipo de mayor resolución.
+
+        if ruta_logo.exists():  # Comprueba que el recurso realmente se encuentre disponible.
+            etiqueta_logo = QLabel()  # Crea el contenedor de la imagen.
+            imagen = QPixmap(str(ruta_logo)).scaled(58, 58, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)  # Reduce el logotipo conservando calidad y proporción.
+            etiqueta_logo.setPixmap(imagen)  # Coloca la imagen escalada.
+            encabezado.addWidget(etiqueta_logo)  # Agrega el logotipo al lado izquierdo.
+
+        caja_titulos = QVBoxLayout()  # Crea una columna para nombre y descripción.
         titulo = QLabel("TecNet Finder")  # Crea el nombre principal del proyecto.
-        titulo.setObjectName("TituloPrincipal")  # Aplica el estilo especial definido para el título.
-        subtitulo = QLabel("Compilador para análisis de instrucciones VLSM")  # Crea una descripción breve del propósito actual.
-        subtitulo.setObjectName("SubtituloPrincipal")  # Aplica el estilo secundario correspondiente.
-        caja_titulos.addWidget(titulo)  # Coloca el título en la primera línea.
-        caja_titulos.addWidget(subtitulo)  # Coloca el subtítulo inmediatamente debajo.
-        encabezado.addLayout(caja_titulos)  # Agrega ambos textos a la distribución horizontal.
-        encabezado.addStretch()  # Empuja el encabezado hacia la izquierda y deja libre el espacio restante.
-        diseno_principal.addLayout(encabezado)  # Coloca finalmente el encabezado dentro de la ventana.
+        titulo.setObjectName("TituloPrincipal")  # Aplica el estilo utilizado para el título grande.
+        subtitulo = QLabel("Compilador para análisis de instrucciones VLSM")  # Conserva la descripción breve del proyecto.
+        subtitulo.setObjectName("SubtituloPrincipal")  # Aplica el estilo secundario.
 
-    def _crear_panel_editor(self) -> QFrame:  # Construye el panel que contiene el editor y sus botones principales.
-        panel = QFrame()  # Crea un contenedor visual independiente para la entrada.
-        panel.setObjectName("Panel")  # Aplica el estilo definido para paneles generales.
-        diseno = QVBoxLayout(panel)  # Organiza verticalmente título, editor y botones.
-        titulo = QLabel("Código fuente")  # Crea el título que identifica el área de entrada.
-        titulo.setObjectName("TituloSeccion")  # Aplica el estilo destinado a títulos de sección.
-        diseno.addWidget(titulo)  # Coloca el título encima del editor.
+        caja_titulos.addWidget(titulo)  # Coloca el nombre como primera línea.
+        caja_titulos.addWidget(subtitulo)  # Coloca la descripción debajo.
+        encabezado.addLayout(caja_titulos)  # Agrega ambos textos al encabezado.
+        encabezado.addStretch()  # Mantiene el conjunto alineado hacia la izquierda.
+        diseno_principal.addLayout(encabezado)  # Inserta el encabezado en el contenido principal.
 
-        self.editor_codigo = EditorCodigo()  # Crea el editor especializado para instrucciones TecNet Finder.
-        self.resaltador_sintaxis = ResaltadorSintaxis(self.editor_codigo.document())  # Conecta el resaltado visual con el documento del editor.
-        diseno.addWidget(self.editor_codigo, 1)  # Agrega el editor utilizando todo el espacio vertical disponible del panel.
+    def _configurar_atajos(self) -> None:  # Registra los controles rápidos relacionados con la ventana.
+        self.atajo_pantalla_completa = QShortcut(QKeySequence("F11"), self)  # Crea el atajo convencional utilizado por aplicaciones para fullscreen.
+        self.atajo_pantalla_completa.activated.connect(self.alternar_pantalla_completa)  # Hace que F11 alterne los dos estados permitidos.
 
-        botones = QHBoxLayout()  # Crea una fila para las principales acciones del editor.
-        boton_analizar = QPushButton("▶ Analizar")  # Crea el botón encargado de ejecutar el flujo de compilación.
-        boton_analizar.setObjectName("BotonPrincipal")  # Aplica el estilo visual destacado de acción principal.
-        boton_analizar.setShortcut("Ctrl+Return")  # Permite ejecutar el análisis rápidamente utilizando el teclado.
-        boton_analizar.clicked.connect(self._analizar_codigo)  # Conecta el clic con el método que ejecutará el flujo completo.
+        self.atajo_salir_pantalla_completa = QShortcut(QKeySequence("Escape"), self)  # Permite utilizar Escape para abandonar fullscreen.
+        self.atajo_salir_pantalla_completa.activated.connect(self.salir_pantalla_completa)  # Solo realiza cambios cuando el modo fullscreen está activo.
 
-        boton_limpiar = QPushButton("Limpiar")  # Crea el botón utilizado para borrar entrada y resultados actuales.
-        boton_limpiar.clicked.connect(self._limpiar_todo)  # Conecta el botón con el método encargado de restaurar la interfaz.
+    def _animar_opacidad(self, inicio: float, fin: float, duracion: int, al_terminar=None) -> None:  # Ejecuta una transición suave sobre la opacidad general de TecNet Finder.
+        if self.animacion_opacidad is not None:  # Comprueba si todavía existe una animación anterior almacenada.
+            self.animacion_opacidad.stop()  # Detiene la animación anterior para evitar que ambas intenten controlar la misma propiedad.
 
-        botones.addWidget(boton_analizar)  # Coloca primero la acción principal de análisis.
-        botones.addWidget(boton_limpiar)  # Coloca después la acción secundaria de limpieza.
-        botones.addStretch()  # Mantiene ambos botones alineados hacia el lado izquierdo.
-        diseno.addLayout(botones)  # Agrega la fila de acciones debajo del editor.
+        self.setWindowOpacity(inicio)  # Coloca inmediatamente la ventana en la opacidad desde donde comenzará la transición.
 
-        return panel  # Devuelve el panel completamente construido para insertarlo en el divisor principal.
+        self.animacion_opacidad = QPropertyAnimation(self, b"windowOpacity", self)  # Crea una animación sobre la propiedad de opacidad de la ventana.
+        self.animacion_opacidad.setDuration(duracion)  # Define cuántos milisegundos durará la transición.
+        self.animacion_opacidad.setStartValue(inicio)  # Define la opacidad inicial.
+        self.animacion_opacidad.setEndValue(fin)  # Define la opacidad final.
+        self.animacion_opacidad.setEasingCurve(QEasingCurve.Type.InOutCubic)  # Utiliza aceleración y desaceleración progresivas.
 
-    def _analizar_codigo(self) -> None:  # Obtiene la entrada del editor y ejecuta el flujo actual de TecNet Finder.
-        codigo_fuente = self.editor_codigo.toPlainText()  # Recupera exactamente el texto escrito por el usuario.
+        if al_terminar is not None:  # Comprueba si debe ejecutarse alguna acción al concluir la animación.
+            self.animacion_opacidad.finished.connect(al_terminar)  # Ejecuta la acción únicamente después de completar la transición.
 
-        if not codigo_fuente.strip():  # Comprueba que exista al menos algún contenido distinto de espacios.
-            QMessageBox.warning(self, "Entrada vacía", "Introduce una instrucción de TecNet Finder antes de analizar.")  # Informa que no existe código para procesar.
-            return  # Finaliza sin ejecutar ninguna fase del compilador.
+        self.animacion_opacidad.start()  # Inicia la animación configurada.
 
-        try:  # Protege la interfaz ante una excepción interna inesperada del motor.
-            resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta léxico, sintáctico y VLSM mediante el coordinador central.
-        except Exception as error:  # Captura cualquier problema no convertido todavía en un diagnóstico estructurado.
-            QMessageBox.critical(self, "Error interno", f"No se pudo completar el análisis:\n{error}")  # Muestra temporalmente el problema sin cerrar la aplicación.
-            return  # Finaliza el análisis actual para mantener utilizable la ventana.
+    def minimizar_animado(self) -> None:  # Minimiza TecNet Finder después de una transición visual breve.
+        if self.transicion_ventana_activa:  # Comprueba que otro cambio de estado no se encuentre ejecutándose.
+            return  # Ignora clics adicionales hasta que termine la transición actual.
 
-        self.ultimo_resultado = resultado  # Conserva el resultado completo por si otras funciones necesitan utilizarlo posteriormente.
-        self.panel_resultados.mostrar_resultado(resultado)  # Actualiza todas las pestañas de resultados.
-        self.panel_diagnosticos.mostrar_diagnosticos(resultado.diagnosticos)  # Actualiza la tabla con los diagnósticos combinados del flujo.
-        self._actualizar_estado(resultado)  # Actualiza la barra superior según el resultado general obtenido.
+        self.transicion_ventana_activa = True  # Bloquea temporalmente otras transiciones de ventana.
 
-    def _actualizar_estado(self, resultado) -> None:  # Cambia el mensaje y estilo de estado según la cantidad de errores y subredes generadas.
-        cantidad_errores = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad == "error")  # Cuenta los diagnósticos actualmente clasificados como error.
-        cantidad_subredes = len(resultado.subredes_vlsm)  # Obtiene cuántas subredes consiguió producir el flujo.
+        def finalizar_minimizado() -> None:  # Ejecuta el cambio real de estado después del desvanecimiento.
+            self.showMinimized()  # Envía finalmente TecNet Finder hacia la barra de tareas.
+            self.setWindowOpacity(1.0)  # Deja preparada la opacidad normal para cuando la ventana vuelva a mostrarse.
+            self.transicion_ventana_activa = False  # Permite nuevamente utilizar los controles de ventana.
 
-        if cantidad_errores > 0:  # Comprueba si alguna fase produjo al menos un error.
-            self.etiqueta_estado.setObjectName("EstadoError")  # Cambia el estilo a la apariencia correspondiente a un análisis con errores.
-            self.etiqueta_estado.setText(f"Análisis terminado con errores: {cantidad_errores} error(es) | Subredes generadas: {cantidad_subredes}")  # Resume el resultado del análisis.
-        else:  # Se ejecuta cuando no existen errores léxicos ni sintácticos.
-            self.etiqueta_estado.setObjectName("EstadoCorrecto")  # Cambia el estilo para indicar que la entrada fue procesada correctamente.
-            self.etiqueta_estado.setText(f"Análisis completo | Bloques válidos: {len(resultado.bloques_validos)} | Subredes generadas: {cantidad_subredes}")  # Resume los principales resultados obtenidos.
+        self._animar_opacidad(1.0, 0.35, 130, finalizar_minimizado)  # Reduce rápidamente la presencia visual antes de minimizar.
 
-        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el estilo anterior para que Qt detecte el nuevo objectName.
-        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente la hoja de estilos utilizando el nuevo estado.
-        self.etiqueta_estado.update()  # Solicita el redibujado inmediato de la etiqueta.
+    def alternar_pantalla_completa(self) -> None:  # Alterna suavemente entre el modo maximizado y la pantalla completa.
+        self._cambiar_pantalla_completa(not self.en_pantalla_completa)  # Solicita el estado contrario al utilizado actualmente.
 
-    def _ir_a_diagnostico(self, diagnostico) -> None:  # Desplaza el editor hacia el fragmento asociado con el diagnóstico seleccionado.
-        self.editor_codigo.ir_a_posicion(diagnostico.linea, diagnostico.columna, diagnostico.longitud)  # Utiliza la ubicación estructurada almacenada por el compilador.
+    def entrar_pantalla_completa(self) -> None:  # Solicita entrar a pantalla completa utilizando la transición visual común.
+        self._cambiar_pantalla_completa(True)  # Indica que el estado final debe ser fullscreen.
 
-    def _limpiar_todo(self) -> None:  # Restaura la entrada y todas las salidas mostradas por la interfaz.
-        self.editor_codigo.clear()  # Elimina completamente el código fuente escrito en el editor.
-        self.panel_resultados.limpiar()  # Elimina tablas y resultados sintácticos mostrados.
-        self.panel_diagnosticos.limpiar()  # Elimina todos los diagnósticos del análisis anterior.
-        self.ultimo_resultado = None  # Descarta la referencia al resultado global anterior.
-        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Recupera el estilo correspondiente al estado inicial.
-        self.etiqueta_estado.setText("Sin análisis ejecutado.")  # Recupera también el mensaje inicial de la aplicación.
-        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira el estilo anterior para actualizar correctamente el objectName.
-        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente la hoja de estilos con el estado neutral.
-        self.etiqueta_estado.update()  # Fuerza el redibujado de la barra de estado.
-        self.editor_codigo.setFocus()  # Devuelve el cursor al editor para permitir escribir una nueva entrada inmediatamente.
+    def salir_pantalla_completa(self) -> None:  # Solicita regresar al modo maximizado utilizando la misma transición.
+        self._cambiar_pantalla_completa(False)  # Indica que el estado final debe ser maximizado.
+
+    def _cambiar_pantalla_completa(self, activar: bool) -> None:  # Realiza la transición visual y después modifica el estado real de la ventana.
+        if activar == self.en_pantalla_completa:  # Comprueba si la ventana ya se encuentra en el estado solicitado.
+            return  # Evita realizar una transición innecesaria.
+
+        if self.transicion_ventana_activa:  # Comprueba si todavía se está ejecutando otro movimiento de ventana.
+            return  # Ignora nuevas solicitudes hasta finalizar la transición anterior.
+
+        self.transicion_ventana_activa = True  # Bloquea temporalmente los demás cambios de estado.
+
+        def aplicar_estado() -> None:  # Cambia realmente el estado una vez concluida la primera parte de la animación.
+            self.en_pantalla_completa = activar  # Actualiza el estado lógico antes de modificar la ventana.
+
+            if activar:  # Comprueba si el destino solicitado es pantalla completa.
+                self.showFullScreen()  # Hace que TecNet Finder ocupe completamente el monitor.
+            else:  # Se ejecuta cuando se desea volver al modo habitual de trabajo.
+                self.showMaximized()  # Regresa directamente al estado maximizado obligatorio.
+
+            self.barra_titulo.actualizar_estado_pantalla_completa(activar)  # Actualiza la ayuda del botón ⛶ según su nueva función.
+            self.setWindowOpacity(0.72)  # Prepara una aparición progresiva después del cambio de geometría.
+
+            def finalizar_transicion() -> None:  # Finaliza completamente el cambio entre maximizado y fullscreen.
+                self.setWindowOpacity(1.0)  # Garantiza que la aplicación termine totalmente visible.
+                self.transicion_ventana_activa = False  # Libera nuevamente los controles de ventana.
+
+            self._animar_opacidad(0.72, 1.0, 170, finalizar_transicion)  # Hace aparecer progresivamente el nuevo estado.
+
+        self._animar_opacidad(1.0, 0.72, 95, aplicar_estado)  # Atenúa ligeramente la ventana antes de cambiar su geometría.
+
+    def changeEvent(self, evento) -> None:  # Vigila cambios externos para impedir que TecNet Finder permanezca en modo ventana normal.
+        super().changeEvent(evento)  # Permite que Qt procese primero el cambio solicitado.
+
+        if evento.type() != QEvent.Type.WindowStateChange:  # Comprueba que el evento realmente corresponda al estado de la ventana.
+            return  # Ignora cambios de estilo, idioma u otros eventos que no afectan tamaño.
+
+        if self.en_pantalla_completa:  # Evita interferir con el modo fullscreen solicitado explícitamente.
+            return  # Mantiene el estado actual sin realizar correcciones.
+
+        estado = self.windowState()  # Obtiene el nuevo estado asignado por Qt o Windows.
+
+        estado_anterior = evento.oldState()  # Obtiene el estado existente antes de producirse el cambio actual.
+
+        if estado_anterior & Qt.WindowState.WindowMinimized and not estado & Qt.WindowState.WindowMinimized:  # Detecta que TecNet Finder acaba de regresar desde la barra de tareas.
+            QTimer.singleShot(0, self._restaurar_animado)  # Espera a que Windows termine de restaurar y posteriormente aplica nuestra transición.
+            return  # Evita ejecutar al mismo tiempo la corrección general de maximizado.
+
+        if estado & Qt.WindowState.WindowMinimized:  # Comprueba si el usuario simplemente minimizó la aplicación.
+            return  # Permite minimizar normalmente hacia la barra de tareas.
+
+        if estado & Qt.WindowState.WindowMaximized:  # Comprueba si la ventana ya se encuentra en el modo permitido.
+            return  # No hace falta realizar ninguna corrección.
+
+        if self.isVisible():  # Comprueba que la ventana realmente esté mostrada antes de forzar su tamaño.
+            QTimer.singleShot(0, self.showMaximized)  # Devuelve inmediatamente cualquier intento de restauración al estado maximizado.
+
+    def _restaurar_animado(self) -> None:  # Recupera TecNet Finder desde la barra de tareas con una aparición progresiva.
+        self.showMaximized()  # Garantiza que la aplicación regrese directamente al único tamaño normal permitido.
+        self.setWindowOpacity(0.55)  # Comienza la restauración parcialmente transparente.
+
+        def finalizar_restauracion() -> None:  # Finaliza la transición después de recuperar completamente la ventana.
+            self.setWindowOpacity(1.0)  # Garantiza que TecNet Finder quede completamente visible.
+            self.transicion_ventana_activa = False  # Libera los controles para nuevas acciones.
+
+        self._animar_opacidad(0.55, 1.0, 180, finalizar_restauracion)  # Hace aparecer progresivamente la ventana restaurada.
+
+    def _analizar_codigo(self) -> None:  # Obtiene la entrada y ejecuta el flujo actual de TecNet Finder.
+        codigo_fuente = self.editor_codigo.toPlainText()  # Recupera exactamente lo escrito por el usuario.
+
+        if not codigo_fuente.strip():  # Comprueba que la entrada contenga información real.
+            QMessageBox.warning(self, "Entrada vacía", "Introduce una instrucción de TecNet Finder antes de compilar.")  # Informa el problema sin ejecutar el flujo.
+            return  # Finaliza la acción actual.
+
+        try:  # Protege la interfaz frente a una excepción interna todavía no representada mediante Diagnostico.
+            resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta léxico, sintáctico y cálculo VLSM mediante Motor.
+        except Exception as error:  # Captura únicamente fallos inesperados del propio programa.
+            QMessageBox.critical(self, "Error interno", f"No se pudo completar el análisis:\n{error}")  # Muestra el problema sin cerrar TecNet Finder.
+            return  # Mantiene disponible la aplicación para poder corregir o investigar el problema.
+
+        self.ultimo_resultado = resultado  # Conserva el resultado global más reciente.
+        self.panel_diagnosticos.mostrar_diagnosticos(resultado.diagnosticos)  # Actualiza primero el registro estructurado de errores.
+        self.panel_resultados.mostrar_resultado(resultado)  # Actualiza resumen, tablas y vistas sintácticas.
+        self._actualizar_estado(resultado)  # Actualiza la barra superior de estado.
+
+    def _actualizar_estado(self, resultado) -> None:  # Cambia el mensaje general según el resultado obtenido.
+        cantidad_errores = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad == "error")  # Cuenta únicamente diagnósticos clasificados como error.
+        cantidad_subredes = len(resultado.subredes_vlsm)  # Obtiene la cantidad de subredes que sí pudieron calcularse.
+
+        if cantidad_errores > 0:  # Comprueba si la compilación produjo algún error.
+            self.etiqueta_estado.setObjectName("EstadoError")  # Aplica el estilo correspondiente al resultado incorrecto.
+            self.etiqueta_estado.setText(f"Análisis terminado con errores: {cantidad_errores} error(es) | Subredes generadas: {cantidad_subredes}")  # Resume el resultado obtenido.
+        else:  # Se ejecuta cuando no existen errores en las fases actuales.
+            self.etiqueta_estado.setObjectName("EstadoCorrecto")  # Aplica el estilo positivo.
+            self.etiqueta_estado.setText(f"Análisis completo | Bloques válidos: {len(resultado.bloques_validos)} | Subredes generadas: {cantidad_subredes}")  # Resume los principales datos correctos.
+
+        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el formato anterior.
+        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente la hoja de estilos.
+        self.etiqueta_estado.update()  # Solicita el redibujado inmediato del estado.
+
+    def _ir_a_diagnostico(self, diagnostico) -> None:  # Permite navegar al código desde una fila de error.
+        self.editor_codigo.ir_a_posicion(diagnostico.linea, diagnostico.columna, diagnostico.longitud)  # Utiliza directamente los datos estructurados del diagnóstico.
+
+    def _limpiar_todo(self) -> None:  # Restaura entrada y salidas sin modificar el estado de la ventana.
+        self.editor_codigo.clear()  # Elimina completamente el código fuente.
+        self.panel_diagnosticos.limpiar()  # Elimina los diagnósticos anteriores.
+        self.panel_resultados.limpiar()  # Restaura resumen, tablas y sintaxis.
+        self.ultimo_resultado = None  # Descarta el resultado de la compilación anterior.
+
+        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Recupera el estilo inicial de la barra de estado.
+        self.etiqueta_estado.setText("Sin análisis ejecutado.")  # Recupera el mensaje mostrado antes de compilar.
+        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el estilo anterior.
+        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente el estilo neutral.
+        self.etiqueta_estado.update()  # Redibuja inmediatamente el mensaje.
+        self.editor_codigo.setFocus()  # Devuelve el cursor al editor para comenzar otra entrada.
+
+    def closeEvent(self, evento) -> None:  # Intercepta el cierre para reproducir una animación antes de destruir la ventana.
+        if self.cierre_autorizado:  # Comprueba si la animación de cierre ya terminó anteriormente.
+            evento.accept()  # Permite que Qt cierre definitivamente TecNet Finder.
+            return  # Evita comenzar otra animación durante el cierre final.
+
+        evento.ignore()  # Detiene temporalmente el cierre solicitado para poder animarlo primero.
+
+        if self.transicion_ventana_activa:  # Comprueba si ya existe otra transición ejecutándose.
+            return  # Evita iniciar dos animaciones simultáneamente.
+
+        self.transicion_ventana_activa = True  # Bloquea los controles durante los últimos milisegundos de la aplicación.
+
+        def finalizar_cierre() -> None:  # Ejecuta el cierre definitivo una vez terminado el desvanecimiento.
+            self.cierre_autorizado = True  # Indica que la siguiente solicitud de cierre ya puede aceptarse.
+            self.close()  # Solicita nuevamente el cierre, que ahora pasará directamente por closeEvent.
+
+        self._animar_opacidad(1.0, 0.0, 160, finalizar_cierre)  # Desvanece progresivamente la aplicación antes de cerrarla.
