@@ -12,8 +12,10 @@
 # guardar individualmente cada árbol gráfico como imagen PNG.
 # ============================================================
 
-from PySide6.QtCore import QRectF, Qt  # Importa geometría y opciones necesarias para organizar la escena gráfica.
-from PySide6.QtGui import QBrush, QColor, QFont, QFontMetrics, QImage, QPainter, QPen  # Importa herramientas de dibujo, fuentes e imágenes.
+from pathlib import Path  # Importa Path para localizar los recursos gráficos del proyecto.
+
+from PySide6.QtCore import QRectF, QSize, Qt  # Importa geometría, tamaños y opciones necesarias para organizar la escena gráfica.
+from PySide6.QtGui import QBrush, QColor, QFont, QFontMetrics, QIcon, QImage, QPainter, QPen  # Importa herramientas de dibujo, fuentes, iconos e imágenes.
 from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QGraphicsView, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget  # Importa componentes utilizados por el visor.
 
 from Motor.modelos import NodoSintactico  # Importa la estructura generada directamente por el analizador sintáctico.
@@ -47,6 +49,7 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
     def __init__(self, padre=None):  # Inicializa las dos formas de visualizar la información sintáctica.
         super().__init__(padre)  # Inicializa el QWidget utilizado como contenedor general.
         self.escenas: list[QGraphicsScene] = []  # Conserva las escenas actuales para poder exportarlas posteriormente.
+        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
 
         diseno = QVBoxLayout(self)  # Organiza el conjunto interno de pestañas dentro del visor.
         diseno.setContentsMargins(0, 0, 0, 0)  # Permite aprovechar completamente el espacio disponible.
@@ -69,8 +72,8 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         self.pestanas_arboles = QTabWidget()  # Permite mostrar independientemente cada bloque sintácticamente válido.
         diseno_grafico.addWidget(self.pestanas_arboles, 1)  # Permite que las vistas gráficas ocupen la mayor parte del espacio.
 
-        self.pestanas_vista.addTab(self.texto_arbol, "Representación textual")  # Agrega la forma textual ya existente en el proyecto.
-        self.pestanas_vista.addTab(self.contenedor_grafico, "Árbol gráfico")  # Agrega la nueva representación visual recuperada.
+        self.pestanas_vista.addTab(self.texto_arbol, "Representación textual")  # Agrega la forma textual ya existente.
+        self.pestanas_vista.addTab(self.contenedor_grafico, "Árbol gráfico")  # Agrega la representación gráfica.
 
         self.limpiar()  # Inicializa ambos formatos en estado vacío.
 
@@ -101,8 +104,10 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
     def _mostrar_estado_vacio(self) -> None:  # Crea una pestaña neutral cuando todavía no existe ningún árbol.
         contenedor = QWidget()  # Crea un contenedor simple para mostrar el mensaje inicial.
         diseno = QVBoxLayout(contenedor)  # Organiza el mensaje dentro de la pestaña.
+
         etiqueta = QLabel("No hay árboles sintácticos válidos para mostrar.")  # Explica por qué no aparece ninguna estructura gráfica.
         etiqueta.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra el mensaje dentro del espacio disponible.
+
         diseno.addWidget(etiqueta)  # Coloca el mensaje ocupando la pestaña.
         self.pestanas_arboles.addTab(contenedor, "Sin árbol")  # Agrega una única pestaña neutral.
 
@@ -114,8 +119,15 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         acciones = QHBoxLayout()  # Crea una fila dedicada a las acciones disponibles sobre el árbol.
         acciones.addStretch()  # Empuja el botón de guardado hacia el extremo derecho.
 
-        boton_guardar = QPushButton("💾 Guardar PNG")  # Crea la acción que permite exportar el árbol actual como imagen.
+        boton_guardar = QPushButton("Guardar PNG")  # Crea la acción utilizada para exportar el árbol actual.
         boton_guardar.setToolTip("Guardar este árbol sintáctico como imagen PNG")  # Explica brevemente la finalidad del botón.
+        boton_guardar.setIconSize(QSize(18, 18))  # Reduce el PNG original a un tamaño adecuado para el botón.
+
+        ruta_guardar = self.ruta_iconos / "Guardar.png"  # Obtiene la ubicación exacta del icono de guardado.
+
+        if ruta_guardar.exists():  # Comprueba que el recurso haya sido colocado correctamente.
+            boton_guardar.setIcon(QIcon(str(ruta_guardar)))  # Coloca el icono junto al texto del botón.
+
         acciones.addWidget(boton_guardar)  # Coloca el botón dentro de la zona superior.
         diseno.addLayout(acciones)  # Agrega las acciones antes de la escena gráfica.
 
@@ -130,7 +142,7 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         escena.setSceneRect(limites)  # Define la región completa que podrá recorrerse mediante scroll.
 
         vista = VistaArbol(escena)  # Crea el componente interactivo que mostrará la escena construida.
-        vista.setMinimumWidth(int(min(ancho_total + self.MARGEN_ESCENA * 2, 900)))  # Conserva una anchura razonable sin forzar el tamaño de la ventana.
+        vista.setMinimumWidth(int(min(ancho_total + self.MARGEN_ESCENA * 2, 900)))  # Conserva una anchura razonable sin forzar la ventana.
         diseno.addWidget(vista, 1)  # Permite que el árbol ocupe todo el espacio restante.
 
         nombre = self._nombre_arbol(arbol, indice)  # Obtiene una etiqueta legible para identificar la pestaña.
@@ -148,6 +160,7 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         metricas = QFontMetrics(fuente)  # Obtiene las medidas reales de la fuente utilizada.
         lineas = self._texto_nodo(nodo).splitlines()  # Separa etiqueta y valor cuando ocupan más de una línea.
         ancho_texto = max(metricas.horizontalAdvance(linea) for linea in lineas) if lineas else 0  # Obtiene la línea visible más ancha.
+
         return max(self.ANCHO_MINIMO_NODO, float(ancho_texto + 34))  # Agrega espacio interior y conserva el mínimo establecido.
 
     def _ancho_subarbol(self, nodo: NodoSintactico) -> float:  # Calcula recursivamente cuánto ancho debe reservarse para cada rama.
@@ -161,7 +174,14 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
 
         return max(ancho_propio, ancho_hijos)  # Garantiza que tanto padre como descendientes quepan dentro del espacio reservado.
 
-    def _dibujar_nodo(self, escena: QGraphicsScene, nodo: NodoSintactico, izquierda: float, superior: float, es_raiz: bool = False) -> float:  # Dibuja recursivamente un nodo y todos sus descendientes.
+    def _dibujar_nodo(
+        self,
+        escena: QGraphicsScene,
+        nodo: NodoSintactico,
+        izquierda: float,
+        superior: float,
+        es_raiz: bool = False,
+    ) -> float:  # Dibuja recursivamente un nodo y todos sus descendientes.
         ancho_subarbol = self._ancho_subarbol(nodo)  # Obtiene el espacio reservado para toda la rama actual.
         centro_x = izquierda + ancho_subarbol / 2.0  # Calcula el centro horizontal donde se colocará el nodo padre.
         ancho_nodo = self._ancho_nodo(nodo)  # Obtiene el ancho concreto de la elipse actual.
@@ -192,6 +212,7 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
 
         fuente = QFont("Consolas", 9)  # Utiliza la misma fuente empleada para calcular dimensiones.
         fuente.setBold(bool(nodo.hijos or es_raiz))  # Destaca nodos estructurales y raíz frente a hojas simples.
+
         texto = escena.addText(self._texto_nodo(nodo), fuente)  # Crea el contenido textual colocado encima de la elipse.
         texto.setDefaultTextColor(QColor("#cdd6f4"))  # Utiliza el color principal de texto de la interfaz.
 
@@ -210,7 +231,12 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         return f"Árbol {indice}"  # Usa una numeración estable cuando la raíz no incluye un nombre explícito.
 
     def _guardar_png(self, escena: QGraphicsScene, nombre: str) -> None:  # Exporta una escena completa sin depender de la región actualmente visible.
-        ruta, _filtro = QFileDialog.getSaveFileName(self, "Guardar árbol sintáctico", f"Arbol_{nombre}.png", "Imagen PNG (*.png)")  # Solicita al usuario la ubicación final del archivo.
+        ruta, _filtro = QFileDialog.getSaveFileName(  # Solicita al usuario la ubicación final del archivo.
+            self,
+            "Guardar árbol sintáctico",
+            f"Arbol_{nombre}.png",
+            "Imagen PNG (*.png)",
+        )
 
         if not ruta:  # Comprueba si el usuario canceló el cuadro de guardado.
             return  # Finaliza sin crear ningún archivo.

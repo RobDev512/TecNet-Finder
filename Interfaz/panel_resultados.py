@@ -16,12 +16,14 @@
 # ============================================================
 
 from collections import Counter  # Importa Counter para calcular cuántas veces aparece cada palabra reservada.
+from pathlib import Path  # Importa Path para localizar los iconos utilizados por los botones.
 
-from PySide6.QtCore import Qt  # Importa las opciones de alineación utilizadas por las tarjetas del resumen.
+from PySide6.QtCore import QSize, Qt  # Importa tamaños y opciones de alineación utilizadas por los componentes.
+from PySide6.QtGui import QIcon  # Importa la clase utilizada para cargar iconos PNG.
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Importa los componentes utilizados para organizar resultados y pestañas.
 
-from Motor.modelos import ResultadoCompilacion  # Importa el resultado global producido por el flujo actual.
 from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Importa el visor encargado de representar textual y gráficamente los árboles sintácticos.
+from Motor.modelos import ResultadoCompilacion  # Importa el resultado global producido por el flujo actual.
 
 
 class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder utilizando la distribución general del proyecto original.
@@ -32,6 +34,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.accion_analizar = accion_analizar  # Conserva la función que ejecutará el flujo de compilación.
         self.accion_limpiar = accion_limpiar  # Conserva la función que restaurará la interfaz.
         self.tarjetas_resumen = {}  # Guarda las etiquetas numéricas utilizadas por el resumen visual.
+        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
 
         self._construir_entrada_salida()  # Crea la primera pestaña con editor y salidas principales.
         self._construir_tablas()  # Crea las tablas internas de tokens y palabras reservadas.
@@ -42,6 +45,13 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.addTab(self.tab_tablas, "Tablas")  # Agrega las tablas internas del análisis.
         self.addTab(self.tab_sintaxis, "Sintaxis")  # Agrega la información producida por el parser.
         self.addTab(self.tab_fases_posteriores, "Fases posteriores")  # Agrega el espacio reservado para las siguientes unidades.
+
+    def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str, tamano: int = 18) -> None:  # Coloca un icono PNG sobre un botón cuando el recurso existe.
+        ruta = self.ruta_iconos / nombre_archivo  # Construye la ubicación exacta del archivo solicitado.
+
+        if ruta.exists():  # Comprueba que el PNG haya sido colocado correctamente.
+            boton.setIcon(QIcon(str(ruta)))  # Carga el recurso y lo asigna al botón recibido.
+            boton.setIconSize(QSize(tamano, tamano))  # Reduce la imagen original al tamaño requerido por la interfaz.
 
     def _construir_entrada_salida(self) -> None:  # Construye el equivalente a la pestaña principal Entrada / Salida de la versión anterior.
         self.tab_entrada_salida = QWidget()  # Crea el contenedor de la primera pestaña principal.
@@ -59,12 +69,15 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         diseno_entrada.addWidget(self.editor_codigo, 1)  # Inserta el editor ocupando la mayor parte del panel.
 
         botones = QHBoxLayout()  # Crea una fila para las acciones principales.
-        boton_analizar = QPushButton("▶ Compilar")  # Recupera el nombre utilizado en el TecNet Finder anterior.
+
+        boton_analizar = QPushButton("Compilar")  # Crea la acción principal utilizando únicamente texto e icono gráfico.
         boton_analizar.setObjectName("BotonPrincipal")  # Destaca visualmente la acción principal.
         boton_analizar.setShortcut("Ctrl+Return")  # Permite compilar rápidamente desde el teclado.
+        self._aplicar_icono(boton_analizar, "Compilar.png")  # Coloca el icono correspondiente al botón principal.
         boton_analizar.clicked.connect(self.accion_analizar)  # Ejecuta el flujo cuando el usuario pulsa el botón.
 
         boton_limpiar = QPushButton("Limpiar")  # Crea la acción encargada de restaurar entrada y resultados.
+        self._aplicar_icono(boton_limpiar, "Limpiar.png")  # Coloca el icono correspondiente a la acción de limpieza.
         boton_limpiar.clicked.connect(self.accion_limpiar)  # Conecta el botón con la función proporcionada por la ventana.
 
         botones.addWidget(boton_analizar)  # Coloca primero la acción principal.
@@ -163,7 +176,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         diseno.addLayout(cuadricula, 1)  # Hace que las tarjetas utilicen todo el espacio sobrante en lugar de dejarlo vacío.
 
         return contenedor  # Devuelve la vista de resumen completamente construida.
-    
+
     def _construir_tablas(self) -> None:  # Construye la pestaña principal destinada a las tablas internas.
         self.tab_tablas = QWidget()  # Crea el contenedor principal de tablas.
         diseno = QVBoxLayout(self.tab_tablas)  # Organiza un notebook secundario dentro de la pestaña.
