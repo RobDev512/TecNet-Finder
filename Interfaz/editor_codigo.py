@@ -41,7 +41,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.cursorPositionChanged.connect(self.resaltar_linea_actual)  # Actualiza el fondo de la línea donde se encuentra el cursor.
         self.actualizar_ancho_area_numeros_linea()  # Reserva inicialmente el espacio necesario para los números.
         self.resaltar_linea_actual()  # Aplica el resaltado inicial de la línea activa.
-        self.setPlaceholderText("Ejemplo:IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina")  # Muestra una instrucción de referencia mientras el editor está vacío.
+        self.setPlaceholderText("IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina")  # Muestra una instrucción de referencia mientras el editor está vacío.
 
     def ancho_area_numeros_linea(self) -> int:  # Calcula dinámicamente cuánto ancho requieren los números de línea.
         digitos = len(str(max(1, self.blockCount())))  # Obtiene cuántos dígitos necesita representar el número de línea más grande.
