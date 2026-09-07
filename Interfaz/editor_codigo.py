@@ -8,19 +8,21 @@
 # el código fuente de TecNet Finder.
 #
 # Extiende QPlainTextEdit para agregar números de línea,
-# resaltado de la línea actual, navegación hacia posiciones
-# específicas, un botón flotante fijo para pegar contenido y
+# resaltado de la línea actual, navegación hacia posiciones,
+# acciones flotantes para pegar y abrir ejemplos, además de
 # diagnósticos visuales mediante ondas y tooltips.
 # ============================================================
 
 from pathlib import Path  # Importa Path para localizar los recursos gráficos utilizados por el editor.
 from textwrap import fill  # Importa una utilidad para dividir textos largos dentro de los tooltips.
 
-from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer  # Importa eventos, posiciones, geometría, tamaños, temporización y opciones generales.
+from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer, Signal  # Importa eventos, geometría, temporización, señales y opciones generales.
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QTextCursor, QTextFormat  # Importa herramientas de dibujo, iconos y manipulación del texto.
-from PySide6.QtWidgets import QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, botones, selecciones adicionales y tooltips.
+from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, diálogos, botones, selecciones adicionales y tooltips.
 
+from Interfaz.selector_ejemplos import SelectorEjemplos  # Importa la ventana especializada utilizada para consultar casos válidos e inválidos.
 from Motor.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
+from Motor.gestor_ejemplos import GestorEjemplos  # Importa el componente encargado de leer e interpretar los archivos de ejemplos.
 
 
 class AreaNumerosLinea(QWidget):  # Define el pequeño widget colocado a la izquierda del editor para dibujar números.
@@ -36,6 +38,8 @@ class AreaNumerosLinea(QWidget):  # Define el pequeño widget colocado a la izqu
 
 
 class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado para escribir instrucciones TecNet Finder.
+    ejemplos_insertados = Signal()  # Informa a la ventana principal que debe descartar resultados asociados con una entrada anterior.
+
     AMPLITUD_ONDA = 2.0  # Define qué tan altas serán las curvas de los diagnósticos.
     LONGITUD_ONDA = 5.0  # Define la distancia horizontal ocupada por cada ondulación completa.
     GROSOR_ONDA = 2.0  # Define el grosor visual utilizado para que las ondas resulten claramente visibles.
@@ -45,16 +49,18 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         super().__init__(padre)  # Inicializa el QPlainTextEdit original.
         self.diagnosticos: list[Diagnostico] = []  # Conserva los diagnósticos relacionados con la compilación actual.
         self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
+        self.gestor_ejemplos = GestorEjemplos()  # Prepara el lector reutilizable de casos almacenados en Ejemplos.
         self.area_numeros_linea = AreaNumerosLinea(self)  # Crea el área lateral donde se dibujarán los números.
-        self.boton_pegar = QPushButton(self)  # Crea el botón como hijo del editor completo para impedir que se desplace con el contenido.
+        self.boton_pegar = QPushButton(self)  # Crea el botón de pegado como hijo fijo del editor completo.
+        self.boton_ejemplos = QPushButton(self)  # Crea el segundo botón flotante destinado al selector de ejemplos.
 
-        self._configurar_boton_pegar()  # Prepara tamaño, icono, tooltip y acción del botón flotante.
+        self._configurar_botones_flotantes()  # Prepara ambos controles pequeños mediante los recursos existentes.
 
         self.blockCountChanged.connect(self.actualizar_ancho_area_numeros_linea)  # Recalcula el margen cuando cambia la cantidad de líneas.
         self.updateRequest.connect(self.actualizar_area_numeros_linea)  # Mantiene sincronizada el área lateral durante desplazamientos.
         self.cursorPositionChanged.connect(self.resaltar_linea_actual)  # Actualiza el fondo de la línea cuando se mueve el cursor.
         self.textChanged.connect(self.limpiar_diagnosticos)  # Elimina diagnósticos antiguos cuando el código se modifica.
-        self.verticalScrollBar().rangeChanged.connect(self._posicionar_boton_pegar)  # Reposiciona el botón únicamente cuando cambia la disponibilidad de desplazamiento.
+        self.verticalScrollBar().rangeChanged.connect(self._posicionar_botones_flotantes)  # Reajusta ambos botones cuando aparece o desaparece la scrollbar.
 
         self.viewport().installEventFilter(self)  # Permite detectar tooltips y cambios geométricos dentro del área visible.
         self.viewport().setMouseTracking(True)  # Mantiene disponible la posición del mouse sobre el código.
@@ -63,41 +69,116 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.resaltar_linea_actual()  # Aplica el resaltado inicial de la línea activa.
         self.setPlaceholderText("IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina")  # Muestra una instrucción de referencia mientras el editor está vacío.
 
-        QTimer.singleShot(0, self._posicionar_boton_pegar)  # Coloca el control cuando Qt ya conoce las dimensiones reales del editor.
+        QTimer.singleShot(0, self._posicionar_botones_flotantes)  # Coloca los controles cuando Qt ya conoce las dimensiones reales del editor.
 
-    def _configurar_boton_pegar(self) -> None:  # Configura la apariencia y funcionamiento del botón flotante del portapapeles.
-        self.boton_pegar.setObjectName("BotonFlotanteEditor")  # Asigna un identificador propio al control flotante.
-        self.boton_pegar.setText("")  # Evita mostrar cualquier palabra junto al icono.
-        self.boton_pegar.setFixedSize(32, 32)  # Mantiene el control completamente cuadrado.
-        self.boton_pegar.setIconSize(QSize(18, 18))  # Reduce el PNG a un tamaño apropiado dentro del botón.
-        self.boton_pegar.setToolTip("Pegar comando desde el portapapeles")  # Explica la función al colocar el cursor encima.
-        self.boton_pegar.setAccessibleName("Pegar")  # Mantiene una descripción accesible aunque visualmente no tenga texto.
-        self.boton_pegar.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita quitar innecesariamente el foco de escritura al editor.
-        self.boton_pegar.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica visualmente que se trata de un control interactivo.
-        self.boton_pegar.setStyleSheet("padding: 0px;")  # Evita que el padding general reduzca innecesariamente el espacio del icono.
+    def _configurar_botones_flotantes(self) -> None:  # Configura las dos acciones pequeñas superpuestas al área de entrada.
+        self._configurar_boton_flotante(self.boton_pegar, "Pegar.png", "Pegar comando desde el portapapeles")  # Prepara el primer control utilizando el icono de pegado.
+        self._configurar_boton_flotante(self.boton_ejemplos, "Ejemplos.png", "Abrir selector de ejemplos")  # Prepara el segundo control utilizando el recurso de ejemplos.
 
-        ruta_icono = self.ruta_iconos / "Pegar.png"  # Construye la ubicación exacta del icono preparado para esta acción.
+        self.boton_pegar.clicked.connect(self._pegar_desde_portapapeles)  # Inserta contenido del sistema mediante el primer botón.
+        self.boton_ejemplos.clicked.connect(self._abrir_selector_ejemplos)  # Abre la herramienta heredada mediante el segundo botón.
 
-        if ruta_icono.exists():  # Comprueba que el recurso gráfico esté disponible.
-            self.boton_pegar.setIcon(QIcon(str(ruta_icono)))  # Coloca exclusivamente la imagen dentro del botón.
+    def _configurar_boton_flotante(self, boton: QPushButton, nombre_icono: str, ayuda: str) -> None:  # Aplica una configuración uniforme a los controles flotantes.
+        boton.setObjectName("BotonFlotanteEditor")  # Permite identificarlos como controles propios del editor.
+        boton.setText("")  # Impide mostrar palabras dentro del botón cuadrado.
+        boton.setFixedSize(32, 32)  # Mantiene exactamente las mismas dimensiones para ambas acciones.
+        boton.setIconSize(QSize(18, 18))  # Reduce los PNG originales a una dimensión apropiada para la interfaz.
+        boton.setToolTip(ayuda)  # Explica la acción únicamente cuando el usuario deja el cursor encima.
+        boton.setAccessibleName(ayuda)  # Conserva una descripción textual aunque el control no muestre letras.
+        boton.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita retirar permanentemente el foco del área de edición.
+        boton.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que el elemento puede pulsarse.
+        boton.setStyleSheet("padding: 0px;")  # Evita que el padding general reduzca innecesariamente el icono.
 
-        self.boton_pegar.clicked.connect(self._pegar_desde_portapapeles)  # Inserta el contenido disponible cuando el usuario pulsa el control.
-        self.boton_pegar.show()  # Garantiza que el botón esté visible.
-        self.boton_pegar.raise_()  # Mantiene el botón por encima del viewport y demás hijos internos del editor.
+        ruta_icono = self.ruta_iconos / nombre_icono  # Construye la ubicación exacta del PNG solicitado.
 
-    def _posicionar_boton_pegar(self, *_argumentos) -> None:  # Mantiene el botón fijo en la esquina superior derecha del área visible.
-        geometria_viewport = self.viewport().geometry()  # Obtiene la región real donde se muestra el texto, excluyendo automáticamente las scrollbars.
-        margen = 6  # Conserva una pequeña separación respecto a los bordes internos.
-        x = geometria_viewport.right() - self.boton_pegar.width() - margen + 1  # Coloca el botón inmediatamente antes del límite derecho del viewport.
-        y = geometria_viewport.top() + margen  # Mantiene permanentemente el botón en la parte superior de la región visible.
-        self.boton_pegar.move(max(x, 0), max(y, 0))  # Aplica la posición fija evitando coordenadas negativas.
-        self.boton_pegar.raise_()  # Garantiza que otros componentes internos de QPlainTextEdit no lo cubran.
+        if ruta_icono.exists():  # Comprueba que el recurso realmente se encuentre disponible.
+            boton.setIcon(QIcon(str(ruta_icono)))  # Coloca la imagen correspondiente dentro del control.
+
+        boton.show()  # Garantiza que el botón se encuentre visible sobre el editor.
+        boton.raise_()  # Mantiene el control por encima de los componentes internos de QPlainTextEdit.
+
+    def _posicionar_botones_flotantes(self, *_argumentos) -> None:  # Mantiene ambos controles fijos junto al extremo superior derecho del viewport.
+        geometria_viewport = self.viewport().geometry()  # Obtiene la región de texto excluyendo automáticamente la scrollbar.
+        margen = 6  # Mantiene una pequeña separación respecto a los bordes internos.
+        separacion = 6  # Define el espacio vertical entre Pegar y Ejemplos.
+        x = geometria_viewport.right() - self.boton_pegar.width() - margen + 1  # Calcula una única posición horizontal justo antes del límite del área visible.
+        y_pegar = geometria_viewport.top() + margen  # Coloca Pegar como primera acción en la esquina superior.
+        y_ejemplos = y_pegar + self.boton_pegar.height() + separacion  # Coloca Ejemplos inmediatamente debajo manteniendo el mismo eje vertical.
+
+        self.boton_pegar.move(max(x, 0), max(y_pegar, 0))  # Aplica la posición fija correspondiente al primer control.
+        self.boton_ejemplos.move(max(x, 0), max(y_ejemplos, 0))  # Aplica la posición fija correspondiente al segundo control.
+        self.boton_pegar.raise_()  # Mantiene Pegar por encima del resto de los hijos del editor.
+        self.boton_ejemplos.raise_()  # Mantiene también Ejemplos completamente visible.
 
     def _pegar_desde_portapapeles(self) -> None:  # Inserta el contenido del portapapeles utilizando el comportamiento convencional de Qt.
         if self.canPaste():  # Comprueba si existe contenido compatible con el editor.
             self.paste()  # Inserta el texto en la posición actual o sustituye cualquier selección existente.
 
         self.setFocus()  # Devuelve inmediatamente el foco al editor para continuar escribiendo.
+
+    def _abrir_selector_ejemplos(self) -> None:  # Carga los archivos disponibles y abre el selector gráfico de casos.
+        ejemplos_validos, ejemplos_invalidos = self.gestor_ejemplos.cargar_ejemplos()  # Recupera ambas categorías mediante el componente independiente de Motor.
+
+        if not ejemplos_validos and not ejemplos_invalidos:  # Comprueba si ninguno de los archivos produjo casos utilizables.
+            QMessageBox.warning(self, "Ejemplos", "No se encontraron ejemplos dentro de la carpeta Ejemplos.")  # Informa el problema sin modificar el editor.
+            return  # Finaliza porque el selector no tendría contenido que mostrar.
+
+        selector = SelectorEjemplos(ejemplos_validos, ejemplos_invalidos, self.window())  # Crea la ventana modal utilizando la aplicación principal como propietaria.
+
+        if selector.exec() != QDialog.DialogCode.Accepted:  # Comprueba si el usuario cerró o canceló la ventana.
+            self.setFocus()  # Devuelve el foco al editor después de abandonar el selector.
+            return  # Evita realizar cualquier cambio sobre la entrada.
+
+        texto_ejemplos = selector.obtener_texto_seleccionado()  # Recupera únicamente los comandos correspondientes a las casillas marcadas.
+
+        if not texto_ejemplos:  # Mantiene una última protección frente a una selección vacía.
+            self.setFocus()  # Conserva el comportamiento normal del editor.
+            return  # Evita sustituir accidentalmente el código por una cadena vacía.
+
+        modo = self._consultar_modo_insercion()  # Determina si debe reemplazarse la entrada actual o agregarse el contenido al final.
+
+        if modo is None:  # Comprueba si el usuario canceló la decisión después de seleccionar los ejemplos.
+            self.setFocus()  # Regresa al editor sin realizar ninguna modificación.
+            return  # Conserva intacto todo el contenido anterior.
+
+        if modo == "reemplazar":  # Comprueba si se eligió sustituir completamente la entrada.
+            self.setPlainText(texto_ejemplos)  # Coloca únicamente los ejemplos seleccionados.
+        else:  # Se ejecuta cuando debe conservarse también el código que ya estaba escrito.
+            texto_actual = self.toPlainText().rstrip()  # Elimina únicamente saltos sobrantes del final del contenido existente.
+            texto_completo = f"{texto_actual}\n{texto_ejemplos}" if texto_actual else texto_ejemplos  # Separa ambas partes mediante un único salto de línea.
+            self.setPlainText(texto_completo)  # Actualiza el documento con el contenido combinado.
+
+        cursor = self.textCursor()  # Obtiene el cursor después de actualizar el documento.
+        cursor.movePosition(QTextCursor.MoveOperation.End)  # Lleva la posición de escritura al final de los ejemplos insertados.
+        self.setTextCursor(cursor)  # Convierte la nueva posición en el cursor visible.
+        self.ejemplos_insertados.emit()  # Solicita a la ventana limpiar cualquier resultado correspondiente a una entrada anterior.
+        self.setFocus()  # Devuelve el foco para permitir editar o compilar inmediatamente.
+
+    def _consultar_modo_insercion(self) -> str | None:  # Pregunta qué hacer solamente cuando el editor ya contiene código.
+        if not self.toPlainText().strip():  # Comprueba si todavía no existe una entrada escrita.
+            return "reemplazar"  # Inserta directamente porque no hay información que pueda perderse.
+
+        mensaje = QMessageBox(self)  # Crea una pregunta personalizada con nombres más claros que Sí y No.
+        mensaje.setWindowTitle("Insertar ejemplos")  # Identifica la operación que requiere confirmación.
+        mensaje.setText("Ya hay texto en la entrada.\n\nElige si deseas reemplazarlo o agregar los ejemplos al final.")  # Explica las dos posibilidades disponibles.
+
+        boton_reemplazar = mensaje.addButton("Reemplazar", QMessageBox.ButtonRole.AcceptRole)  # Crea la acción que descarta la entrada anterior.
+        boton_agregar = mensaje.addButton("Agregar al final", QMessageBox.ButtonRole.ActionRole)  # Crea la acción que conserva el código existente.
+        boton_cancelar = mensaje.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)  # Permite abandonar la operación sin realizar cambios.
+
+        mensaje.exec()  # Muestra la pregunta y espera una respuesta explícita.
+        boton_pulsado = mensaje.clickedButton()  # Obtiene exactamente la acción seleccionada por el usuario.
+
+        if boton_pulsado is boton_reemplazar:  # Comprueba si debe sustituirse todo el contenido.
+            return "reemplazar"  # Informa al método anterior que utilice únicamente los ejemplos.
+
+        if boton_pulsado is boton_agregar:  # Comprueba si deben conservarse también las instrucciones actuales.
+            return "agregar"  # Informa que los nuevos comandos deben colocarse al final.
+
+        if boton_pulsado is boton_cancelar:  # Comprueba si se pulsó explícitamente la acción de cancelación.
+            return None  # Indica que no debe realizarse ningún cambio.
+
+        return None  # Trata cualquier cierre alternativo de la ventana como una cancelación segura.
 
     def ancho_area_numeros_linea(self) -> int:  # Calcula dinámicamente cuánto ancho requieren los números de línea.
         digitos = len(str(max(1, self.blockCount())))  # Obtiene cuántos dígitos necesita representar el número de línea más grande.
@@ -120,7 +201,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         rectangulo = self.contentsRect()  # Obtiene la región interior disponible del editor.
         ancho = self.ancho_area_numeros_linea()  # Calcula el ancho requerido actualmente por los números.
         self.area_numeros_linea.setGeometry(QRect(rectangulo.left(), rectangulo.top(), ancho, rectangulo.height()))  # Coloca el área lateral ocupando toda la altura.
-        self._posicionar_boton_pegar()  # Mantiene el botón en la esquina correcta cuando cambia el tamaño del editor.
+        self._posicionar_botones_flotantes()  # Mantiene ambos controles en la esquina correcta cuando cambia el tamaño.
 
     def paintEvent(self, evento) -> None:  # Dibuja primero el editor normal y después agrega las ondas de diagnóstico.
         super().paintEvent(evento)  # Permite que Qt dibuje texto, selección, resaltado y demás contenido habitual.
@@ -273,7 +354,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         if diagnostico.categoria == "Sintáctico":  # Comprueba si el error pertenece al analizador sintáctico.
             return QColor("#fab387")  # Utiliza naranja para errores sintácticos.
 
-        if diagnostico.categoria == "Semántico":  # Reserva el color utilizado durante la Unidad 1 de LyA II.
+        if diagnostico.categoria == "Semántico":  # Reserva el color utilizado durante la Unidad 1 de LyAII.
             return QColor("#cba6f7")  # Utiliza violeta para futuros errores semánticos.
 
         return QColor("#f38ba8")  # Utiliza rojo como color de respaldo para otros errores.
@@ -309,9 +390,9 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
 
         return "\n\n────────────────────────\n\n".join(bloques)  # Separa claramente varios diagnósticos coincidentes.
 
-    def eventFilter(self, objeto, evento):  # Intercepta eventos del área visible para mantener el botón fijo y mostrar información contextual.
+    def eventFilter(self, objeto, evento):  # Intercepta eventos del área visible para mantener los controles fijos y mostrar información contextual.
         if objeto is self.viewport() and evento.type() == QEvent.Type.Resize:  # Detecta cambios de geometría causados por tamaño o scrollbars.
-            QTimer.singleShot(0, self._posicionar_boton_pegar)  # Recalcula la esquina cuando Qt termina de reajustar sus componentes internos.
+            QTimer.singleShot(0, self._posicionar_botones_flotantes)  # Recalcula ambas posiciones cuando Qt termina de reajustar sus componentes internos.
 
         if objeto is self.viewport() and evento.type() == QEvent.Type.ToolTip:  # Comprueba si Qt solicita un tooltip dentro del código fuente.
             cursor = self.cursorForPosition(evento.pos())  # Obtiene la posición textual situada debajo del puntero.

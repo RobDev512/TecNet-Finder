@@ -21,7 +21,7 @@ from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut  # Importa ico
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QMessageBox, QVBoxLayout, QWidget  # Importa los componentes principales utilizados por la ventana.
 
 from Interfaz.barra_titulo import BarraTitulo  # Importa la barra personalizada que sustituye la barra estándar de Windows.
-from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea y diagnósticos visuales.
+from Interfaz.editor_codigo import EditorCodigo  # Importa el editor especializado con números de línea, diagnósticos y acciones flotantes.
 from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Importa la tabla estructurada de errores y advertencias.
 from Interfaz.panel_resultados import PanelResultados  # Importa el área de trabajo organizada según la interfaz original.
 from Interfaz.resaltador_sintaxis import ResaltadorSintaxis  # Importa el resaltador visual del lenguaje TecNet Finder.
@@ -95,6 +95,7 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         diseno_general.addWidget(contenido, 1)  # Coloca el contenido debajo de la barra personalizada.
 
         self.panel_diagnosticos.diagnostico_activado.connect(self._ir_a_diagnostico)  # Permite navegar desde un diagnóstico hasta el código fuente.
+        self.editor_codigo.ejemplos_insertados.connect(self._limpiar_resultados_conservando_entrada)  # Descarta resultados antiguos después de insertar casos desde el selector.
 
     def _construir_encabezado(self, diseno_principal: QVBoxLayout) -> None:  # Construye el encabezado grande conservado de la interfaz anterior.
         encabezado = QHBoxLayout()  # Organiza horizontalmente logotipo y textos.
@@ -265,18 +266,28 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
     def _ir_a_diagnostico(self, diagnostico) -> None:  # Permite navegar al código desde una fila de error.
         self.editor_codigo.ir_a_posicion(diagnostico.linea, diagnostico.columna, diagnostico.longitud)  # Utiliza directamente los datos estructurados del diagnóstico.
 
+    def _restablecer_estado_neutral(self) -> None:  # Recupera la apariencia utilizada cuando todavía no existe una compilación vigente.
+        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Recupera el estilo inicial de la barra de estado.
+        self.etiqueta_estado.setText("Sin análisis ejecutado.")  # Recupera el mensaje mostrado antes de compilar.
+        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el estilo anterior.
+        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente el estilo neutral.
+        self.etiqueta_estado.update()  # Redibuja inmediatamente el mensaje.
+
+    def _limpiar_resultados_conservando_entrada(self) -> None:  # Descarta resultados anteriores sin eliminar los ejemplos recién insertados.
+        self.editor_codigo.limpiar_diagnosticos()  # Elimina cualquier onda perteneciente al análisis anterior.
+        self.panel_diagnosticos.limpiar()  # Vacía la tabla estructurada de errores y advertencias.
+        self.panel_resultados.limpiar()  # Restaura resumen, tablas, sintaxis y acciones asociadas con resultados.
+        self.ultimo_resultado = None  # Descarta la compilación que dejó de corresponder con la entrada.
+        self._restablecer_estado_neutral()  # Recupera el estado general previo a una compilación.
+        self.editor_codigo.setFocus()  # Permite continuar inmediatamente con los ejemplos insertados.
+
     def _limpiar_todo(self) -> None:  # Restaura entrada y salidas sin modificar el estado de la ventana.
         self.editor_codigo.limpiar_diagnosticos()  # Elimina primero las marcas onduladas de la compilación anterior.
         self.editor_codigo.clear()  # Elimina completamente el código fuente.
         self.panel_diagnosticos.limpiar()  # Elimina los diagnósticos anteriores.
         self.panel_resultados.limpiar()  # Restaura resumen, tablas y sintaxis.
         self.ultimo_resultado = None  # Descarta el resultado de la compilación anterior.
-
-        self.etiqueta_estado.setObjectName("EstadoNeutral")  # Recupera el estilo inicial de la barra de estado.
-        self.etiqueta_estado.setText("Sin análisis ejecutado.")  # Recupera el mensaje mostrado antes de compilar.
-        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el estilo anterior.
-        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente el estilo neutral.
-        self.etiqueta_estado.update()  # Redibuja inmediatamente el mensaje.
+        self._restablecer_estado_neutral()  # Recupera el mensaje y estilo utilizados al iniciar.
         self.editor_codigo.setFocus()  # Devuelve el cursor al editor para comenzar otra entrada.
 
     def closeEvent(self, evento) -> None:  # Intercepta el cierre para reproducir una animación antes de destruir la ventana.
