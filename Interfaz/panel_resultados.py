@@ -21,6 +21,7 @@ from PySide6.QtCore import Qt  # Importa las opciones de alineación utilizadas 
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Importa los componentes utilizados para organizar resultados y pestañas.
 
 from Motor.modelos import ResultadoCompilacion  # Importa el resultado global producido por el flujo actual.
+from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Importa el visor encargado de representar textual y gráficamente los árboles sintácticos.
 
 
 class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder utilizando la distribución general del proyecto original.
@@ -192,11 +193,11 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
         self.texto_producciones = self._crear_salida_textual()  # Crea el visor destinado a gramática y producciones utilizadas.
         self.texto_derivacion = self._crear_salida_textual()  # Crea el visor de la derivación correspondiente a la entrada.
-        self.texto_arbol = self._crear_salida_textual()  # Crea el visor textual de los árboles sintácticos.
+        self.visor_arbol = VisorArbolSintactico()  # Crea el visor capaz de mostrar tanto árboles textuales como gráficos.
 
-        pestanas.addTab(self.texto_producciones, "Producciones usadas")  # Recupera la primera vista sintáctica del proyecto original.
-        pestanas.addTab(self.texto_derivacion, "Derivación")  # Recupera la vista dedicada a sustituciones gramaticales.
-        pestanas.addTab(self.texto_arbol, "Árboles")  # Reserva la tercera vista para el árbol sintáctico.
+        pestanas.addTab(self.texto_producciones, "Producciones usadas")  # Agrega la gramática y las producciones aplicadas.
+        pestanas.addTab(self.texto_derivacion, "Derivación")  # Agrega la derivación correspondiente a los bloques válidos.
+        pestanas.addTab(self.visor_arbol, "Árboles")  # Agrega las representaciones textual y gráfica de los árboles sintácticos.
 
     def _construir_fases_posteriores(self) -> None:  # Construye espacios visibles para las unidades que todavía no deben implementarse.
         self.tab_fases_posteriores = QWidget()  # Crea el contenedor de las etapas futuras.
@@ -242,7 +243,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         sintactico = resultado.resultado_sintactico  # Obtiene una referencia corta al resultado generado por el parser.
         self.texto_producciones.setPlainText(sintactico.producciones_usadas)  # Muestra las reglas gramaticales realmente aplicadas.
         self.texto_derivacion.setPlainText(sintactico.derivacion)  # Muestra la derivación generada.
-        self.texto_arbol.setPlainText(sintactico.arbol_textual)  # Muestra los árboles de los bloques válidos.
+        self.visor_arbol.mostrar_arboles(sintactico.arboles, sintactico.arbol_textual)  # Actualiza conjuntamente la representación textual y los árboles gráficos.
 
         self.setCurrentWidget(self.tab_entrada_salida)  # Regresa a Entrada / Salida después de cada compilación como hacía la versión anterior.
 
@@ -352,7 +353,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.tabla_reservadas.setRowCount(0)  # Elimina el conteo anterior de palabras reservadas.
         self.texto_producciones.clear()  # Elimina las producciones sintácticas anteriores.
         self.texto_derivacion.clear()  # Elimina la derivación anterior.
-        self.texto_arbol.clear()  # Elimina los árboles textuales anteriores.
+        self.visor_arbol.limpiar()  # Elimina las representaciones textual y gráfica pertenecientes al análisis anterior.
 
         for etiqueta in self.tarjetas_resumen.values():  # Recorre todos los contadores del resumen.
             etiqueta.setText("0")  # Devuelve cada contador a su valor inicial.
