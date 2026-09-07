@@ -20,7 +20,7 @@ from pathlib import Path  # Importa Path para localizar los iconos utilizados po
 
 from PySide6.QtCore import QSize, Qt  # Importa tamaños, alineaciones y opciones generales utilizadas por la interfaz.
 from PySide6.QtGui import QBrush, QColor, QIcon, QPixmap  # Importa herramientas utilizadas por iconos, imágenes y filas visuales.
-from PySide6.QtWidgets import QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Importa los componentes utilizados para organizar resultados, diálogos y pestañas.
+from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Importa los componentes utilizados para organizar resultados, portapapeles, diálogos y pestañas.
 
 from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Importa el visor encargado de representar textual y gráficamente los árboles sintácticos.
 from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Importa las funciones encargadas de guardar los resultados actuales.
@@ -72,14 +72,14 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.accion_limpiar = accion_limpiar  # Conserva la función que restaurará la interfaz.
         self.tarjetas_resumen = {}  # Guarda las etiquetas numéricas utilizadas por el resumen visual.
         self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
-        self.resultado_actual: ResultadoCompilacion | None = None  # Conserva la última compilación para permitir exportarla sin recalcularla.
+        self.resultado_actual: ResultadoCompilacion | None = None  # Conserva la última compilación para permitir exportarla o copiarla.
         self.codigo_fuente_resultado = ""  # Conserva exactamente la entrada asociada con la última compilación mostrada.
 
         self._construir_entrada_salida()  # Crea la primera pestaña con editor y salidas principales.
         self._construir_tablas()  # Crea las tablas internas de tokens y palabras reservadas.
         self._construir_sintaxis()  # Crea las vistas de producciones, derivación y árbol.
         self._construir_fases_posteriores()  # Reserva visualmente las fases que se desarrollarán en unidades posteriores.
-        self.editor_codigo.textChanged.connect(self._invalidar_resultado_exportable)  # Evita exportar resultados antiguos después de modificar la entrada.
+        self.editor_codigo.textChanged.connect(self._invalidar_resultado_exportable)  # Evita utilizar resultados antiguos después de modificar la entrada.
 
         self.addTab(self.tab_entrada_salida, "Entrada / Salida")  # Agrega la zona principal de trabajo.
         self.addTab(self.tab_tablas, "Tablas")  # Agrega las tablas internas del análisis.
@@ -132,7 +132,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self._aplicar_icono(self.boton_limpiar, "Limpiar.png")  # Coloca el icono correspondiente a la acción de limpieza.
         self.boton_limpiar.clicked.connect(self.accion_limpiar)  # Conecta el botón con la función proporcionada por la ventana.
 
-        botones.addWidget(self.boton_analizar)  # Coloca primero la acción principal.
+        botones.addWidget(self.boton_analizar)  # Coloca a continuación la acción principal.
         botones.addWidget(self.boton_exportar_excel)  # Coloca la exportación VLSM después de compilar.
         botones.addWidget(self.boton_exportar_reporte)  # Coloca el reporte completo junto a la exportación de Excel.
         botones.addWidget(self.boton_limpiar)  # Coloca la acción de limpieza al final del grupo.
@@ -143,9 +143,9 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
         self.pestanas_salida = QTabWidget()  # Crea las subpestañas de salida utilizadas en la versión anterior.
         self.tab_resumen = self._crear_resumen()  # Construye el resumen general de la compilación.
-        self.tab_analisis = self._crear_salida_textual()  # Crea el visor del análisis léxico-sintáctico.
+        self.tab_analisis = self._crear_tab_analisis()  # Construye el análisis acompañado por su acción de copiado.
         self.tab_vlsm = QWidget()  # Crea el contenedor destinado a la tabla VLSM.
-        self.tab_errores = QWidget()  # Crea el contenedor destinado a los diagnósticos.
+        self.tab_errores = self._crear_tab_errores()  # Construye el registro de diagnósticos acompañado por su acción de copiado.
 
         self.tabla_vlsm = TablaResultados(0, 9, [1.15, 1.35, 1.35, 1.45, 0.55, 1.25, 1.15, 1.15, 1.15])  # Crea la tabla VLSM utilizando anchos proporcionales equilibrados.
         self.tabla_vlsm.setHorizontalHeaderLabels(["Red", "Hosts solicitados", "Hosts disponibles", "Dirección de red", "CIDR", "Máscara", "Primera IP", "Última IP", "Broadcast"])  # Define las columnas de la salida VLSM.
@@ -155,16 +155,54 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         diseno_vlsm.setContentsMargins(4, 4, 4, 4)  # Reduce el espacio desperdiciado alrededor de la tabla.
         diseno_vlsm.addWidget(self.tabla_vlsm)  # Coloca la tabla ocupando todo el espacio disponible.
 
-        diseno_errores = QVBoxLayout(self.tab_errores)  # Organiza la tabla de diagnósticos dentro de su subpestaña.
-        diseno_errores.setContentsMargins(4, 4, 4, 4)  # Mantiene un margen pequeño alrededor del registro.
-        diseno_errores.addWidget(self.panel_diagnosticos)  # Inserta el panel estructurado de errores y advertencias.
-
         self.pestanas_salida.addTab(self.tab_resumen, "Resumen")  # Agrega la vista rápida del estado actual.
         self.pestanas_salida.addTab(self.tab_analisis, "Análisis léxico-sintáctico")  # Agrega la salida técnica de las dos primeras fases.
         self.pestanas_salida.addTab(self.tab_vlsm, "Tabla VLSM")  # Agrega las subredes calculadas.
         self.pestanas_salida.addTab(self.tab_errores, "Errores / Advertencias")  # Agrega los diagnósticos estructurados.
 
         diseno.addWidget(self.pestanas_salida, 3)  # Permite que las salidas utilicen ligeramente más espacio que la entrada.
+
+    def _crear_tab_analisis(self) -> QWidget:  # Construye la salida textual del análisis junto con su acción de copiado.
+        contenedor = QWidget()  # Crea el widget que funcionará como subpestaña completa.
+        diseno = QVBoxLayout(contenedor)  # Organiza verticalmente botón y contenido.
+        diseno.setContentsMargins(4, 4, 4, 4)  # Mantiene un margen pequeño alrededor de la salida.
+
+        acciones = QHBoxLayout()  # Crea una barra discreta para las acciones asociadas con el análisis.
+        acciones.addStretch()  # Empuja el botón hacia el extremo derecho.
+
+        self.boton_copiar_analisis = QPushButton("Copiar análisis")  # Crea la acción encargada de enviar el análisis al portapapeles.
+        self.boton_copiar_analisis.setToolTip("Copiar el análisis léxico-sintáctico al portapapeles")  # Explica qué información será copiada.
+        self.boton_copiar_analisis.setEnabled(False)  # Mantiene la acción desactivada hasta que exista una compilación.
+        self._aplicar_icono(self.boton_copiar_analisis, "Copiar.png")  # Utiliza el icono correspondiente a la operación.
+        self.boton_copiar_analisis.clicked.connect(self._copiar_analisis)  # Envía el texto visible al portapapeles.
+
+        acciones.addWidget(self.boton_copiar_analisis)  # Coloca el botón en la barra superior.
+        diseno.addLayout(acciones)  # Agrega la barra antes del contenido.
+
+        self.texto_analisis = self._crear_salida_textual()  # Crea el área de solo lectura donde se mostrará el análisis.
+        diseno.addWidget(self.texto_analisis, 1)  # Permite que el contenido utilice todo el espacio sobrante.
+
+        return contenedor  # Devuelve la subpestaña completamente preparada.
+
+    def _crear_tab_errores(self) -> QWidget:  # Construye el registro de diagnósticos junto con su acción de copiado.
+        contenedor = QWidget()  # Crea el widget que contendrá botón y tabla de diagnósticos.
+        diseno = QVBoxLayout(contenedor)  # Organiza verticalmente las acciones y el registro.
+        diseno.setContentsMargins(4, 4, 4, 4)  # Mantiene un margen pequeño alrededor del contenido.
+
+        acciones = QHBoxLayout()  # Crea una barra superior destinada a la acción de copiar.
+        acciones.addStretch()  # Empuja el botón hacia el extremo derecho.
+
+        self.boton_copiar_diagnosticos = QPushButton("Copiar diagnósticos")  # Crea la acción encargada de copiar errores y advertencias.
+        self.boton_copiar_diagnosticos.setToolTip("Copiar los diagnósticos actuales al portapapeles")  # Describe la información que será enviada.
+        self.boton_copiar_diagnosticos.setEnabled(False)  # Mantiene la acción inactiva hasta que exista al menos un diagnóstico.
+        self._aplicar_icono(self.boton_copiar_diagnosticos, "Copiar.png")  # Utiliza el mismo icono genérico de copiado.
+        self.boton_copiar_diagnosticos.clicked.connect(self._copiar_diagnosticos)  # Ejecuta el copiado estructurado de los problemas actuales.
+
+        acciones.addWidget(self.boton_copiar_diagnosticos)  # Coloca la acción sobre el registro.
+        diseno.addLayout(acciones)  # Agrega la barra antes de la tabla.
+        diseno.addWidget(self.panel_diagnosticos, 1)  # Inserta el panel estructurado ocupando el espacio restante.
+
+        return contenedor  # Devuelve la subpestaña de errores completamente construida.
 
     def _crear_resumen(self) -> QWidget:  # Construye una vista visual con los principales contadores del análisis.
         contenedor = QWidget()  # Crea el widget base utilizado por la pestaña Resumen.
@@ -226,7 +264,6 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
         cuadricula.setRowStretch(0, 1)  # Permite que la primera fila aumente verticalmente.
         cuadricula.setRowStretch(1, 1)  # Permite que la segunda fila ocupe el resto del alto.
-
         diseno.addLayout(cuadricula, 1)  # Hace que las tarjetas utilicen todo el espacio sobrante.
 
         return contenedor  # Devuelve la vista de resumen completamente construida.
@@ -332,10 +369,12 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         return fila  # Devuelve la fila creada por si posteriormente fuera necesario consultarla.
 
     def mostrar_resultado(self, resultado: ResultadoCompilacion) -> None:  # Actualiza simultáneamente todas las vistas utilizando una compilación nueva.
-        self.resultado_actual = resultado  # Conserva la compilación que podrá exportarse posteriormente sin volver a ejecutar el flujo.
+        self.resultado_actual = resultado  # Conserva la compilación que podrá exportarse o copiarse posteriormente.
         self.codigo_fuente_resultado = self.editor_codigo.toPlainText()  # Guarda el código exacto que produjo los resultados actualmente visibles.
         self.boton_exportar_excel.setEnabled(bool(resultado.subredes_vlsm))  # Habilita Excel únicamente cuando existen subredes válidas.
         self.boton_exportar_reporte.setEnabled(True)  # Permite guardar un reporte incluso cuando la compilación contiene errores.
+        self.boton_copiar_analisis.setEnabled(True)  # Permite copiar el análisis generado por la compilación actual.
+        self.boton_copiar_diagnosticos.setEnabled(bool(resultado.diagnosticos))  # Habilita el copiado de diagnósticos únicamente cuando existen.
 
         self._mostrar_resumen(resultado)  # Actualiza los contadores generales.
         self._mostrar_analisis(resultado)  # Genera el reporte técnico léxico-sintáctico.
@@ -408,7 +447,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         lineas.append(f"Subredes generadas: {len(resultado.subredes_vlsm)}")  # Informa la cantidad de resultados VLSM.
         lineas.append(f"Diagnósticos encontrados: {len(resultado.diagnosticos)}")  # Informa la cantidad total de problemas detectados.
 
-        self.tab_analisis.setPlainText("\n".join(lineas))  # Muestra el reporte completo dentro de la subpestaña correspondiente.
+        self.texto_analisis.setPlainText("\n".join(lineas))  # Muestra el reporte completo dentro de la subpestaña correspondiente.
 
     def _mostrar_tokens(self, resultado: ResultadoCompilacion) -> None:  # Llena la tabla de tokens separando visualmente cada instrucción de red.
         self.tabla_tokens.clearSpans()  # Elimina combinaciones de celdas creadas durante una compilación anterior.
@@ -520,6 +559,45 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
             for columna, valor in enumerate(valores):  # Recorre cada columna de la subred.
                 self.tabla_vlsm.setItem(fila, columna, self._crear_item_centrado(valor))  # Inserta el dato centrado horizontal y verticalmente.
+    
+    def _copiar_analisis(self) -> None:  # Copia al portapapeles el análisis léxico-sintáctico actualmente visible.
+        texto = self.texto_analisis.toPlainText()  # Obtiene exactamente el contenido mostrado en la subpestaña de análisis.
+
+        if not texto:  # Comprueba si todavía no existe información para copiar.
+            return  # Evita sustituir el portapapeles por una cadena vacía.
+
+        QApplication.clipboard().setText(texto)  # Envía el análisis completo al portapapeles del sistema.
+
+    def _copiar_diagnosticos(self) -> None:  # Copia errores y advertencias utilizando directamente los datos estructurados del resultado.
+        if self.resultado_actual is None or not self.resultado_actual.diagnosticos:  # Comprueba que exista al menos un diagnóstico vigente.
+            return  # Evita generar contenido vacío cuando no existen problemas.
+
+        lineas = []  # Acumula la representación textual de todos los diagnósticos disponibles.
+
+        for indice, diagnostico in enumerate(self.resultado_actual.diagnosticos, start=1):  # Recorre los diagnósticos respetando su orden original.
+            ubicacion = self._formatear_ubicacion(diagnostico.linea, diagnostico.columna)  # Construye una ubicación legible a partir de sus coordenadas.
+            lineas.append(f"{indice}. [{diagnostico.codigo}] {diagnostico.categoria} - {diagnostico.severidad}")  # Identifica código, categoría y gravedad.
+            lineas.append(f"   Ubicación: {ubicacion}")  # Agrega la posición relacionada con el problema.
+            lineas.append(f"   Mensaje: {diagnostico.mensaje}")  # Agrega el mensaje específico producido por el analizador.
+
+            if diagnostico.fragmento:  # Comprueba si existe un fragmento concreto relacionado con el problema.
+                lineas.append(f"   Fragmento: {diagnostico.fragmento}")  # Incluye el texto problemático cuando está disponible.
+
+            if diagnostico.solucion:  # Comprueba si el catálogo contiene una recomendación.
+                lineas.append(f"   Solución: {diagnostico.solucion}")  # Agrega la solución correspondiente al diagnóstico.
+
+            lineas.append("")  # Separa visualmente diagnósticos consecutivos.
+
+        QApplication.clipboard().setText("\n".join(lineas).rstrip())  # Envía el registro completo al portapapeles eliminando el salto sobrante final.
+
+    def _formatear_ubicacion(self, linea: int | None, columna: int | None) -> str:  # Convierte las coordenadas opcionales en una ubicación legible.
+        if linea is None:  # Comprueba si el diagnóstico carece de una línea concreta.
+            return "Sin ubicación específica"  # Indica que no existe una posición disponible.
+
+        if columna is None:  # Comprueba si solamente se conoce la línea.
+            return f"Línea {linea}"  # Devuelve la única coordenada disponible.
+
+        return f"Línea {linea}, columna {columna}"  # Devuelve línea y columna cuando ambas están registradas.
 
     def _exportar_excel(self) -> None:  # Solicita una ubicación y exporta las subredes VLSM de la compilación actual.
         if self.resultado_actual is None or not self.resultado_actual.subredes_vlsm:  # Comprueba nuevamente que existan resultados aunque el botón normalmente esté deshabilitado.
@@ -575,7 +653,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
         self._mostrar_mensaje("Exportación completada", f"El reporte se guardó correctamente en:\n{ruta_guardada}", "Correcto.png")  # Confirma que el TXT quedó escrito.
 
-    def _mostrar_mensaje(self, titulo: str, texto: str, nombre_icono: str) -> None:  # Muestra mensajes de exportación utilizando los iconos propios de TecNet Finder.
+    def _mostrar_mensaje(self, titulo: str, texto: str, nombre_icono: str) -> None:  # Muestra mensajes utilizando los iconos propios de TecNet Finder.
         mensaje = QMessageBox(self)  # Crea un cuadro modal asociado con la ventana del panel.
         mensaje.setWindowTitle(titulo)  # Define el título visible en la barra del cuadro.
         mensaje.setText(texto)  # Coloca el contenido principal comunicado al usuario.
@@ -600,14 +678,18 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.codigo_fuente_resultado = ""  # Elimina también la copia de la entrada anteriormente analizada.
         self.boton_exportar_excel.setEnabled(False)  # Impide exportar una tabla asociada con código que ya fue modificado.
         self.boton_exportar_reporte.setEnabled(False)  # Impide generar un reporte mezclando código nuevo con resultados antiguos.
+        self.boton_copiar_analisis.setEnabled(False)  # Evita copiar como actual un análisis correspondiente a una entrada anterior.
+        self.boton_copiar_diagnosticos.setEnabled(False)  # Evita copiar como actuales diagnósticos pertenecientes al análisis anterior.
 
     def limpiar(self) -> None:  # Restaura las salidas de las fases actuales sin modificar las pestañas futuras.
-        self.resultado_actual = None  # Descarta la compilación anterior para impedir exportar información que ya no está visible.
+        self.resultado_actual = None  # Descarta la compilación anterior para impedir utilizar información que ya no está visible.
         self.codigo_fuente_resultado = ""  # Elimina la entrada asociada con los resultados anteriores.
         self.boton_exportar_excel.setEnabled(False)  # Desactiva Excel hasta que vuelva a existir una tabla VLSM.
         self.boton_exportar_reporte.setEnabled(False)  # Desactiva el reporte hasta que se ejecute una nueva compilación.
+        self.boton_copiar_analisis.setEnabled(False)  # Desactiva el copiado hasta que exista un nuevo análisis.
+        self.boton_copiar_diagnosticos.setEnabled(False)  # Desactiva el copiado hasta que aparezcan nuevos diagnósticos.
 
-        self.tab_analisis.clear()  # Elimina el reporte léxico-sintáctico anterior.
+        self.texto_analisis.clear()  # Elimina el reporte léxico-sintáctico anterior.
 
         self.tabla_vlsm.clearSpans()  # Elimina los encabezados combinados correspondientes a redes anteriores.
         self.tabla_vlsm.setRowCount(0)  # Elimina todas las filas de la tabla VLSM.

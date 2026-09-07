@@ -9,15 +9,16 @@
 #
 # Extiende QPlainTextEdit para agregar números de línea,
 # resaltado de la línea actual, navegación hacia posiciones
-# específicas y diagnósticos visuales directamente sobre el
-# código mediante ondas personalizadas y tooltips.
+# específicas, un botón flotante fijo para pegar contenido y
+# diagnósticos visuales mediante ondas y tooltips.
 # ============================================================
 
+from pathlib import Path  # Importa Path para localizar los recursos gráficos utilizados por el editor.
 from textwrap import fill  # Importa una utilidad para dividir textos largos dentro de los tooltips.
 
-from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt  # Importa eventos, posiciones, geometría, tamaños y opciones generales.
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QTextCursor, QTextFormat  # Importa herramientas de dibujo, trazado y manipulación del texto.
-from PySide6.QtWidgets import QPlainTextEdit, QTextEdit, QToolTip, QWidget  # Importa el editor base, selecciones adicionales y tooltips.
+from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer  # Importa eventos, posiciones, geometría, tamaños, temporización y opciones generales.
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QTextCursor, QTextFormat  # Importa herramientas de dibujo, iconos y manipulación del texto.
+from PySide6.QtWidgets import QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, botones, selecciones adicionales y tooltips.
 
 from Motor.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
 
@@ -43,19 +44,60 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
     def __init__(self, padre=None):  # Inicializa el editor y conecta todos sus comportamientos.
         super().__init__(padre)  # Inicializa el QPlainTextEdit original.
         self.diagnosticos: list[Diagnostico] = []  # Conserva los diagnósticos relacionados con la compilación actual.
+        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
         self.area_numeros_linea = AreaNumerosLinea(self)  # Crea el área lateral donde se dibujarán los números.
+        self.boton_pegar = QPushButton(self)  # Crea el botón como hijo del editor completo para impedir que se desplace con el contenido.
+
+        self._configurar_boton_pegar()  # Prepara tamaño, icono, tooltip y acción del botón flotante.
 
         self.blockCountChanged.connect(self.actualizar_ancho_area_numeros_linea)  # Recalcula el margen cuando cambia la cantidad de líneas.
         self.updateRequest.connect(self.actualizar_area_numeros_linea)  # Mantiene sincronizada el área lateral durante desplazamientos.
         self.cursorPositionChanged.connect(self.resaltar_linea_actual)  # Actualiza el fondo de la línea cuando se mueve el cursor.
         self.textChanged.connect(self.limpiar_diagnosticos)  # Elimina diagnósticos antiguos cuando el código se modifica.
+        self.verticalScrollBar().rangeChanged.connect(self._posicionar_boton_pegar)  # Reposiciona el botón únicamente cuando cambia la disponibilidad de desplazamiento.
 
-        self.viewport().installEventFilter(self)  # Permite detectar solicitudes de tooltip dentro del área de edición.
+        self.viewport().installEventFilter(self)  # Permite detectar tooltips y cambios geométricos dentro del área visible.
         self.viewport().setMouseTracking(True)  # Mantiene disponible la posición del mouse sobre el código.
 
         self.actualizar_ancho_area_numeros_linea()  # Reserva inicialmente el espacio necesario para los números.
         self.resaltar_linea_actual()  # Aplica el resaltado inicial de la línea activa.
         self.setPlaceholderText("IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina")  # Muestra una instrucción de referencia mientras el editor está vacío.
+
+        QTimer.singleShot(0, self._posicionar_boton_pegar)  # Coloca el control cuando Qt ya conoce las dimensiones reales del editor.
+
+    def _configurar_boton_pegar(self) -> None:  # Configura la apariencia y funcionamiento del botón flotante del portapapeles.
+        self.boton_pegar.setObjectName("BotonFlotanteEditor")  # Asigna un identificador propio al control flotante.
+        self.boton_pegar.setText("")  # Evita mostrar cualquier palabra junto al icono.
+        self.boton_pegar.setFixedSize(32, 32)  # Mantiene el control completamente cuadrado.
+        self.boton_pegar.setIconSize(QSize(18, 18))  # Reduce el PNG a un tamaño apropiado dentro del botón.
+        self.boton_pegar.setToolTip("Pegar comando desde el portapapeles")  # Explica la función al colocar el cursor encima.
+        self.boton_pegar.setAccessibleName("Pegar")  # Mantiene una descripción accesible aunque visualmente no tenga texto.
+        self.boton_pegar.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita quitar innecesariamente el foco de escritura al editor.
+        self.boton_pegar.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica visualmente que se trata de un control interactivo.
+        self.boton_pegar.setStyleSheet("padding: 0px;")  # Evita que el padding general reduzca innecesariamente el espacio del icono.
+
+        ruta_icono = self.ruta_iconos / "Pegar.png"  # Construye la ubicación exacta del icono preparado para esta acción.
+
+        if ruta_icono.exists():  # Comprueba que el recurso gráfico esté disponible.
+            self.boton_pegar.setIcon(QIcon(str(ruta_icono)))  # Coloca exclusivamente la imagen dentro del botón.
+
+        self.boton_pegar.clicked.connect(self._pegar_desde_portapapeles)  # Inserta el contenido disponible cuando el usuario pulsa el control.
+        self.boton_pegar.show()  # Garantiza que el botón esté visible.
+        self.boton_pegar.raise_()  # Mantiene el botón por encima del viewport y demás hijos internos del editor.
+
+    def _posicionar_boton_pegar(self, *_argumentos) -> None:  # Mantiene el botón fijo en la esquina superior derecha del área visible.
+        geometria_viewport = self.viewport().geometry()  # Obtiene la región real donde se muestra el texto, excluyendo automáticamente las scrollbars.
+        margen = 6  # Conserva una pequeña separación respecto a los bordes internos.
+        x = geometria_viewport.right() - self.boton_pegar.width() - margen + 1  # Coloca el botón inmediatamente antes del límite derecho del viewport.
+        y = geometria_viewport.top() + margen  # Mantiene permanentemente el botón en la parte superior de la región visible.
+        self.boton_pegar.move(max(x, 0), max(y, 0))  # Aplica la posición fija evitando coordenadas negativas.
+        self.boton_pegar.raise_()  # Garantiza que otros componentes internos de QPlainTextEdit no lo cubran.
+
+    def _pegar_desde_portapapeles(self) -> None:  # Inserta el contenido del portapapeles utilizando el comportamiento convencional de Qt.
+        if self.canPaste():  # Comprueba si existe contenido compatible con el editor.
+            self.paste()  # Inserta el texto en la posición actual o sustituye cualquier selección existente.
+
+        self.setFocus()  # Devuelve inmediatamente el foco al editor para continuar escribiendo.
 
     def ancho_area_numeros_linea(self) -> int:  # Calcula dinámicamente cuánto ancho requieren los números de línea.
         digitos = len(str(max(1, self.blockCount())))  # Obtiene cuántos dígitos necesita representar el número de línea más grande.
@@ -73,11 +115,12 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         if rectangulo.contains(self.viewport().rect()):  # Comprueba si el cambio afecta toda el área visible.
             self.actualizar_ancho_area_numeros_linea()  # Recalcula el ancho por si cambió la cantidad total de líneas.
 
-    def resizeEvent(self, evento) -> None:  # Ajusta el área de números cuando cambia el tamaño general del editor.
+    def resizeEvent(self, evento) -> None:  # Ajusta los elementos auxiliares cuando cambia el tamaño general del editor.
         super().resizeEvent(evento)  # Permite que QPlainTextEdit ejecute primero su comportamiento normal.
         rectangulo = self.contentsRect()  # Obtiene la región interior disponible del editor.
         ancho = self.ancho_area_numeros_linea()  # Calcula el ancho requerido actualmente por los números.
         self.area_numeros_linea.setGeometry(QRect(rectangulo.left(), rectangulo.top(), ancho, rectangulo.height()))  # Coloca el área lateral ocupando toda la altura.
+        self._posicionar_boton_pegar()  # Mantiene el botón en la esquina correcta cuando cambia el tamaño del editor.
 
     def paintEvent(self, evento) -> None:  # Dibuja primero el editor normal y después agrega las ondas de diagnóstico.
         super().paintEvent(evento)  # Permite que Qt dibuje texto, selección, resaltado y demás contenido habitual.
@@ -266,7 +309,10 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
 
         return "\n\n────────────────────────\n\n".join(bloques)  # Separa claramente varios diagnósticos coincidentes.
 
-    def eventFilter(self, objeto, evento):  # Intercepta eventos del área de texto para mostrar información contextual.
+    def eventFilter(self, objeto, evento):  # Intercepta eventos del área visible para mantener el botón fijo y mostrar información contextual.
+        if objeto is self.viewport() and evento.type() == QEvent.Type.Resize:  # Detecta cambios de geometría causados por tamaño o scrollbars.
+            QTimer.singleShot(0, self._posicionar_boton_pegar)  # Recalcula la esquina cuando Qt termina de reajustar sus componentes internos.
+
         if objeto is self.viewport() and evento.type() == QEvent.Type.ToolTip:  # Comprueba si Qt solicita un tooltip dentro del código fuente.
             cursor = self.cursorForPosition(evento.pos())  # Obtiene la posición textual situada debajo del puntero.
             diagnosticos = self._diagnosticos_en_posicion(cursor.position())  # Busca errores o advertencias relacionados con esa posición.
