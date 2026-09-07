@@ -10,38 +10,35 @@
 # Su objetivo es almacenar la información de manera organizada
 # mediante clases, evitando utilizar listas, tuplas o
 # diccionarios cuyos índices sean difíciles de recordar.
-#
-# Actualmente contiene los modelos utilizados por los
-# analizadores léxico y sintáctico, el cálculo VLSM y el
-# flujo general de compilación.
 # ============================================================
 
 from dataclasses import dataclass, field  # Importa herramientas para crear clases de datos y valores predeterminados.
+
 from Motor.diagnosticos import Diagnostico  # Importa la estructura utilizada para representar errores y advertencias.
 
 
-@dataclass(frozen=True)  # Convierte Token en una clase de datos inmutable.
+@dataclass(frozen=True)
 class Token:  # Representa un elemento reconocido por el analizador léxico.
-    tipo: str       # Guarda el tipo del token, por ejemplo IP, MASK o NUMBER.
-    valor: str      # Guarda exactamente el texto reconocido en el código fuente.
-    linea: int      # Guarda la línea donde comienza el token.
-    columna: int    # Guarda la columna donde comienza el token.
+    tipo: str  # Guarda el tipo del token, por ejemplo IP, MASK o NUMBER.
+    valor: str  # Guarda exactamente el texto reconocido en el código fuente.
+    linea: int  # Guarda la línea donde comienza el token.
+    columna: int  # Guarda la columna donde comienza el token.
 
 
-@dataclass  # Convierte ResultadoLexico en una clase destinada a almacenar resultados.
+@dataclass
 class ResultadoLexico:  # Agrupa los tokens y diagnósticos producidos por el analizador léxico.
     tokens: list[Token] = field(default_factory=list)  # Guarda los tokens reconocidos correctamente.
     diagnosticos: list[Diagnostico] = field(default_factory=list)  # Guarda los errores o advertencias léxicas.
 
-    @property  # Permite consultar el método como si fuera un atributo.
+    @property
     def tiene_errores(self) -> bool:  # Indica si existe al menos un diagnóstico marcado como error.
-        return any(  # Devuelve True si alguna condición del generador resulta verdadera.
-            diagnostico.severidad == "error"  # Comprueba si el diagnóstico actual tiene severidad de error.
-            for diagnostico in self.diagnosticos  # Recorre todos los diagnósticos léxicos obtenidos.
+        return any(
+            diagnostico.severidad == "error"
+            for diagnostico in self.diagnosticos
         )
 
 
-@dataclass  # Convierte BloqueRed en una clase de datos organizada.
+@dataclass
 class BloqueRed:  # Representa una instrucción que cumplió correctamente la estructura sintáctica.
     direccion_ip: str  # Guarda la dirección IPv4 escrita después de IP.
     mascara_subred: str  # Guarda la máscara CIDR escrita después de MASK.
@@ -50,14 +47,14 @@ class BloqueRed:  # Representa una instrucción que cumplió correctamente la es
     linea_origen: int = 1  # Guarda la línea donde comenzó la instrucción.
 
 
-@dataclass  # Convierte NodoSintactico en una clase de datos organizada.
+@dataclass
 class NodoSintactico:  # Representa un nodo del árbol sintáctico generado para una instrucción válida.
     etiqueta: str  # Guarda el nombre visible del nodo, por ejemplo BloqueRed, IP o HOSTS_LIST.
     valor: str | None = None  # Guarda un valor concreto cuando el nodo representa contenido terminal.
     hijos: list["NodoSintactico"] = field(default_factory=list)  # Guarda los nodos descendientes conectados al nodo actual.
 
 
-@dataclass  # Convierte ResultadoSintactico en una clase destinada a almacenar resultados.
+@dataclass
 class ResultadoSintactico:  # Agrupa los bloques válidos y diagnósticos producidos por el parser.
     bloques: list[BloqueRed] = field(default_factory=list)  # Guarda únicamente las instrucciones sintácticamente válidas.
     diagnosticos: list[Diagnostico] = field(default_factory=list)  # Guarda los errores o advertencias sintácticas.
@@ -66,14 +63,15 @@ class ResultadoSintactico:  # Agrupa los bloques válidos y diagnósticos produc
     derivacion: str = ""  # Guarda la derivación generada para el programa y para cada bloque válido.
     arbol_textual: str = ""  # Guarda una representación del árbol usando ramas de texto para facilitar su lectura.
 
-    @property  # Permite consultar el método como si fuera un atributo.
+    @property
     def tiene_errores(self) -> bool:  # Indica si existe al menos un diagnóstico sintáctico marcado como error.
-        return any(  # Devuelve True si alguna condición del generador resulta verdadera.
-            diagnostico.severidad == "error"  # Comprueba la severidad del diagnóstico actual.
-            for diagnostico in self.diagnosticos  # Recorre todos los diagnósticos sintácticos obtenidos.
+        return any(
+            diagnostico.severidad == "error"
+            for diagnostico in self.diagnosticos
         )
 
-@dataclass  # Convierte SubredVLSM en una clase de datos organizada.
+
+@dataclass
 class SubredVLSM:  # Representa una subred calculada a partir de una solicitud de hosts.
     hosts_solicitados: int  # Guarda la cantidad de hosts pedida para esta subred.
     hosts_disponibles: int  # Guarda la cantidad real de hosts utilizables dentro del bloque asignado.
@@ -86,26 +84,29 @@ class SubredVLSM:  # Representa una subred calculada a partir de una solicitud d
     ip_base: str  # Conserva la dirección IP base recibida para identificar el bloque original.
     nombre_red: str  # Conserva el nombre de la red o utiliza la IP base cuando no se indicó NAME.
 
-@dataclass  # Convierte ResultadoCompilacion en una clase de datos organizada.
+
+@dataclass
 class ResultadoCompilacion:  # Agrupa en un solo objeto todo lo producido por el flujo actual de TecNet Finder.
     resultado_lexico: ResultadoLexico  # Guarda el resultado completo producido por el analizador léxico.
     resultado_sintactico: ResultadoSintactico  # Guarda el resultado completo producido por el analizador sintáctico.
     subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes generadas a partir de los bloques válidos.
+    advertencias: list[Diagnostico] = field(default_factory=list)  # Guarda recomendaciones no bloqueantes producidas fuera de las fases formales.
 
-    @property  # Permite consultar todos los diagnósticos como si fueran un atributo.
-    def diagnosticos(self) -> list[Diagnostico]:  # Reúne en una sola lista los diagnósticos producidos por las fases actuales.
-        return [  # Construye una nueva lista para no modificar las listas originales de cada analizador.
-            *self.resultado_lexico.diagnosticos,  # Agrega primero los diagnósticos encontrados durante el análisis léxico.
-            *self.resultado_sintactico.diagnosticos,  # Agrega después los diagnósticos encontrados durante el análisis sintáctico.
+    @property
+    def diagnosticos(self) -> list[Diagnostico]:  # Reúne en una sola colección todos los diagnósticos disponibles.
+        return [
+            *self.resultado_lexico.diagnosticos,
+            *self.resultado_sintactico.diagnosticos,
+            *self.advertencias,
         ]
 
-    @property  # Permite consultar directamente los bloques válidos del resultado global.
+    @property
     def bloques_validos(self) -> list[BloqueRed]:  # Devuelve los bloques aceptados actualmente por el analizador sintáctico.
-        return self.resultado_sintactico.bloques  # Reutiliza los bloques ya almacenados dentro del resultado sintáctico.
+        return self.resultado_sintactico.bloques
 
-    @property  # Permite consultar fácilmente si ocurrió algún error durante las fases actuales.
+    @property
     def tiene_errores(self) -> bool:  # Indica si al menos un diagnóstico combinado posee severidad de error.
-        return any(  # Devuelve True en cuanto encuentre un diagnóstico marcado como error.
-            diagnostico.severidad == "error"  # Comprueba la severidad del diagnóstico que se está recorriendo.
-            for diagnostico in self.diagnosticos  # Recorre conjuntamente los diagnósticos léxicos y sintácticos.
+        return any(
+            diagnostico.severidad == "error"
+            for diagnostico in self.diagnosticos
         )

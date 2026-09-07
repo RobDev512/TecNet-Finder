@@ -45,8 +45,8 @@ class PanelDiagnosticos(QTableWidget):  # Define la tabla especializada donde se
         self.cellDoubleClicked.connect(self._activar_diagnostico)  # Conecta el doble clic con la navegación hacia el código fuente.
 
     def _color_diagnostico(self, diagnostico: Diagnostico) -> QColor:  # Selecciona el color correspondiente a la categoría o severidad recibida.
-        if diagnostico.severidad == "warning":  # Da prioridad a la severidad de advertencia sin importar su categoría.
-            return QColor("#f9e2af")  # Utiliza amarillo para las advertencias.
+        if diagnostico.severidad in ("warning", "advertencia"):  # Da prioridad al amarillo para cualquier variante utilizada por las advertencias.
+            return QColor("#f9e2af")  # Utiliza amarillo para todas las advertencias no bloqueantes.
 
         if diagnostico.categoria == "Léxico":  # Comprueba si el diagnóstico pertenece al analizador léxico.
             return QColor("#f38ba8")  # Utiliza rojo rosado para los errores léxicos.
@@ -78,7 +78,7 @@ class PanelDiagnosticos(QTableWidget):  # Define la tabla especializada donde se
 
             for columna, valor in enumerate(valores):  # Recorre cada columna correspondiente al diagnóstico actual.
                 elemento = QTableWidgetItem(valor)  # Crea una celda utilizando el valor correspondiente.
-                elemento.setForeground(QBrush(color))  # Aplica el color correspondiente a la categoría o severidad.
+                elemento.setForeground(QBrush(color))  # Aplica el color correspondiente a toda la información del diagnóstico.
                 elemento.setToolTip(valor)  # Conserva también el tooltip como forma adicional de consultar el contenido.
 
                 if columna in (0, 1, 3, 4):  # Comprueba si la celda contiene datos cortos de identificación o ubicación.
