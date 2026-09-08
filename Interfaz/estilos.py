@@ -248,6 +248,30 @@ QPushButton#BotonPrincipal:hover {
     background-color: #b4befe;
 }
 
+QPushButton#BotonFlotantePanel {
+    background-color: #45475a;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 7px;
+    padding: 0px;
+}
+
+QPushButton#BotonFlotantePanel:hover {
+    background-color: #585b70;
+    border-color: #89b4fa;
+}
+
+QPushButton#BotonFlotantePanel:pressed {
+    background-color: #313244;
+    border-color: #89b4fa;
+}
+
+QPushButton#BotonFlotantePanel:disabled {
+    background-color: #2b2d42;
+    color: #6c7086;
+    border: 1px solid #3b3d56;
+}
+
 QPlainTextEdit {
     background-color: #11111b;
     color: #cdd6f4;
