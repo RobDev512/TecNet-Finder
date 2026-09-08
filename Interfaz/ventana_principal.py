@@ -84,12 +84,12 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         self.resaltador_sintaxis = ResaltadorSintaxis(self.editor_codigo.document())  # Conecta el resaltador con el documento del editor.
         self.panel_diagnosticos = PanelDiagnosticos()  # Crea la tabla estructurada de errores y advertencias.
 
-        self.panel_resultados = PanelResultados(  # Construye el área de trabajo completa utilizando el acomodo inspirado en LyA I.
+        self.panel_resultados = PanelResultados(
             editor_codigo=self.editor_codigo,
             panel_diagnosticos=self.panel_diagnosticos,
             accion_analizar=self._analizar_codigo,
             accion_limpiar=self._limpiar_todo,
-        )
+        )  # Construye el área de trabajo completa utilizando el acomodo inspirado en LyA I.
 
         diseno_contenido.addWidget(self.panel_resultados, 1)  # Permite que las pestañas utilicen todo el espacio restante.
         diseno_general.addWidget(contenido, 1)  # Coloca el contenido debajo de la barra personalizada.
@@ -236,11 +236,13 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
             QMessageBox.warning(self, "Entrada vacía", "Introduce una instrucción de TecNet Finder antes de compilar.")  # Informa el problema sin ejecutar el flujo.
             return  # Finaliza la acción actual.
 
-        try:  # Protege la interfaz frente a una excepción interna todavía no representada mediante Diagnostico.
+        try:  # Protege la interfaz frente a una excepción verdaderamente inesperada del propio programa.
             resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta las etapas actualmente disponibles mediante Motor.
-        except Exception as error:  # Captura únicamente fallos inesperados del propio programa.
+        except Exception as error:  # Captura únicamente fallos que no pudieron transformarse previamente en diagnósticos controlados.
+            self._limpiar_resultados_conservando_entrada()  # Elimina resultados anteriores para impedir mostrar información perteneciente a otra entrada.
+            self._mostrar_estado_error_interno()  # Deja visible un estado coherente mientras se informa el fallo inesperado.
             QMessageBox.critical(self, "Error interno", f"No se pudo completar el análisis:\n{error}")  # Muestra el problema sin cerrar TecNet Finder.
-            return  # Mantiene disponible la aplicación.
+            return  # Mantiene disponible la aplicación con la entrada intacta.
 
         self.ultimo_resultado = resultado  # Conserva el resultado global más reciente.
         self.panel_diagnosticos.mostrar_diagnosticos(resultado.diagnosticos)  # Actualiza la tabla estructurada de errores y advertencias.
@@ -288,6 +290,13 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el estilo anterior.
         self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente el estilo neutral.
         self.etiqueta_estado.update()  # Redibuja inmediatamente el mensaje.
+
+    def _mostrar_estado_error_interno(self) -> None:  # Evita que un fallo inesperado conserve visualmente el estado exitoso de una compilación anterior.
+        self.etiqueta_estado.setObjectName("EstadoError")  # Utiliza el mismo estilo rojo empleado por los diagnósticos normales.
+        self.etiqueta_estado.setText("Análisis interrumpido por un error interno.")  # Indica que los resultados visibles fueron descartados por seguridad.
+        self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira el estilo neutral aplicado durante la limpieza.
+        self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica inmediatamente el estado de error.
+        self.etiqueta_estado.update()  # Solicita el redibujado antes de mostrar el cuadro modal.
 
     def _limpiar_resultados_conservando_entrada(self) -> None:  # Descarta resultados anteriores sin eliminar los ejemplos recién insertados.
         self.editor_codigo.limpiar_diagnosticos()  # Elimina cualquier onda perteneciente al análisis anterior.

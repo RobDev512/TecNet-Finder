@@ -79,8 +79,8 @@ class SubredVLSM:  # Representa una subred calculada a partir de una solicitud d
     nueva_mascara: str  # Guarda el nuevo prefijo CIDR calculado según los hosts solicitados.
     mascara_decimal: str  # Guarda la máscara equivalente en notación decimal punteada.
     primera_ip_utilizable: str  # Guarda la primera dirección que puede asignarse a un host.
-    ultima_ip_utilizable: str  # Guarda la última dirección que puede asignarse a un host.
-    direccion_de_broadcast: str  # Guarda la dirección de broadcast calculada para la subred.
+    ultima_ip_utilizable: str  # Guarda la última IP que puede asignarse a un host.
+    direccion_de_broadcast: str  # Guarda la dirección de broadcast calculada.
     ip_base: str  # Conserva la dirección IP base recibida para identificar el bloque original.
     nombre_red: str  # Conserva el nombre de la red o utiliza la IP base cuando no se indicó NAME.
 
@@ -91,12 +91,14 @@ class ResultadoCompilacion:  # Agrupa en un solo objeto todo lo producido por el
     resultado_sintactico: ResultadoSintactico  # Guarda el resultado completo producido por el analizador sintáctico.
     subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes generadas a partir de los bloques válidos.
     advertencias: list[Diagnostico] = field(default_factory=list)  # Guarda recomendaciones no bloqueantes producidas fuera de las fases formales.
+    diagnosticos_generales: list[Diagnostico] = field(default_factory=list)  # Guarda errores técnicos controlados que no pertenecen todavía a una fase formal específica.
 
     @property
     def diagnosticos(self) -> list[Diagnostico]:  # Reúne en una sola colección todos los diagnósticos disponibles.
         return [
             *self.resultado_lexico.diagnosticos,
             *self.resultado_sintactico.diagnosticos,
+            *self.diagnosticos_generales,
             *self.advertencias,
         ]
 

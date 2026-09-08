@@ -48,10 +48,10 @@ def prueba_flujo_reune_diagnosticos_lexicos():  # Comprueba que los errores del 
 
 def prueba_flujo_recupera_instruccion_posterior():  # Comprueba que un error sintáctico anterior no impida procesar una instrucción válida posterior.
     flujo = FlujoCompilacion()  # Crea una instancia nueva del flujo.
-    codigo_fuente = (  # Define una primera instrucción incorrecta y otra válida en la línea siguiente.
+    codigo_fuente = (
         "IP 192.168.1. MASK /24 HOSTS 50\n"
         "IP 10.0.0.0 MASK /24 HOSTS 20 NAME Correcta"
-    )
+    )  # Define una primera instrucción incorrecta y otra válida en la línea siguiente.
     resultado = flujo.analizar(codigo_fuente)  # Ejecuta el flujo completo utilizando la recuperación del parser.
 
     codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne los códigos producidos durante la ejecución.
@@ -64,13 +64,49 @@ def prueba_flujo_recupera_instruccion_posterior():  # Comprueba que un error sin
 
 def prueba_flujo_procesa_multiples_bloques():  # Comprueba que varias instrucciones válidas puedan recorrer juntas el flujo completo.
     flujo = FlujoCompilacion()  # Crea una instancia del coordinador.
-    codigo_fuente = (  # Define dos bloques válidos independientes.
+    codigo_fuente = (
         "IP 192.168.10.0 MASK /24 HOSTS 50 NAME Oficina\n"
         "IP 10.0.0.0 MASK /24 HOSTS 20 NAME Laboratorio"
-    )
+    )  # Define dos bloques válidos independientes.
     resultado = flujo.analizar(codigo_fuente)  # Ejecuta las fases sobre ambas instrucciones.
 
     assert len(resultado.bloques_validos) == 2  # Comprueba que el parser haya conservado las dos instrucciones.
     assert len(resultado.subredes_vlsm) == 2  # Comprueba que cada solicitud individual haya producido una subred.
     assert resultado.subredes_vlsm[0].nombre_red == "Oficina"  # Verifica que el primer resultado conserve el nombre de su red.
     assert resultado.subredes_vlsm[1].nombre_red == "Laboratorio"  # Verifica que el segundo resultado conserve su nombre correspondiente.
+
+
+def prueba_flujo_controla_desbordamiento_ipv4_sin_excepcion():  # Comprueba que una solicitud extrema se convierta en un diagnóstico ubicado sobre el HOSTS responsable.
+    flujo = FlujoCompilacion()  # Crea una instancia independiente para reproducir el caso encontrado durante la auditoría.
+    codigo_fuente = "IP 192.168.1.0 MASK /24 HOSTS 4294967296 NAME Gigante"  # Solicita un bloque imposible de representar dentro del espacio IPv4.
+    resultado = flujo.analizar(codigo_fuente)  # Ejecuta el flujo esperando un diagnóstico controlado y no una excepción.
+
+    diagnostico = next(
+        diagnostico
+        for diagnostico in resultado.diagnosticos
+        if diagnostico.codigo == "GEN-001"
+    )  # Recupera específicamente el diagnóstico técnico producido por la solicitud extrema.
+
+    assert resultado.tiene_errores is True  # Confirma que la interfaz podrá mostrar un estado rojo.
+    assert len(resultado.bloques_validos) == 1  # Conserva que la instrucción sí era sintácticamente válida.
+    assert len(resultado.subredes_vlsm) == 0  # Evita publicar una subred incompleta o imposible.
+    assert diagnostico.linea == 1  # Comprueba que el diagnóstico permanezca relacionado con la instrucción correcta.
+    assert diagnostico.columna == 30  # Comprueba que la onda comience exactamente sobre la cantidad escrita después de HOSTS.
+    assert diagnostico.longitud == 10  # Comprueba que la onda cubra los diez dígitos de la cantidad problemática.
+    assert diagnostico.fragmento == "4294967296"  # Conserva el NUMBER exacto para tooltips y futuras ayudas contextuales.
+
+
+def prueba_flujo_continua_despues_de_desbordamiento_ipv4():  # Comprueba que un bloque imposible no elimine resultados correctos de instrucciones posteriores.
+    flujo = FlujoCompilacion()  # Crea un coordinador aislado para comprobar procesamiento parcial.
+    codigo_fuente = (
+        "IP 192.168.1.0 MASK /24 HOSTS 4294967296 NAME Gigante\n"
+        "IP 10.0.0.0 MASK /24 HOSTS 20 NAME Correcta"
+    )  # Combina un bloque imposible de calcular con otro bloque completamente procesable.
+    resultado = flujo.analizar(codigo_fuente)  # Ejecuta ambos bloques dentro de una sola compilación.
+
+    codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne errores y advertencias producidos durante el procesamiento.
+    assert "GEN-001" in codigos  # Comprueba que el primer bloque quede representado mediante un error controlado.
+    assert "ADV-001" in codigos  # Comprueba que se informe al usuario que solamente parte de la entrada pudo procesarse.
+    assert len(resultado.bloques_validos) == 2  # Confirma que ambos bloques siguen siendo sintácticamente correctos.
+    assert len(resultado.subredes_vlsm) == 1  # Comprueba que solamente el bloque procesable produzca una subred.
+    assert resultado.subredes_vlsm[0].nombre_red == "Correcta"  # Confirma que la salida sobreviviente corresponda al segundo bloque.
