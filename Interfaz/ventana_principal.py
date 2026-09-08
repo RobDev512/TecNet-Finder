@@ -237,7 +237,7 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
             return  # Finaliza la acción actual.
 
         try:  # Protege la interfaz frente a una excepción interna todavía no representada mediante Diagnostico.
-            resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta léxico, sintáctico y cálculo VLSM mediante Motor.
+            resultado = self.flujo.analizar(codigo_fuente)  # Ejecuta las etapas actualmente disponibles mediante Motor.
         except Exception as error:  # Captura únicamente fallos inesperados del propio programa.
             QMessageBox.critical(self, "Error interno", f"No se pudo completar el análisis:\n{error}")  # Muestra el problema sin cerrar TecNet Finder.
             return  # Mantiene disponible la aplicación.
@@ -248,16 +248,32 @@ class VentanaPrincipal(QMainWindow):  # Define la ventana principal y controla s
         self.panel_resultados.mostrar_resultado(resultado)  # Actualiza resumen, tablas y vistas sintácticas.
         self._actualizar_estado(resultado)  # Actualiza la barra superior de estado.
 
-    def _actualizar_estado(self, resultado) -> None:  # Cambia el mensaje general según el resultado obtenido.
+    def _actualizar_estado(self, resultado) -> None:  # Cambia el mensaje general distinguiendo errores, advertencias y resultados completamente limpios.
         cantidad_errores = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad == "error")  # Cuenta únicamente diagnósticos clasificados como error.
+        cantidad_advertencias = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta recomendaciones no bloqueantes.
         cantidad_subredes = len(resultado.subredes_vlsm)  # Obtiene la cantidad de subredes que sí pudieron calcularse.
 
-        if cantidad_errores > 0:  # Comprueba si la compilación produjo algún error.
-            self.etiqueta_estado.setObjectName("EstadoError")  # Aplica el estilo correspondiente al resultado incorrecto.
-            self.etiqueta_estado.setText(f"Análisis terminado con errores: {cantidad_errores} error(es) | Subredes generadas: {cantidad_subredes}")  # Resume el resultado obtenido.
-        else:  # Se ejecuta cuando no existen errores en las fases actuales.
+        if cantidad_errores > 0:  # Da prioridad al estado de error cuando existe al menos un problema real.
+            self.etiqueta_estado.setObjectName("EstadoError")  # Aplica el estilo rojo correspondiente.
+            self.etiqueta_estado.setText(
+                f"Análisis terminado con errores: {cantidad_errores} error(es) | "
+                f"Advertencias: {cantidad_advertencias} | "
+                f"Subredes generadas: {cantidad_subredes}"
+            )
+        elif cantidad_advertencias > 0:  # Comprueba si el resultado es válido pero contiene recomendaciones.
+            self.etiqueta_estado.setObjectName("EstadoAdvertencia")  # Aplica el nuevo estado amarillo.
+            self.etiqueta_estado.setText(
+                f"Análisis completo con advertencias: {cantidad_advertencias} | "
+                f"Bloques válidos: {len(resultado.bloques_validos)} | "
+                f"Subredes generadas: {cantidad_subredes}"
+            )
+        else:  # Se ejecuta únicamente cuando la compilación quedó completamente limpia.
             self.etiqueta_estado.setObjectName("EstadoCorrecto")  # Aplica el estilo positivo.
-            self.etiqueta_estado.setText(f"Análisis completo | Bloques válidos: {len(resultado.bloques_validos)} | Subredes generadas: {cantidad_subredes}")  # Resume los principales datos correctos.
+            self.etiqueta_estado.setText(
+                f"Análisis completo | "
+                f"Bloques válidos: {len(resultado.bloques_validos)} | "
+                f"Subredes generadas: {cantidad_subredes}"
+            )
 
         self.etiqueta_estado.style().unpolish(self.etiqueta_estado)  # Retira temporalmente el formato anterior.
         self.etiqueta_estado.style().polish(self.etiqueta_estado)  # Aplica nuevamente la hoja de estilos.

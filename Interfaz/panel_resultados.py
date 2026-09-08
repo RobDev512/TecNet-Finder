@@ -222,23 +222,25 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         cuadricula.setHorizontalSpacing(10)  # Define la separación horizontal entre tarjetas.
         cuadricula.setVerticalSpacing(10)  # Define la separación vertical entre ambas filas.
 
-        datos_tarjetas = [  # Define cada contador junto con los nombres usados para aplicar su color.
+        datos_tarjetas = [  # Define los seis contadores disponibles actualmente y sus identificadores visuales.
             ("tokens", "Tokens reconocidos", "TarjetaTokens", "ValorTokens"),
             ("bloques", "Bloques sintácticos", "TarjetaBloques", "ValorBloques"),
             ("subredes", "Subredes generadas", "TarjetaSubredes", "ValorSubredes"),
             ("errores_lexicos", "Errores léxicos", "TarjetaLexicos", "ValorLexicos"),
             ("errores_sintacticos", "Errores sintácticos", "TarjetaSintacticos", "ValorSintacticos"),
+            ("advertencias", "Advertencias", "TarjetaAdvertencias", "ValorAdvertencias"),
         ]
 
-        posiciones = {  # Distribuye las tarjetas usando seis columnas para mantener ambas filas equilibradas.
+        posiciones = {  # Distribuye seis tarjetas en dos filas equilibradas de tres elementos.
             "tokens": (0, 0, 1, 2),
             "bloques": (0, 2, 1, 2),
             "subredes": (0, 4, 1, 2),
-            "errores_lexicos": (1, 0, 1, 3),
-            "errores_sintacticos": (1, 3, 1, 3),
+            "errores_lexicos": (1, 0, 1, 2),
+            "errores_sintacticos": (1, 2, 1, 2),
+            "advertencias": (1, 4, 1, 2),
         }
 
-        for clave, texto, nombre_tarjeta, nombre_valor in datos_tarjetas:  # Construye las cinco tarjetas del resumen actual.
+        for clave, texto, nombre_tarjeta, nombre_valor in datos_tarjetas:  # Construye las seis tarjetas correspondientes al alcance actual.
             tarjeta = QFrame()  # Crea el contenedor visual de la tarjeta.
             tarjeta.setObjectName(nombre_tarjeta)  # Asigna un identificador propio para colorear su borde.
             diseno_tarjeta = QVBoxLayout(tarjeta)  # Organiza verticalmente título y valor.
@@ -387,32 +389,58 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         self.texto_derivacion.setPlainText(sintactico.derivacion)  # Muestra la derivación generada.
         self.visor_arbol.mostrar_arboles(sintactico.arboles, sintactico.arbol_textual)  # Actualiza conjuntamente la representación textual y los árboles gráficos.
 
+        cantidad_advertencias = sum(  # Cuenta recomendaciones no bloqueantes para decidir qué salida conviene mostrar inmediatamente.
+            1
+            for diagnostico in resultado.diagnosticos
+            if diagnostico.severidad in ("warning", "advertencia")
+        )
+
         self.setCurrentWidget(self.tab_entrada_salida)  # Regresa a Entrada / Salida después de cada compilación.
 
-        if resultado.tiene_errores:  # Comprueba si alguna de las fases actuales produjo errores.
-            self.pestanas_salida.setCurrentWidget(self.tab_errores)  # Lleva al usuario directamente a los diagnósticos.
-        elif resultado.subredes_vlsm:  # Comprueba si el análisis terminó correctamente y produjo subredes.
-            self.pestanas_salida.setCurrentWidget(self.tab_vlsm)  # Muestra automáticamente la tabla VLSM cuando todo salió bien.
-        else:  # Se ejecuta cuando no existen errores pero tampoco hay una tabla que mostrar.
+        if resultado.tiene_errores or cantidad_advertencias > 0:  # Da prioridad a cualquier diagnóstico que requiera atención del usuario.
+            self.pestanas_salida.setCurrentWidget(self.tab_errores)  # Lleva automáticamente a Errores / Advertencias.
+            self.panel_diagnosticos.setCurrentIndex(0)  # Garantiza que una nueva compilación muestre Detectados y no deje abierto el Catálogo anterior.
+        elif resultado.subredes_vlsm:  # Comprueba si el análisis terminó completamente limpio y produjo subredes.
+            self.pestanas_salida.setCurrentWidget(self.tab_vlsm)  # Muestra la tabla VLSM cuando no existen diagnósticos que revisar.
+        else:  # Se ejecuta cuando no hay diagnósticos ni una tabla VLSM disponible.
             self.pestanas_salida.setCurrentWidget(self.tab_resumen)  # Regresa al resumen como vista neutral.
 
-    def _mostrar_resumen(self, resultado: ResultadoCompilacion) -> None:  # Actualiza las tarjetas y el estado general de la compilación.
+    def _mostrar_resumen(self, resultado: ResultadoCompilacion) -> None:  # Actualiza las tarjetas y diferencia visualmente resultados correctos, advertidos y erróneos.
         diagnosticos = resultado.diagnosticos  # Obtiene todos los diagnósticos combinados del flujo.
         errores_lexicos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Léxico" and diagnostico.severidad == "error")  # Cuenta únicamente errores producidos por el lexer.
         errores_sintacticos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Sintáctico" and diagnostico.severidad == "error")  # Cuenta únicamente errores producidos por el parser.
+        cantidad_errores = sum(1 for diagnostico in diagnosticos if diagnostico.severidad == "error")  # Cuenta todos los errores actuales para no depender únicamente de las tarjetas visibles.
+        cantidad_advertencias = sum(1 for diagnostico in diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta todas las recomendaciones no bloqueantes actuales.
 
         self.tarjetas_resumen["tokens"].setText(str(len(resultado.resultado_lexico.tokens)))  # Actualiza la cantidad total de tokens reconocidos.
         self.tarjetas_resumen["bloques"].setText(str(len(resultado.bloques_validos)))  # Actualiza la cantidad de bloques sintácticamente aceptados.
         self.tarjetas_resumen["subredes"].setText(str(len(resultado.subredes_vlsm)))  # Actualiza la cantidad de subredes generadas.
         self.tarjetas_resumen["errores_lexicos"].setText(str(errores_lexicos))  # Actualiza el contador léxico.
         self.tarjetas_resumen["errores_sintacticos"].setText(str(errores_sintacticos))  # Actualiza el contador sintáctico.
+        self.tarjetas_resumen["advertencias"].setText(str(cantidad_advertencias))  # Actualiza la nueva tarjeta amarilla de recomendaciones.
 
-        if resultado.tiene_errores:  # Comprueba si existe al menos un error en el resultado global.
-            self.estado_resumen.setObjectName("EstadoError")  # Cambia el estilo del mensaje al estado de error.
-            self.estado_resumen.setText(f"Análisis terminado con errores | Errores: {errores_lexicos + errores_sintacticos} | Subredes generadas: {len(resultado.subredes_vlsm)}")  # Resume el resultado de la ejecución.
-        else:  # Se ejecuta cuando ninguna fase actual produjo errores.
+        if cantidad_errores > 0:  # Comprueba primero si existe algún error bloqueante o recuperable.
+            self.estado_resumen.setObjectName("EstadoError")  # Mantiene el rojo como estado prioritario cuando existen errores.
+            self.estado_resumen.setText(
+                f"Análisis terminado con errores | "
+                f"Errores: {cantidad_errores} | "
+                f"Advertencias: {cantidad_advertencias} | "
+                f"Subredes generadas: {len(resultado.subredes_vlsm)}"
+            )
+        elif cantidad_advertencias > 0:  # Comprueba si el análisis fue válido pero contiene recomendaciones.
+            self.estado_resumen.setObjectName("EstadoAdvertencia")  # Utiliza el nuevo estado amarillo.
+            self.estado_resumen.setText(
+                f"Análisis completo con advertencias | "
+                f"Advertencias: {cantidad_advertencias} | "
+                f"Subredes generadas: {len(resultado.subredes_vlsm)}"
+            )
+        else:  # Se ejecuta únicamente cuando la compilación no produjo ningún diagnóstico.
             self.estado_resumen.setObjectName("EstadoCorrecto")  # Aplica el estilo positivo.
-            self.estado_resumen.setText(f"Análisis completo | Bloques válidos: {len(resultado.bloques_validos)} | Subredes generadas: {len(resultado.subredes_vlsm)}")  # Muestra los principales datos del análisis correcto.
+            self.estado_resumen.setText(
+                f"Análisis completo | "
+                f"Bloques válidos: {len(resultado.bloques_validos)} | "
+                f"Subredes generadas: {len(resultado.subredes_vlsm)}"
+            )
 
         self.estado_resumen.style().unpolish(self.estado_resumen)  # Elimina temporalmente el estilo anterior del mensaje.
         self.estado_resumen.style().polish(self.estado_resumen)  # Aplica nuevamente la hoja de estilos con el nuevo estado.
@@ -441,11 +469,16 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
         else:  # Se ejecuta cuando ninguna instrucción consiguió cumplir completamente la gramática.
             lineas.append("No se encontraron bloques sintácticamente válidos.")  # Informa el resultado sin inventar etapas posteriores.
 
+        cantidad_errores = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad == "error")  # Cuenta errores de cualquier categoría actual.
+        cantidad_advertencias = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta las recomendaciones actuales.
+
         lineas.append("=== RESUMEN ===")  # Agrega una síntesis al final del reporte.
         lineas.append(f"Tokens reconocidos: {len(resultado.resultado_lexico.tokens)}")  # Informa la cantidad de tokens.
         lineas.append(f"Bloques sintácticamente válidos: {len(resultado.bloques_validos)}")  # Informa la cantidad de instrucciones aceptadas.
         lineas.append(f"Subredes generadas: {len(resultado.subredes_vlsm)}")  # Informa la cantidad de resultados VLSM.
-        lineas.append(f"Diagnósticos encontrados: {len(resultado.diagnosticos)}")  # Informa la cantidad total de problemas detectados.
+        lineas.append(f"Errores encontrados: {cantidad_errores}")  # Separa los problemas reales de las recomendaciones.
+        lineas.append(f"Advertencias encontradas: {cantidad_advertencias}")  # Hace visible el mismo dato mostrado por la nueva tarjeta.
+        lineas.append(f"Diagnósticos totales: {len(resultado.diagnosticos)}")  # Conserva además el total general del flujo.
 
         self.texto_analisis.setPlainText("\n".join(lineas))  # Muestra el reporte completo dentro de la subpestaña correspondiente.
 
@@ -559,7 +592,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de TecNet Finder
 
             for columna, valor in enumerate(valores):  # Recorre cada columna de la subred.
                 self.tabla_vlsm.setItem(fila, columna, self._crear_item_centrado(valor))  # Inserta el dato centrado horizontal y verticalmente.
-    
+
     def _copiar_analisis(self) -> None:  # Copia al portapapeles el análisis léxico-sintáctico actualmente visible.
         texto = self.texto_analisis.toPlainText()  # Obtiene exactamente el contenido mostrado en la subpestaña de análisis.
 

@@ -120,7 +120,8 @@ QFrame#TarjetaTokens,
 QFrame#TarjetaBloques,
 QFrame#TarjetaSubredes,
 QFrame#TarjetaLexicos,
-QFrame#TarjetaSintacticos {
+QFrame#TarjetaSintacticos,
+QFrame#TarjetaAdvertencias {
     background-color: #181825;
     border-radius: 8px;
 }
@@ -145,11 +146,16 @@ QFrame#TarjetaSintacticos {
     border: 1px solid #fab387;
 }
 
+QFrame#TarjetaAdvertencias {
+    border: 1px solid #f9e2af;
+}
+
 QLabel#ValorTokens,
 QLabel#ValorBloques,
 QLabel#ValorSubredes,
 QLabel#ValorLexicos,
-QLabel#ValorSintacticos {
+QLabel#ValorSintacticos,
+QLabel#ValorAdvertencias {
     background-color: transparent;
     font-size: 22pt;
     font-weight: bold;
@@ -175,6 +181,10 @@ QLabel#ValorSintacticos {
     color: #fab387;
 }
 
+QLabel#ValorAdvertencias {
+    color: #f9e2af;
+}
+
 QLabel#EstadoNeutral {
     background-color: #181825;
     color: #cdd6f4;
@@ -187,6 +197,15 @@ QLabel#EstadoCorrecto {
     background-color: #181825;
     color: #a6e3a1;
     border: 1px solid #a6e3a1;
+    border-radius: 6px;
+    padding: 7px;
+    font-weight: bold;
+}
+
+QLabel#EstadoAdvertencia {
+    background-color: #181825;
+    color: #f9e2af;
+    border: 1px solid #f9e2af;
     border-radius: 6px;
     padding: 7px;
     font-weight: bold;
