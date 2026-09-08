@@ -17,6 +17,9 @@ dist/
 # Ejecutables generados
 *.exe
 
+# Dependencias locales de IA
+Dependencias/Ollama/
+
 # Archivos temporales
 *.tmp
 *.log
