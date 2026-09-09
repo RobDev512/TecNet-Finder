@@ -381,7 +381,8 @@ QPlainTextEdit {
     border: 1px solid #313244;
     border-radius: 6px;
     padding: 5px;
-    selection-background-color: #45475a;
+    selection-background-color: #89b4fa;
+    selection-color: #1e1e2e;
 }
 
 QTableWidget {

@@ -12,10 +12,11 @@
 # la IA local únicamente cuando el usuario hace doble clic sobre
 # la celda Solución y la función se encuentra habilitada.
 #
-# El contenido de las tablas se centra verticalmente para mantener
-# una lectura equilibrada incluso cuando una fila crece por textos
-# extensos. La navegación al código permanece disponible mediante
-# doble clic sobre las demás celdas.
+# La tabla Detectados funciona como una vista de consulta sin
+# selección visual de celdas. El doble clic sobre un diagnóstico
+# permite navegar al fragmento correspondiente en el editor,
+# mientras que la columna Solución conserva una interacción
+# independiente para solicitar una mejora mediante IA local.
 # ============================================================
 
 from PySide6.QtCore import QEvent, QTimer, Qt, Signal  # Importa eventos, temporización, roles, alineaciones, cursores y navegación.
@@ -30,37 +31,38 @@ from Motor.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obten
 class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y catálogo general dentro de dos subpestañas.
     diagnostico_activado = Signal(object)  # Emite el diagnóstico asociado cuando el usuario solicita navegar hacia el código fuente.
 
-    def __init__(self, padre=None):  # Inicializa las dos tablas manteniendo la misma interfaz pública utilizada por la ventana principal.
+    def __init__(self, padre=None):
         super().__init__(padre)  # Inicializa el contenedor de pestañas.
-        self.filas_catalogo: dict[str, int] = {}  # Relaciona cada código con su fila para localizar inmediatamente su ficha.
+        self.filas_catalogo: dict[str, int] = {}  # Relaciona cada código con su fila dentro del catálogo.
         self.diagnosticos_actuales: list[Diagnostico] = []  # Conserva la compilación vigente sin modificar sus soluciones oficiales.
-        self.ia_habilitada = False  # Impide generar explicaciones hasta recibir el estado efectivo desde Configuración.
+        self.ia_habilitada = False  # Impide solicitar explicaciones hasta recibir el estado efectivo desde Configuración.
         self.codigo_catalogo_pendiente: str | None = None  # Retrasa el clic simple sobre Código para distinguirlo correctamente del doble clic.
-        self.clave_solucion_pendiente: str | None = None  # Identifica la única solución que se encuentra esperando una respuesta de IA.
-        self.tabla_detectados = QTableWidget(0, 6)  # Crea la tabla destinada únicamente a los diagnósticos obtenidos en la compilación actual.
-        self.tabla_catalogo = QTableWidget(0, 6)  # Crea la tabla fija destinada a mostrar todos los códigos conocidos.
-        self.control_diagnosticos_ia = ControlDiagnosticosIA(self)  # Prepara la generación automática sin bloquear la interfaz.
+        self.clave_solucion_pendiente: str | None = None  # Identifica la solución que actualmente espera una respuesta de IA.
 
-        self.temporizador_catalogo = QTimer(self)  # Permite esperar brevemente antes de interpretar Código como un clic simple.
-        self.temporizador_catalogo.setSingleShot(True)  # Ejecuta como máximo una apertura del catálogo por interacción.
-        aplicacion = QApplication.instance()  # Consulta la configuración real de doble clic utilizada por el sistema.
-        intervalo_doble_clic = aplicacion.doubleClickInterval() if aplicacion is not None else 250  # Mantiene una alternativa segura durante pruebas aisladas.
-        self.temporizador_catalogo.setInterval(max(150, intervalo_doble_clic))  # Espera lo suficiente para reconocer un posible segundo clic.
-        self.temporizador_catalogo.timeout.connect(self._abrir_codigo_catalogo_pendiente)  # Abre la ficha solamente cuando no llegó un doble clic.
+        self.tabla_detectados = QTableWidget(0, 6)  # Crea la tabla de diagnósticos correspondientes a la compilación actual.
+        self.tabla_catalogo = QTableWidget(0, 6)  # Crea la tabla de referencia con todos los diagnósticos conocidos.
+        self.control_diagnosticos_ia = ControlDiagnosticosIA(self)  # Prepara la generación asíncrona de explicaciones.
 
-        self._configurar_tabla_detectados()  # Prepara columnas, selección y comportamiento interactivo de la primera vista.
-        self._configurar_tabla_catalogo()  # Prepara la tabla utilizada como referencia general.
-        self._cargar_catalogo()  # Llena la segunda vista utilizando exclusivamente los datos registrados en Motor.
+        self.temporizador_catalogo = QTimer(self)  # Permite diferenciar un clic simple de un doble clic sobre Código.
+        self.temporizador_catalogo.setSingleShot(True)  # Ejecuta como máximo una apertura de catálogo por interacción.
 
-        self.addTab(self.tabla_detectados, "Detectados")  # Mantiene primero la vista utilizada durante una compilación normal.
-        self.addTab(self.tabla_catalogo, "Catálogo")  # Agrega la referencia completa como segunda subpestaña.
+        aplicacion = QApplication.instance()  # Consulta el intervalo de doble clic utilizado actualmente por el sistema.
+        intervalo_doble_clic = aplicacion.doubleClickInterval() if aplicacion is not None else 250  # Utiliza un valor seguro durante pruebas aisladas.
+        self.temporizador_catalogo.setInterval(max(150, intervalo_doble_clic))  # Espera el tiempo suficiente antes de interpretar un clic como simple.
+        self.temporizador_catalogo.timeout.connect(self._abrir_codigo_catalogo_pendiente)  # Abre la ficha únicamente cuando no apareció un segundo clic.
 
-        self.tabla_detectados.cellClicked.connect(self._procesar_clic_detectado)  # Diferencia el acceso al catálogo de la navegación mediante doble clic.
-        self.tabla_detectados.cellDoubleClicked.connect(self._activar_diagnostico)  # Navega desde cualquier celda de una fila hacia el código fuente.
-        self.tabla_detectados.itemSelectionChanged.connect(self._sincronizar_catalogo_desde_detectados)  # Mantiene preparada en segundo plano la ficha correspondiente al diagnóstico seleccionado.
-        self.control_diagnosticos_ia.soluciones_listas.connect(self._aplicar_soluciones_ia)  # Sustituye visualmente únicamente soluciones pertenecientes a la compilación vigente.
+        self._configurar_tabla_detectados()  # Prepara la vista de diagnósticos actuales.
+        self._configurar_tabla_catalogo()  # Prepara la referencia general de códigos.
+        self._cargar_catalogo()  # Carga los diagnósticos conocidos desde Motor.
 
-    def _configurar_tabla_detectados(self) -> None:  # Configura la tabla que muestra únicamente los diagnósticos de la compilación actual.
+        self.addTab(self.tabla_detectados, "Detectados")  # Coloca primero la vista correspondiente al análisis actual.
+        self.addTab(self.tabla_catalogo, "Catálogo")  # Coloca después la referencia completa.
+
+        self.tabla_detectados.cellClicked.connect(self._procesar_clic_detectado)  # Atiende únicamente la función especial del clic simple sobre Código.
+        self.tabla_detectados.cellDoubleClicked.connect(self._activar_diagnostico)  # Gestiona navegación al editor o mejora mediante IA.
+        self.control_diagnosticos_ia.soluciones_listas.connect(self._aplicar_soluciones_ia)  # Aplica solamente respuestas válidas de la compilación vigente.
+
+    def _configurar_tabla_detectados(self) -> None:
         self.tabla_detectados.setHorizontalHeaderLabels(
             [
                 "Código",
@@ -70,30 +72,29 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
                 "Columna",
                 "Solución",
             ]
-        )
+        )  # Define las columnas visibles de cada diagnóstico.
 
-        self.tabla_detectados.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Impide modificar accidentalmente los diagnósticos.
-        self.tabla_detectados.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)  # Selecciona la fila completa al pulsar cualquiera de sus celdas.
-        self.tabla_detectados.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)  # Permite trabajar solamente con un diagnóstico a la vez.
-        self.tabla_detectados.setAlternatingRowColors(True)  # Facilita distinguir visualmente filas consecutivas.
-        self.tabla_detectados.setWordWrap(True)  # Permite que los mensajes y soluciones extensos utilicen varias líneas.
-        self.tabla_detectados.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar información mediante puntos suspensivos.
+        self.tabla_detectados.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Impide modificar accidentalmente cualquier diagnóstico.
+        self.tabla_detectados.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)  # Convierte la tabla en una vista de consulta sin fondos de selección.
+        self.tabla_detectados.setAlternatingRowColors(True)  # Facilita distinguir visualmente diagnósticos consecutivos.
+        self.tabla_detectados.setWordWrap(True)  # Permite mostrar mensajes y soluciones extensos en varias líneas.
+        self.tabla_detectados.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar contenido mediante puntos suspensivos.
         self.tabla_detectados.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
-        self.tabla_detectados.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta la altura según el contenido real.
-        self.tabla_detectados.setMouseTracking(True)  # Permite conocer la celda situada debajo del cursor aunque no exista ningún clic.
-        self.tabla_detectados.viewport().setMouseTracking(True)  # Activa el seguimiento directamente sobre el área donde se dibujan las celdas.
-        self.tabla_detectados.viewport().installEventFilter(self)  # Permite cambiar el cursor solamente cuando se encuentra sobre la columna Código.
+        self.tabla_detectados.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta cada fila según la cantidad de texto mostrada.
+        self.tabla_detectados.setMouseTracking(True)  # Permite actualizar el cursor sin necesidad de pulsar.
+        self.tabla_detectados.viewport().setMouseTracking(True)  # Activa el seguimiento directamente sobre el área de las celdas.
+        self.tabla_detectados.viewport().installEventFilter(self)  # Permite representar Código como un enlace mediante el cursor.
 
-        encabezado = self.tabla_detectados.horizontalHeader()  # Obtiene el encabezado para configurar individualmente sus columnas.
+        encabezado = self.tabla_detectados.horizontalHeader()  # Obtiene el encabezado para controlar el ancho de cada columna.
 
-        encabezado.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Reserva únicamente el espacio necesario para Código.
-        encabezado.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Reserva únicamente el espacio necesario para Categoría.
-        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # Permite que Mensaje utilice una parte amplia del espacio restante.
+        encabezado.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Código compacto.
+        encabezado.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Categoría compacta.
+        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # Permite que Mensaje utilice una parte amplia del espacio.
         encabezado.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Línea compacta.
         encabezado.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Columna compacta.
         encabezado.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # Permite que Solución comparta el espacio principal.
 
-    def _configurar_tabla_catalogo(self) -> None:  # Configura la tabla de referencia utilizada para consultar todos los códigos conocidos.
+    def _configurar_tabla_catalogo(self) -> None:
         self.tabla_catalogo.setHorizontalHeaderLabels(
             [
                 "Código",
@@ -103,56 +104,56 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
                 "Descripción",
                 "Solución sugerida",
             ]
-        )
+        )  # Define las columnas utilizadas por el catálogo general.
 
-        self.tabla_catalogo.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Impide alterar visualmente la información central del catálogo.
-        self.tabla_catalogo.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)  # Mantiene seleccionada la ficha completa del código.
-        self.tabla_catalogo.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)  # Permite consultar una sola entrada a la vez.
-        self.tabla_catalogo.setAlternatingRowColors(True)  # Facilita la lectura de códigos consecutivos.
-        self.tabla_catalogo.setWordWrap(True)  # Permite mostrar completamente descripciones y soluciones extensas.
-        self.tabla_catalogo.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar información del catálogo.
+        self.tabla_catalogo.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Mantiene el catálogo como contenido de solo lectura.
+        self.tabla_catalogo.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)  # Conserva la selección completa de fichas dentro del Catálogo.
+        self.tabla_catalogo.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)  # Permite consultar una sola ficha a la vez.
+        self.tabla_catalogo.setAlternatingRowColors(True)  # Facilita distinguir los diagnósticos consecutivos.
+        self.tabla_catalogo.setWordWrap(True)  # Permite mostrar completamente descripciones y soluciones.
+        self.tabla_catalogo.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita recortar información.
         self.tabla_catalogo.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
-        self.tabla_catalogo.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Adapta la altura de cada ficha al texto completo.
+        self.tabla_catalogo.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta cada ficha según su contenido.
 
-        encabezado = self.tabla_catalogo.horizontalHeader()  # Obtiene el encabezado de la referencia general.
+        encabezado = self.tabla_catalogo.horizontalHeader()  # Obtiene el encabezado para administrar sus columnas.
 
         encabezado.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Código compacto.
         encabezado.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Tipo compacto.
-        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Reserva solamente el ancho requerido por el Estado.
-        encabezado.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene visible el nombre completo del diagnóstico.
-        encabezado.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Permite que Descripción utilice buena parte del espacio disponible.
+        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Estado compacto.
+        encabezado.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene visible el nombre completo.
+        encabezado.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Permite que Descripción utilice buena parte del espacio.
         encabezado.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # Permite que Solución sugerida comparta el espacio restante.
 
-    def eventFilter(self, objeto, evento) -> bool:  # Cambia dinámicamente el cursor únicamente al pasar sobre un código clickeable.
-        if objeto is self.tabla_detectados.viewport():  # Comprueba que el evento pertenezca al área de celdas de la tabla Detectados.
-            if evento.type() == QEvent.Type.MouseMove:  # Atiende cada movimiento del mouse dentro de la tabla.
-                indice = self.tabla_detectados.indexAt(evento.position().toPoint())  # Obtiene la fila y columna exactas situadas debajo del cursor.
+    def eventFilter(self, objeto, evento) -> bool:
+        if objeto is self.tabla_detectados.viewport():  # Comprueba que el evento pertenezca al área visible de Detectados.
+            if evento.type() == QEvent.Type.MouseMove:
+                indice = self.tabla_detectados.indexAt(evento.position().toPoint())  # Obtiene la celda situada debajo del cursor.
 
-                if indice.isValid() and indice.column() == 0:  # Comprueba que exista una celda y que corresponda específicamente a Código.
-                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.PointingHandCursor)  # Muestra la manita convencional utilizada por enlaces.
+                if indice.isValid() and indice.column() == 0:
+                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.PointingHandCursor)  # Representa Código como un enlace interactivo.
                 else:
-                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Recupera la flecha convencional sobre el resto de la tabla.
+                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Mantiene la flecha convencional sobre las demás columnas.
 
             elif evento.type() == QEvent.Type.Leave:
-                self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Garantiza que la manita no permanezca activa fuera de los enlaces.
+                self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Evita conservar la manita después de abandonar la tabla.
 
-        return super().eventFilter(objeto, evento)  # Permite que Qt continúe procesando normalmente selección, clics y desplazamiento.
+        return super().eventFilter(objeto, evento)  # Permite que Qt procese normalmente el resto de eventos.
 
     def establecer_ia_habilitada(self, habilitada: bool) -> None:
-        nuevo_estado = bool(habilitada)  # Conserva únicamente el estado efectivo comunicado por la configuración general.
+        nuevo_estado = bool(habilitada)  # Normaliza el valor recibido desde Configuración.
 
         if self.ia_habilitada == nuevo_estado:
-            return  # Evita alterar la tabla cuando el estado real no cambió.
+            return  # Evita trabajo adicional cuando el estado efectivo no cambió.
 
-        self.ia_habilitada = nuevo_estado  # Actualiza primero la decisión utilizada por los dobles clics posteriores.
-        self.control_diagnosticos_ia.establecer_habilitado(self.ia_habilitada)  # Sincroniza la capa asíncrona con la preferencia efectiva.
-        self._actualizar_ayudas_solucion()  # Refleja en los tooltips si la mejora manual con IA se encuentra disponible.
+        self.ia_habilitada = nuevo_estado  # Conserva la disponibilidad utilizada por futuras interacciones.
+        self.control_diagnosticos_ia.establecer_habilitado(self.ia_habilitada)  # Sincroniza la capa asíncrona con Configuración.
+        self._actualizar_ayudas_solucion()  # Actualiza los tooltips correspondientes a las soluciones oficiales.
 
         if not self.ia_habilitada:
-            self.control_diagnosticos_ia.cancelar()  # Invalida cualquier solicitud iniciada antes de desactivar la función.
-            self._restaurar_soluciones_oficiales()  # Recupera inmediatamente el contenido determinista cuando la IA se desactiva.
+            self.control_diagnosticos_ia.cancelar()  # Invalida cualquier generación iniciada antes de desactivar la función.
+            self._restaurar_soluciones_oficiales()  # Recupera inmediatamente las soluciones deterministas.
 
-    def _color_categoria(self, categoria: str) -> QColor:  # Devuelve el color utilizado por cada familia de diagnósticos.
+    def _color_categoria(self, categoria: str) -> QColor:
         if categoria == "Advertencia":
             return QColor("#f9e2af")  # Utiliza amarillo para advertencias.
 
@@ -165,28 +166,28 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         if categoria == "Semántico":
             return QColor("#cba6f7")  # Utiliza violeta para diagnósticos semánticos.
 
-        return QColor("#cdd6f4")  # Utiliza el color general para diagnósticos no pertenecientes a las categorías anteriores.
+        return QColor("#cdd6f4")  # Utiliza el color general para diagnósticos de otras categorías.
 
-    def _color_diagnostico(self, diagnostico: Diagnostico) -> QColor:  # Conserva la prioridad visual amarilla para cualquier advertencia detectada.
+    def _color_diagnostico(self, diagnostico: Diagnostico) -> QColor:
         if diagnostico.severidad in ("warning", "advertencia"):
-            return QColor("#f9e2af")  # Fuerza el amarillo independientemente de la categoría almacenada.
+            return QColor("#f9e2af")  # Da prioridad visual al amarillo cuando se trata de una advertencia.
 
-        return self._color_categoria(diagnostico.categoria)  # Utiliza el color general correspondiente al resto de diagnósticos.
+        return self._color_categoria(diagnostico.categoria)  # Utiliza el color asociado con la categoría del error.
 
-    def _color_estado_catalogo(self, estado: str) -> QColor:  # Diferencia visualmente funcionalidades actuales de las todavía pendientes.
+    def _color_estado_catalogo(self, estado: str) -> QColor:
         if estado == ESTADO_DIAGNOSTICO_DISPONIBLE:
-            return QColor("#a6e3a1")  # Utiliza verde para los diagnósticos disponibles.
+            return QColor("#a6e3a1")  # Utiliza verde para diagnósticos implementados actualmente.
 
-        return QColor("#f9e2af")  # Utiliza amarillo para las características que todavía deben implementarse.
+        return QColor("#f9e2af")  # Utiliza amarillo para diagnósticos reservados para fases futuras.
 
-    def _cargar_catalogo(self) -> None:  # Construye todas las filas directamente desde la fuente central de Motor.
-        self.tabla_catalogo.setRowCount(0)  # Elimina cualquier contenido previo antes de reconstruir la referencia.
-        self.filas_catalogo.clear()  # Reinicia también las posiciones utilizadas para localizar códigos rápidamente.
+    def _cargar_catalogo(self) -> None:
+        self.tabla_catalogo.setRowCount(0)  # Elimina cualquier contenido anterior.
+        self.filas_catalogo.clear()  # Reinicia las posiciones conocidas de cada código.
 
         for codigo, informacion in obtener_catalogo_diagnosticos():
-            fila = self.tabla_catalogo.rowCount()  # Obtiene la nueva posición dentro de la tabla.
-            self.tabla_catalogo.insertRow(fila)  # Crea una fila independiente para la ficha.
-            self.filas_catalogo[codigo] = fila  # Registra dónde quedó ubicado el código actual.
+            fila = self.tabla_catalogo.rowCount()  # Obtiene la siguiente posición libre.
+            self.tabla_catalogo.insertRow(fila)  # Crea la fila correspondiente al diagnóstico.
+            self.filas_catalogo[codigo] = fila  # Conserva su posición para posteriores accesos directos.
 
             valores = [
                 codigo,
@@ -198,35 +199,35 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             ]
 
             color_categoria = self._color_categoria(informacion["categoria"])  # Obtiene el color correspondiente al tipo de diagnóstico.
-            color_estado = self._color_estado_catalogo(informacion["estado"])  # Obtiene verde o amarillo según su disponibilidad.
+            color_estado = self._color_estado_catalogo(informacion["estado"])  # Obtiene el color correspondiente a su disponibilidad.
 
             for columna, valor in enumerate(valores):
-                elemento = QTableWidgetItem(valor)  # Crea la celda utilizando exactamente la información registrada.
-                elemento.setForeground(QBrush(color_estado if columna == 2 else color_categoria))  # Colorea únicamente Estado según disponibilidad y conserva el tipo para las demás columnas.
-                elemento.setToolTip(valor)  # Permite consultar también el contenido completo al dejar el cursor encima.
+                elemento = QTableWidgetItem(valor)  # Construye la celda con el texto correspondiente.
+                elemento.setForeground(QBrush(color_estado if columna == 2 else color_categoria))  # Colorea Estado por disponibilidad y el resto por categoría.
+                elemento.setToolTip(valor)  # Conserva el contenido completo disponible como ayuda contextual.
 
                 if columna in (0, 1, 2, 3):
-                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra código, tipo, estado y nombre.
+                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra los campos compactos.
                 else:
-                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Centra verticalmente los textos extensos sin perder su alineación izquierda.
+                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Mantiene textos extensos alineados a la izquierda y centrados verticalmente.
 
                 if columna == 0:
-                    elemento.setData(Qt.ItemDataRole.UserRole, codigo)  # Conserva el código para futuras interacciones.
+                    elemento.setData(Qt.ItemDataRole.UserRole, codigo)  # Conserva el identificador del diagnóstico dentro de su primera celda.
 
-                self.tabla_catalogo.setItem(fila, columna, elemento)  # Inserta finalmente la celda en la tabla.
+                self.tabla_catalogo.setItem(fila, columna, elemento)  # Inserta finalmente la celda construida.
 
-        self.tabla_catalogo.resizeRowsToContents()  # Ajusta todas las alturas después de cargar las descripciones completas.
+        self.tabla_catalogo.resizeRowsToContents()  # Adapta las alturas al contenido completo.
 
-    def mostrar_diagnosticos(self, diagnosticos: list[Diagnostico]) -> None:  # Sustituye únicamente la tabla de resultados actuales sin modificar el catálogo.
-        self.control_diagnosticos_ia.cancelar()  # Invalida cualquier mejora perteneciente a una compilación anterior.
-        self.clave_solucion_pendiente = None  # Descarta la relación visual con cualquier solicitud de la compilación anterior.
-        self.diagnosticos_actuales = list(diagnosticos)  # Conserva una copia estable de los objetos oficiales sin alterar sus soluciones.
-        self.tabla_detectados.setRowCount(0)  # Elimina los diagnósticos correspondientes a la compilación anterior.
+    def mostrar_diagnosticos(self, diagnosticos: list[Diagnostico]) -> None:
+        self.control_diagnosticos_ia.cancelar()  # Invalida cualquier mejora correspondiente a una compilación anterior.
+        self.clave_solucion_pendiente = None  # Elimina relaciones con solicitudes anteriores.
+        self.diagnosticos_actuales = list(diagnosticos)  # Conserva los diagnósticos oficiales de la compilación vigente.
+        self.tabla_detectados.setRowCount(0)  # Elimina las filas pertenecientes al análisis anterior.
 
         for diagnostico in self.diagnosticos_actuales:
-            fila = self.tabla_detectados.rowCount()  # Obtiene la siguiente posición libre.
-            self.tabla_detectados.insertRow(fila)  # Inserta una nueva fila para el diagnóstico.
-            color = self._color_diagnostico(diagnostico)  # Obtiene el color correspondiente a su categoría o severidad.
+            fila = self.tabla_detectados.rowCount()  # Obtiene la siguiente posición disponible.
+            self.tabla_detectados.insertRow(fila)  # Crea una nueva fila.
+            color = self._color_diagnostico(diagnostico)  # Obtiene el color correspondiente al diagnóstico.
 
             valores = [
                 diagnostico.codigo,
@@ -238,250 +239,230 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             ]
 
             for columna, valor in enumerate(valores):
-                elemento = QTableWidgetItem(valor)  # Crea la celda con la información correspondiente.
-                elemento.setForeground(QBrush(color))  # Aplica el color propio del diagnóstico a toda la fila.
-                elemento.setToolTip(valor)  # Mantiene el texto completo disponible mediante tooltip.
+                elemento = QTableWidgetItem(valor)  # Construye cada celda de la fila.
+                elemento.setForeground(QBrush(color))  # Aplica el color propio del diagnóstico.
+                elemento.setToolTip(valor)  # Conserva el contenido completo como tooltip.
 
                 if columna in (0, 1, 3, 4):
-                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra código, categoría y ubicación.
+                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra Código, Categoría, Línea y Columna.
                 else:
-                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Centra verticalmente Mensaje y Solución dentro de filas de altura variable.
+                    elemento.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Centra verticalmente Mensaje y Solución.
 
                 if columna == 0:
-                    elemento.setData(Qt.ItemDataRole.UserRole, diagnostico)  # Conserva el objeto completo para navegación y sincronización.
-                    fuente_codigo = elemento.font()  # Obtiene una copia de la fuente utilizada por la celda.
-                    fuente_codigo.setUnderline(True)  # Subraya el código para comunicar visualmente que puede pulsarse.
-                    fuente_codigo.setBold(True)  # Refuerza ligeramente el identificador para distinguirlo del resto de la fila.
-                    elemento.setFont(fuente_codigo)  # Aplica el formato visual similar al de un enlace.
+                    elemento.setData(Qt.ItemDataRole.UserRole, diagnostico)  # Conserva el objeto completo para posteriores interacciones.
+                    fuente_codigo = elemento.font()  # Obtiene la tipografía actualmente aplicada.
+                    fuente_codigo.setUnderline(True)  # Subraya Código para representarlo como un enlace.
+                    fuente_codigo.setBold(True)  # Refuerza ligeramente el identificador.
+                    elemento.setFont(fuente_codigo)  # Aplica la apariencia interactiva.
                     elemento.setToolTip(
                         f"{diagnostico.codigo}\n\n"
                         "Clic: abrir este código en el catálogo.\n"
                         "Doble clic: ir al fragmento correspondiente en el código fuente."
-                    )  # Explica claramente las dos interacciones disponibles sobre la misma celda.
+                    )  # Explica las dos interacciones disponibles sobre Código.
 
                 if columna == 5:
-                    elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Explica el origen de la solución y la interacción opcional con IA.
+                    elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Explica la posibilidad de utilizar IA cuando corresponde.
 
-                self.tabla_detectados.setItem(fila, columna, elemento)  # Inserta finalmente la celda en su posición correspondiente.
+                self.tabla_detectados.setItem(fila, columna, elemento)  # Inserta finalmente la celda en la tabla.
 
-        self.tabla_detectados.resizeRowsToContents()  # Recalcula la altura necesaria después de insertar todos los textos.
+        self.tabla_detectados.resizeRowsToContents()  # Ajusta todas las filas según el contenido completo.
 
-    def limpiar(self) -> None:  # Elimina únicamente los resultados de la compilación y mantiene disponible la referencia fija.
-        self.control_diagnosticos_ia.cancelar()  # Descarta cualquier respuesta que todavía estuviera generándose.
-        self.diagnosticos_actuales.clear()  # Elimina también la relación utilizada para validar futuras soluciones.
-        self.temporizador_catalogo.stop()  # Evita abrir una ficha después de limpiar la interfaz.
-        self.codigo_catalogo_pendiente = None  # Descarta cualquier clic simple todavía pendiente.
-        self.clave_solucion_pendiente = None  # Descarta también cualquier solución que estuviera esperando una respuesta de IA.
-        self.tabla_detectados.setRowCount(0)  # Borra únicamente los diagnósticos producidos por la compilación anterior.
-        self.tabla_catalogo.clearSelection()  # Elimina cualquier ficha preseleccionada del catálogo.
-        self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Restaura también el cursor convencional al limpiar los diagnósticos.
-        self.setCurrentWidget(self.tabla_detectados)  # Regresa a Detectados para dejar el panel en su estado principal.
+    def limpiar(self) -> None:
+        self.control_diagnosticos_ia.cancelar()  # Invalida cualquier respuesta todavía pendiente.
+        self.diagnosticos_actuales.clear()  # Elimina la relación con los diagnósticos anteriores.
+        self.temporizador_catalogo.stop()  # Cancela cualquier apertura de catálogo todavía pendiente.
+        self.codigo_catalogo_pendiente = None  # Elimina el código asociado con el clic anterior.
+        self.clave_solucion_pendiente = None  # Elimina cualquier solicitud de mejora pendiente.
+        self.tabla_detectados.setRowCount(0)  # Vacía la vista de diagnósticos actuales.
+        self.tabla_catalogo.clearSelection()  # Elimina cualquier ficha previamente seleccionada.
+        self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Recupera la flecha convencional.
+        self.setCurrentWidget(self.tabla_detectados)  # Regresa a la vista principal del panel.
 
     def _aplicar_soluciones_ia(self, soluciones: dict) -> None:
-        clave_pendiente = self.clave_solucion_pendiente  # Recupera la identidad exacta solicitada mediante doble clic.
-        self.clave_solucion_pendiente = None  # Libera la interacción antes de modificar la celda correspondiente.
+        clave_pendiente = self.clave_solucion_pendiente  # Recupera la identidad solicitada mediante doble clic.
+        self.clave_solucion_pendiente = None  # Libera la interacción antes de modificar la tabla.
 
         if not self.ia_habilitada or not clave_pendiente:
-            return  # Ignora señales tardías o resultados que ya no pertenecen a una solicitud visible.
+            return  # Descarta respuestas obsoletas o generadas después de desactivar la función.
 
         for fila, diagnostico in enumerate(self.diagnosticos_actuales):
-            clave = ExplicadorDiagnosticos.clave_diagnostico(diagnostico)  # Obtiene la misma identidad utilizada por el explicador.
+            clave = ExplicadorDiagnosticos.clave_diagnostico(diagnostico)  # Obtiene la identidad utilizada por la caché.
 
             if clave != clave_pendiente:
-                continue  # Mantiene intactas todas las demás soluciones, incluidas otras mejoras ya mostradas.
+                continue  # Mantiene intactas las demás filas.
 
-            elemento = self.tabla_detectados.item(fila, 5)  # Recupera exclusivamente la celda visual solicitada.
+            elemento = self.tabla_detectados.item(fila, 5)  # Recupera la celda Solución correspondiente.
 
             if elemento is None:
-                return  # Finaliza si la tabla cambió mientras se generaba la respuesta.
+                return  # Finaliza si la tabla cambió durante la generación.
 
-            solucion_ia = soluciones.get(clave_pendiente) if isinstance(soluciones, dict) else None  # Busca únicamente la mejora correspondiente al diagnóstico solicitado.
-            elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color normal al abandonar el estado temporal.
+            solucion_ia = soluciones.get(clave_pendiente) if isinstance(soluciones, dict) else None  # Busca la respuesta asociada con la solicitud.
+            elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color normal de la fila.
 
             if not isinstance(solucion_ia, str) or not solucion_ia.strip():
-                elemento.setText(diagnostico.solucion)  # Recupera la solución oficial si la capa opcional no pudo producir una mejora válida.
-                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Mantiene disponible una nueva solicitud mediante doble clic.
-                self.tabla_detectados.resizeRowsToContents()  # Ajusta nuevamente la fila después de retirar el estado temporal.
+                elemento.setText(diagnostico.solucion)  # Recupera la solución oficial cuando la IA no produjo un resultado válido.
+                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Permite intentar nuevamente la mejora.
+                self.tabla_detectados.resizeRowsToContents()  # Recupera la altura necesaria para la solución original.
                 return
 
-            elemento.setText(solucion_ia)  # Sustituye únicamente la representación visible sin modificar diagnostico.solucion.
+            elemento.setText(solucion_ia)  # Sustituye solamente la representación visual de la solución.
             elemento.setToolTip(
                 "Solución mejorada con IA local.\n"
                 "La solución oficial permanece intacta internamente.\n\n"
                 f"Solución oficial:\n{diagnostico.solucion}"
-            )  # Hace transparente para el usuario cuál es el origen del contenido actual.
-            self.tabla_detectados.resizeRowsToContents()  # Ajusta la altura únicamente después de recibir la explicación solicitada.
+            )  # Conserva accesible la recomendación oficial aunque visualmente se muestre la variante de IA.
+            self.tabla_detectados.resizeRowsToContents()  # Ajusta la altura al contenido generado.
             return
 
     def _solicitar_mejora_solucion(self, fila: int) -> None:
         if not self.ia_habilitada:
-            return  # Mantiene la navegación normal cuando la función opcional se encuentra desactivada.
+            return  # Impide solicitar mejoras cuando la opción correspondiente está desactivada.
 
         if fila < 0 or fila >= len(self.diagnosticos_actuales):
-            return  # Protege frente a índices que dejaron de corresponder con la compilación actual.
+            return  # Evita acceder a una fila que ya no pertenece a la compilación vigente.
 
-        diagnostico = self.diagnosticos_actuales[fila]  # Obtiene el diagnóstico oficial asociado con la celda pulsada.
-        clave = ExplicadorDiagnosticos.clave_diagnostico(diagnostico)  # Calcula la identidad utilizada por la caché y por el resultado asíncrono.
+        diagnostico = self.diagnosticos_actuales[fila]  # Obtiene el diagnóstico oficial asociado con la fila.
+        clave = ExplicadorDiagnosticos.clave_diagnostico(diagnostico)  # Calcula la identidad utilizada por la capa de IA.
 
         if self.clave_solucion_pendiente == clave:
-            return  # Evita encolar varias veces la misma solicitud mientras todavía se está generando.
+            return  # Evita repetir una solicitud que todavía se encuentra ejecutándose.
 
-        self._restaurar_solucion_pendiente()  # Recupera cualquier celda anterior si el usuario solicita otra antes de que termine la primera.
-        self.clave_solucion_pendiente = clave  # Registra qué única celda podrá aceptar la próxima respuesta de IA.
+        self._restaurar_solucion_pendiente()  # Recupera cualquier solución anterior que permaneciera esperando una respuesta.
+        self.clave_solucion_pendiente = clave  # Identifica qué celda podrá aceptar el resultado generado.
 
-        elemento = self.tabla_detectados.item(fila, 5)  # Obtiene la celda visual sin alterar el diagnóstico interno.
+        elemento = self.tabla_detectados.item(fila, 5)  # Recupera la representación visual de Solución.
 
         if elemento is None:
-            self.clave_solucion_pendiente = None  # Evita conservar una solicitud sin representación visible.
+            self.clave_solucion_pendiente = None  # Descarta la solicitud si la celda dejó de existir.
             return
 
-        elemento.setText("Mejorando solución con IA...")  # Muestra un estado temporal solamente después de una acción explícita del usuario.
-        elemento.setToolTip("La IA local está preparando una versión más clara de esta solución.")  # Explica por qué cambió temporalmente el contenido.
-        self.tabla_detectados.resizeRowsToContents()  # Adapta la fila al texto breve mostrado durante la generación.
-        self.control_diagnosticos_ia.procesar([diagnostico])  # Genera únicamente la solución solicitada y reutiliza la caché si ya existe.
+        elemento.setText("Mejorando solución con IA...")  # Informa que la petición fue iniciada explícitamente.
+        elemento.setToolTip("La IA local está preparando una versión más clara de esta solución.")  # Explica temporalmente el estado actual.
+        self.tabla_detectados.resizeRowsToContents()  # Ajusta la fila al texto de espera.
+        self.control_diagnosticos_ia.procesar([diagnostico])  # Envía únicamente el diagnóstico solicitado.
 
     def _restaurar_solucion_pendiente(self) -> None:
-        clave_pendiente = self.clave_solucion_pendiente  # Conserva la identidad antes de invalidar una solicitud anterior.
+        clave_pendiente = self.clave_solucion_pendiente  # Conserva la identidad de la solicitud anterior.
 
         if not clave_pendiente:
             return  # Evita recorrer la tabla cuando no existe ninguna generación pendiente.
 
-        self.control_diagnosticos_ia.cancelar()  # Hace obsoleto cualquier resultado que todavía pudiera llegar desde el hilo secundario.
-        self.clave_solucion_pendiente = None  # Libera inmediatamente la interacción para aceptar otra solicitud.
+        self.control_diagnosticos_ia.cancelar()  # Hace obsoleta cualquier respuesta que todavía pudiera llegar.
+        self.clave_solucion_pendiente = None  # Libera inmediatamente el estado pendiente.
 
         for fila, diagnostico in enumerate(self.diagnosticos_actuales):
             if ExplicadorDiagnosticos.clave_diagnostico(diagnostico) != clave_pendiente:
-                continue  # Busca únicamente la celda que estaba mostrando el estado temporal.
+                continue  # Busca únicamente el diagnóstico relacionado con la solicitud cancelada.
 
-            elemento = self.tabla_detectados.item(fila, 5)  # Recupera la celda todavía visible.
+            elemento = self.tabla_detectados.item(fila, 5)  # Recupera su celda Solución.
 
             if elemento is not None:
-                elemento.setText(diagnostico.solucion)  # Restaura la recomendación oficial al cancelar esa generación.
-                elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color propio de la fila.
-                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera también la ayuda para volver a solicitar IA.
+                elemento.setText(diagnostico.solucion)  # Recupera la recomendación oficial.
+                elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color normal.
+                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera la ayuda contextual original.
 
-            break  # Finaliza porque cada identidad corresponde con una sola fila de la compilación actual.
+            break  # Finaliza porque cada clave pertenece a una sola fila.
 
-        self.tabla_detectados.resizeRowsToContents()  # Recupera la altura apropiada después de cancelar la generación anterior.
+        self.tabla_detectados.resizeRowsToContents()  # Recupera la altura apropiada de la fila.
 
     def _texto_ayuda_solucion(self, diagnostico: Diagnostico) -> str:
-        texto = f"Solución oficial de TecNet Finder:\n{diagnostico.solucion}"  # Identifica siempre la recomendación determinista almacenada.
+        texto = f"Solución oficial de TecNet Finder:\n{diagnostico.solucion}"  # Identifica siempre el origen determinista de la recomendación.
 
         if self.ia_habilitada:
-            texto += "\n\nHaz doble clic en esta celda para mejorar la solución con IA local."  # Explica la interacción únicamente cuando el servicio está disponible para esta función.
+            texto += "\n\nHaz doble clic en esta celda para mejorar la solución con IA local."  # Explica la interacción únicamente cuando se encuentra disponible.
 
-        return texto  # Devuelve un tooltip coherente con el estado efectivo de Configuración.
+        return texto  # Devuelve la ayuda correspondiente al estado actual.
 
     def _actualizar_ayudas_solucion(self) -> None:
         for fila, diagnostico in enumerate(self.diagnosticos_actuales):
-            elemento = self.tabla_detectados.item(fila, 5)  # Recorre únicamente la columna que puede solicitar una mejora.
+            elemento = self.tabla_detectados.item(fila, 5)  # Obtiene la celda Solución correspondiente.
 
             if elemento is None:
-                continue  # Ignora filas todavía incompletas durante una reconstrucción transitoria.
+                continue  # Ignora filas que todavía no poseen contenido.
 
             if elemento.text() == diagnostico.solucion:
-                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Actualiza solo las celdas que todavía muestran la solución oficial.
+                elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Actualiza únicamente las soluciones oficiales todavía visibles.
 
     def _restaurar_soluciones_oficiales(self) -> None:
-        self.clave_solucion_pendiente = None  # Elimina cualquier relación con una generación que dejó de ser válida.
+        self.clave_solucion_pendiente = None  # Invalida cualquier relación con una generación anterior.
 
         for fila, diagnostico in enumerate(self.diagnosticos_actuales):
-            elemento = self.tabla_detectados.item(fila, 5)  # Localiza la celda que pudo haber sido reemplazada por la IA.
+            elemento = self.tabla_detectados.item(fila, 5)  # Recupera la celda que pudo mostrar contenido de IA.
 
             if elemento is None:
-                continue  # Ignora filas que dejaron de existir por una actualización simultánea.
+                continue  # Ignora filas que dejaron de existir.
 
-            elemento.setText(diagnostico.solucion)  # Recupera exactamente la solución almacenada por el compilador.
-            elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color normal si la celda estaba mostrando un estado temporal.
-            elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera también la ayuda coherente con el estado actual de la IA.
+            elemento.setText(diagnostico.solucion)  # Recupera exactamente la recomendación oficial.
+            elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color correspondiente a la fila.
+            elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera la ayuda adecuada al nuevo estado.
 
-        self.tabla_detectados.resizeRowsToContents()  # Reduce nuevamente las filas cuando la explicación de IA era más extensa.
+        self.tabla_detectados.resizeRowsToContents()  # Ajusta nuevamente las alturas.
 
-    def _procesar_clic_detectado(self, fila: int, columna: int) -> None:  # Retrasa únicamente Código para poder diferenciar clic simple y doble clic.
+    def _procesar_clic_detectado(self, fila: int, columna: int) -> None:
         if columna != 0:
-            self.temporizador_catalogo.stop()  # Cancela cualquier apertura anterior cuando el usuario interactúa con otra celda.
-            self.codigo_catalogo_pendiente = None  # Elimina la ficha pendiente porque la intención actual es diferente.
-            return
+            self.temporizador_catalogo.stop()  # Cancela cualquier apertura anterior cuando la interacción ocurre fuera de Código.
+            self.codigo_catalogo_pendiente = None  # Elimina la ficha pendiente.
+            return  # Los demás clics simples no producen ninguna acción.
 
-        elemento = self.tabla_detectados.item(fila, 0)  # Recupera la celda donde se conserva el diagnóstico completo.
+        elemento = self.tabla_detectados.item(fila, 0)  # Recupera Código, donde se conserva el diagnóstico completo.
 
         if elemento is None:
-            return  # Finaliza si no existe información asociada.
+            return  # Finaliza cuando la fila no posee información.
 
-        diagnostico = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el objeto estructurado almacenado dentro del código.
+        diagnostico = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el objeto estructurado asociado con la fila.
 
         if diagnostico is None:
             return  # Evita continuar con una fila incompleta.
 
-        self.codigo_catalogo_pendiente = diagnostico.codigo  # Conserva temporalmente la ficha que se abrirá si no aparece un segundo clic.
-        self.temporizador_catalogo.start()  # Inicia la espera utilizando el intervalo de doble clic configurado por el sistema.
+        self.codigo_catalogo_pendiente = diagnostico.codigo  # Conserva temporalmente qué ficha deberá abrirse.
+        self.temporizador_catalogo.start()  # Espera para comprobar si llegará un segundo clic.
 
     def _abrir_codigo_catalogo_pendiente(self) -> None:
-        codigo = self.codigo_catalogo_pendiente  # Recupera la intención almacenada por el clic simple.
-        self.codigo_catalogo_pendiente = None  # Limpia el estado antes de modificar visualmente la pestaña.
+        codigo = self.codigo_catalogo_pendiente  # Recupera la intención asociada con el clic simple.
+        self.codigo_catalogo_pendiente = None  # Limpia el estado antes de cambiar la pestaña.
 
         if not codigo:
-            return  # Evita cualquier acción cuando un doble clic canceló previamente la navegación al catálogo.
+            return  # Evita actuar cuando el doble clic canceló previamente la operación.
 
-        self._seleccionar_codigo_catalogo(codigo, cambiar_pestana=True)  # Abre finalmente la ficha únicamente después de descartar un doble clic.
+        self._seleccionar_codigo_catalogo(codigo, cambiar_pestana=True)  # Abre finalmente la ficha correspondiente.
 
-    def _sincronizar_catalogo_desde_detectados(self) -> None:  # Mantiene preparada la ficha correspondiente aunque todavía no se cambie de pestaña.
-        filas = self.tabla_detectados.selectionModel().selectedRows()  # Recupera la fila completa seleccionada actualmente.
-
-        if not filas:
-            return  # Evita intentar sincronizar cuando la tabla está vacía.
-
-        fila_detectada = filas[0].row()  # Obtiene la posición del diagnóstico seleccionado.
-        elemento = self.tabla_detectados.item(fila_detectada, 0)  # Recupera la celda que conserva el objeto completo.
-
-        if elemento is None:
-            return  # Finaliza si la selección todavía no posee una celda válida.
-
-        diagnostico = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el diagnóstico estructurado.
-
-        if diagnostico is None:
-            return  # Evita intentar localizar un código inexistente.
-
-        self._seleccionar_codigo_catalogo(
-            diagnostico.codigo,
-            cambiar_pestana=False,
-        )  # Preselecciona silenciosamente su ficha sin apartar al usuario de Detectados.
-
-    def _seleccionar_codigo_catalogo(self, codigo: str, cambiar_pestana: bool) -> None:  # Localiza, selecciona y centra una ficha concreta dentro del catálogo.
-        fila_catalogo = self.filas_catalogo.get(codigo)  # Busca la posición registrada para el código recibido.
+    def _seleccionar_codigo_catalogo(self, codigo: str, cambiar_pestana: bool) -> None:
+        fila_catalogo = self.filas_catalogo.get(codigo)  # Localiza rápidamente la ficha correspondiente.
 
         if fila_catalogo is None:
-            return  # Mantiene el panel sin cambios si se tratara de un código desconocido.
+            return  # Mantiene el panel intacto ante códigos desconocidos.
 
-        self.tabla_catalogo.selectRow(fila_catalogo)  # Selecciona visualmente la ficha completa correspondiente al código.
-        elemento_catalogo = self.tabla_catalogo.item(fila_catalogo, 0)  # Recupera la primera celda para poder desplazar la vista hasta ella.
+        self.tabla_catalogo.selectRow(fila_catalogo)  # Selecciona la ficha completa dentro de la vista Catálogo.
+        elemento_catalogo = self.tabla_catalogo.item(fila_catalogo, 0)  # Recupera su primera celda para poder centrarla.
 
         if elemento_catalogo is not None:
             self.tabla_catalogo.scrollToItem(
                 elemento_catalogo,
                 QAbstractItemView.ScrollHint.PositionAtCenter,
-            )  # Centra la ficha dentro del espacio visible aunque se encuentre lejos en la tabla.
+            )  # Desplaza la tabla hasta que la ficha quede visible en una posición cómoda.
 
         if cambiar_pestana:
-            self.setCurrentWidget(self.tabla_catalogo)  # Cambia automáticamente de Detectados a Catálogo mostrando la ficha encontrada.
+            self.setCurrentWidget(self.tabla_catalogo)  # Cambia de Detectados a Catálogo cuando la interacción fue un clic simple sobre Código.
 
-    def _activar_diagnostico(self, fila: int, columna: int) -> None:  # Diferencia la mejora manual de Solución de la navegación normal hacia el editor.
-        self.temporizador_catalogo.stop()  # Cancela inmediatamente cualquier apertura del catálogo todavía pendiente.
-        self.codigo_catalogo_pendiente = None  # Confirma que la interacción actual no fue un clic simple sobre Código.
+    def _activar_diagnostico(self, fila: int, columna: int) -> None:
+        self.temporizador_catalogo.stop()  # Cancela cualquier apertura del catálogo todavía pendiente.
+        self.codigo_catalogo_pendiente = None  # Confirma que la interacción actual corresponde con un doble clic.
 
         if columna == 5 and self.ia_habilitada:
-            self._solicitar_mejora_solucion(fila)  # Utiliza el doble clic sobre la solución oficial como solicitud explícita de IA.
-            return  # Evita mover el foco al editor mientras la intención fue mejorar la recomendación.
+            self._solicitar_mejora_solucion(fila)  # Utiliza Solución como acceso explícito a la mejora mediante IA.
+            return  # Evita navegar al editor cuando la intención fue solicitar una explicación.
 
-        elemento = self.tabla_detectados.item(fila, 0)  # Recupera siempre el objeto completo desde la primera columna de la misma fila.
+        elemento = self.tabla_detectados.item(fila, 0)  # Recupera Código, donde se conserva el diagnóstico completo.
 
         if elemento is None:
-            return  # Finaliza si la fila estuviera incompleta.
+            return  # Finaliza si la fila dejó de existir.
 
-        diagnostico = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el diagnóstico estructurado almacenado internamente.
+        diagnostico = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el objeto estructurado correspondiente.
 
-        if diagnostico is not None:
-            QTimer.singleShot(
-                0,
-                lambda diagnostico=diagnostico: self.diagnostico_activado.emit(diagnostico),
-            )  # Espera a que la tabla termine el doble clic antes de devolver el foco y la selección al editor.
+        if diagnostico is None:
+            return  # Evita navegar cuando no existe información asociada.
+
+        QTimer.singleShot(
+            0,
+            lambda diagnostico=diagnostico: self.diagnostico_activado.emit(diagnostico),
+        )  # Devuelve el foco al editor después de que Qt termine de procesar completamente el doble clic.
