@@ -12,14 +12,14 @@
 # y organiza sus categorías mediante una navegación lateral con
 # paneles intercambiables.
 #
-# El control de cierre respeta la curvatura superior derecha
-# durante sus estados normal, hover y presionado.
+# Cada categoría utiliza desplazamiento vertical únicamente
+# cuando su contenido no cabe dentro del tamaño fijo acordado.
 # ============================================================
 
 from pathlib import Path  # Permite localizar el icono oficial utilizado por la barra personalizada.
 
 from PySide6.QtCore import Qt, Signal  # Permite controlar apariencia, navegación y señales emitidas por los paneles.
-from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QStackedWidget, QVBoxLayout  # Importa los componentes utilizados por la configuración.
+from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout  # Importa los componentes utilizados por la configuración.
 
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite compartir la instalación opcional con el panel correspondiente.
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite compartir el servicio activo de inteligencia artificial.
@@ -29,7 +29,9 @@ from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Importa la p
 
 
 class VentanaConfiguracion(QDialog):  # Representa la configuración general y permite cambiar entre diferentes categorías.
-    activacion_ia_cambiada = Signal(bool)  # Reenvía al controlador principal cualquier cambio efectivo del autocompletado.
+    autocompletado_ia_cambiado = Signal(bool)  # Reenvía el estado efectivo de la función de ghost text.
+    diagnosticos_ia_cambiados = Signal(bool)  # Reenvía independientemente la mejora automática de soluciones.
+    servicio_ia_cambiado = Signal(bool)  # Informa al controlador principal si Ollama se encuentra realmente disponible.
 
     def __init__(
         self,
@@ -220,9 +222,11 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
             padre=self,
         )  # Construye la primera categoría real de configuración utilizando los mismos componentes activos de TecNet Finder.
 
-        self._agregar_seccion("Asistencia de IA", self.panel_ia)  # Registra la sección mediante el mismo mecanismo que utilizarán futuras categorías.
+        self._agregar_seccion("Asistencia de IA", self.panel_ia)  # Registra la sección dentro de un área desplazable reutilizable.
 
-        self.panel_ia.activacion_cambiada.connect(self.activacion_ia_cambiada.emit)  # Reenvía hacia la aplicación cualquier cambio efectivo del autocompletado.
+        self.panel_ia.autocompletado_cambiado.connect(self.autocompletado_ia_cambiado.emit)  # Reenvía únicamente los cambios efectivos del ghost text.
+        self.panel_ia.diagnosticos_ia_cambiados.connect(self.diagnosticos_ia_cambiados.emit)  # Reenvía independientemente la mejora de diagnósticos.
+        self.panel_ia.servicio_cambiado.connect(self.servicio_ia_cambiado.emit)  # Mantiene sincronizado el estado compartido de Ollama.
         self.panel_ia.operacion_cambiada.connect(self._actualizar_operacion)  # Impide cerrar Configuración mientras el servicio local cambia de estado.
 
         self.lista_secciones.currentRowChanged.connect(self._cambiar_panel)  # Cambia el contenido cuando el usuario selecciona otra categoría.
@@ -257,7 +261,27 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         elemento = QListWidgetItem(nombre)  # Crea la entrada visible correspondiente a una categoría.
         elemento.setToolTip(nombre)  # Conserva el nombre completo como ayuda para futuras etiquetas largas.
         self.lista_secciones.addItem(elemento)  # Incorpora la categoría a la navegación lateral.
-        self.paneles.addWidget(panel)  # Registra su contenido en la misma posición lógica dentro del área intercambiable.
+
+        desplazamiento = QScrollArea()  # Mantiene el tamaño fijo de Configuración aunque una categoría crezca posteriormente.
+        desplazamiento.setObjectName("AreaDesplazamientoConfiguracion")  # Permite diferenciar esta superficie del resto de widgets.
+        desplazamiento.setFrameShape(QFrame.Shape.NoFrame)  # Evita agregar un segundo borde alrededor del panel.
+        desplazamiento.setWidgetResizable(True)  # Adapta horizontalmente el contenido al espacio disponible.
+        desplazamiento.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Impide desplazamiento lateral porque los paneles deben ajustarse al ancho.
+        desplazamiento.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra la barra vertical únicamente cuando el contenido supera la altura disponible.
+        desplazamiento.setStyleSheet(
+            """
+            QScrollArea#AreaDesplazamientoConfiguracion {
+                background-color: #1e1e2e;
+                border: none;
+            }
+
+            QScrollArea#AreaDesplazamientoConfiguracion > QWidget > QWidget {
+                background-color: #1e1e2e;
+            }
+            """
+        )  # Integra la superficie desplazable con el mismo fondo del área principal.
+        desplazamiento.setWidget(panel)  # Convierte el panel real en el contenido desplazable sin modificar su lógica.
+        self.paneles.addWidget(desplazamiento)  # Registra la categoría completa en la misma posición que su elemento lateral.
 
     def _cambiar_panel(self, indice: int) -> None:
         if 0 <= indice < self.paneles.count():

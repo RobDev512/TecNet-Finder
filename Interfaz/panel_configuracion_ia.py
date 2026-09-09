@@ -4,17 +4,16 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo contiene el panel de configuración dedicado a la
-# asistencia opcional de inteligencia artificial local.
+# Este archivo contiene el panel de configuración dedicado a las
+# funciones opcionales de inteligencia artificial local.
 #
-# Permite activar, desactivar, instalar y desinstalar el
-# componente sin bloquear la interfaz y mantiene sincronizado
-# el estado efectivo del autocompletado con TecNet Finder.
+# Autocompletado y mejora de soluciones pueden activarse de forma
+# independiente. Ollama permanece activo mientras al menos una
+# función lo requiera y las operaciones pesadas continúan
+# ejecutándose fuera del hilo gráfico.
 #
-# Las acciones normales y el progreso utilizan la misma región
-# visual. La barra de progreso representa el porcentaje mediante
-# texto cuyo color cambia dinámicamente al ser cubierto por el
-# avance de la operación.
+# La barra de progreso representa el porcentaje mediante texto
+# cuyo color cambia dinámicamente al ser cubierto por el avance.
 # ============================================================
 
 from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
@@ -25,7 +24,7 @@ from AsistenteIA.configuracion import MODELO_IA  # Permite mostrar el modelo té
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite consultar la instalación opcional administrada.
 from AsistenteIA.gestor_instalacion_ia import GestorInstalacionIA, VERSION_OLLAMA  # Permite instalar y retirar físicamente el componente opcional.
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite iniciar y detener la instancia privada.
-from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite conservar la elección del usuario entre ejecuciones.
+from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite conservar independientemente las funciones solicitadas por el usuario.
 
 
 class SenalesOperacionIA(QObject):  # Define el canal seguro utilizado para regresar desde los trabajos de administración.
@@ -53,10 +52,10 @@ class TrabajoOperacionIA(QRunnable):  # Ejecuta las operaciones de IA fuera del 
 
         try:
             if self.operacion == "activar":
-                resultado = self.gestor_ollama.iniciar()  # Inicia el servicio fuera del hilo de la interfaz.
+                resultado = self.gestor_ollama.iniciar()  # Inicia el servicio porque al menos una función acaba de solicitarlo.
                 mensaje = "La asistencia de IA se activó correctamente." if resultado else "No fue posible iniciar la asistencia de IA local."  # Prepara una explicación sencilla del resultado.
             elif self.operacion == "desactivar":
-                self.gestor_ollama.detener()  # Cierra Ollama y sus procesos secundarios sin congelar Configuración.
+                self.gestor_ollama.detener()  # Cierra Ollama solamente cuando ninguna función continúa utilizándolo.
                 resultado = True  # Considera completada la desactivación cuando el gestor termina su limpieza.
                 mensaje = "La asistencia de IA se desactivó correctamente."  # Conserva una confirmación reutilizable.
             elif self.operacion == "instalar":
@@ -74,12 +73,12 @@ class TrabajoOperacionIA(QRunnable):  # Ejecuta las operaciones de IA fuera del 
 
 
 class BotonCasillaIA(QPushButton):  # Representa una casilla que muestra claramente su estado mediante una marca.
-    def __init__(self, padre=None):
+    def __init__(self, nombre_accesible: str, padre=None):
         super().__init__(padre)  # Inicializa el botón utilizado como control de selección.
         self.setCheckable(True)  # Permite conservar explícitamente los estados activado y desactivado.
         self.setFixedSize(24, 24)  # Mantiene una apariencia compacta similar a una casilla.
         self.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que el control puede pulsarse.
-        self.setAccessibleName("Activar autocompletado con IA")  # Conserva una descripción accesible del control.
+        self.setAccessibleName(nombre_accesible)  # Conserva una descripción específica para cada función disponible.
         self.setStyleSheet("padding: 0px; font-family: 'Segoe UI Symbol'; font-size: 12pt; font-weight: bold;")  # Mantiene centrada y legible la marca.
         self.toggled.connect(self._actualizar_apariencia)  # Actualiza inmediatamente el contenido visual.
         self._actualizar_apariencia(False)  # Prepara inicialmente el estado desactivado.
@@ -144,7 +143,9 @@ class BarraProgresoIA(QProgressBar):  # Representa una barra cuyo porcentaje ada
 
 
 class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de la ventana general de configuración.
-    activacion_cambiada = Signal(bool)  # Comunica al editor si puede comenzar o debe dejar de solicitar sugerencias.
+    autocompletado_cambiado = Signal(bool)  # Comunica al editor si puede comenzar o debe dejar de solicitar sugerencias.
+    diagnosticos_ia_cambiados = Signal(bool)  # Comunica al panel de diagnósticos si debe mejorar automáticamente las soluciones.
+    servicio_cambiado = Signal(bool)  # Informa si la instancia privada se encuentra realmente disponible para las funciones activas.
     operacion_cambiada = Signal(bool)  # Informa a la ventana general si debe impedir temporalmente su cierre.
 
     def __init__(
@@ -161,6 +162,8 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.preferencias_ia = preferencias_ia  # Conserva la configuración persistente del usuario.
         self.gestor_instalacion = GestorInstalacionIA(componente_ia, gestor_ollama)  # Prepara la administración física utilizando exactamente los mismos componentes.
         self.asistencia_disponible = bool(asistencia_disponible_inicial)  # Utiliza el estado conocido sin realizar consultas HTTP adicionales.
+        self.autocompletado_solicitado = preferencias_ia.autocompletado_activado()  # Conserva la decisión independiente correspondiente al ghost text.
+        self.diagnosticos_solicitados = preferencias_ia.diagnosticos_ia_activados()  # Conserva la decisión independiente correspondiente a las soluciones.
         self.actualizando_controles = False  # Evita interpretar sincronizaciones visuales como decisiones nuevas.
         self.operacion_en_curso = False  # Permite impedir acciones simultáneas durante inicio, cierre o instalación.
         self.trabajo_actual = None  # Conserva el trabajo activo hasta recibir su resultado.
@@ -182,9 +185,9 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         diseno.addWidget(titulo)  # Coloca el encabezado al principio de la sección.
 
         descripcion = QLabel(
-            "Administra el autocompletado inteligente de TecNet Finder. "
+            "Administra las funciones inteligentes de TecNet Finder. "
             "El procesamiento se realiza localmente en este equipo."
-        )  # Explica brevemente la finalidad de la sección.
+        )  # Explica brevemente que ambas funciones comparten la misma infraestructura privada.
         descripcion.setObjectName("DescripcionConfiguracion")  # Mantiene un estilo secundario.
         descripcion.setContentsMargins(4, 0, 4, 0)  # Añade respiración lateral al texto dentro de su región.
         descripcion.setWordWrap(True)  # Permite adaptar el texto al ancho disponible.
@@ -225,32 +228,46 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         diseno_estado.addWidget(self.etiqueta_ruta)  # Agrega la ubicación local.
         diseno.addWidget(panel_estado)  # Incorpora la tarjeta informativa a la sección.
 
-        panel_autocompletado = QFrame()  # Agrupa específicamente la preferencia relacionada con ghost text.
-        panel_autocompletado.setObjectName("TarjetaConfiguracion")  # Reutiliza el diseño visual común de configuración.
-        diseno_autocompletado = QVBoxLayout(panel_autocompletado)  # Organiza título y opción principal.
-        diseno_autocompletado.setContentsMargins(22, 16, 22, 16)  # Mantiene una separación lateral y vertical clara respecto al borde.
-        diseno_autocompletado.setSpacing(8)  # Mantiene próximos título y control.
+        panel_funciones = QFrame()  # Agrupa las preferencias que utilizan el mismo servicio local.
+        panel_funciones.setObjectName("TarjetaConfiguracion")  # Reutiliza el diseño visual común de configuración.
+        diseno_funciones = QVBoxLayout(panel_funciones)  # Organiza título y ambas funciones independientes.
+        diseno_funciones.setContentsMargins(22, 16, 22, 16)  # Mantiene una separación lateral y vertical clara respecto al borde.
+        diseno_funciones.setSpacing(9)  # Mantiene próximas las dos opciones relacionadas.
 
-        subtitulo_autocompletado = QLabel("Autocompletado")  # Identifica la opción que controla el ghost text.
-        subtitulo_autocompletado.setObjectName("SubtituloConfiguracion")  # Mantiene coherencia visual entre bloques.
-        subtitulo_autocompletado.setContentsMargins(4, 0, 4, 0)  # Añade padding interior al texto del encabezado.
-        diseno_autocompletado.addWidget(subtitulo_autocompletado)  # Coloca el nombre antes del control.
+        subtitulo_funciones = QLabel("Funciones de IA")  # Identifica el grupo que controla el uso del modelo.
+        subtitulo_funciones.setObjectName("SubtituloConfiguracion")  # Mantiene coherencia visual entre bloques.
+        subtitulo_funciones.setContentsMargins(4, 0, 4, 0)  # Añade padding interior al texto del encabezado.
+        diseno_funciones.addWidget(subtitulo_funciones)  # Coloca el nombre antes de los controles.
 
-        fila_activacion = QHBoxLayout()  # Coloca casilla, texto y espacio restante en una sola fila.
-        fila_activacion.setContentsMargins(4, 2, 4, 2)  # Evita que casilla y texto queden pegados al límite de la zona interior.
-        fila_activacion.setSpacing(9)  # Mantiene la marca cerca de su descripción.
+        fila_autocompletado = QHBoxLayout()  # Coloca casilla, texto y espacio restante en una sola fila.
+        fila_autocompletado.setContentsMargins(4, 2, 4, 2)  # Evita que la primera opción quede pegada al límite de la zona interior.
+        fila_autocompletado.setSpacing(9)  # Mantiene la marca cerca de su descripción.
 
-        self.boton_activar = BotonCasillaIA(self)  # Crea la casilla personalizada con marca visible.
-        self.etiqueta_activar = QLabel("Activar autocompletado con IA")  # Explica claramente qué controla la selección.
-        self.etiqueta_activar.setObjectName("TextoConfiguracion")  # Mantiene el aspecto normal del contenido.
-        self.etiqueta_activar.setContentsMargins(2, 0, 2, 0)  # Mantiene una pequeña separación interna alrededor del texto.
+        self.boton_autocompletado = BotonCasillaIA("Activar autocompletado con IA", self)  # Crea la casilla dedicada exclusivamente al ghost text.
+        self.etiqueta_autocompletado = QLabel("Activar autocompletado con IA")  # Explica claramente qué controla la primera selección.
+        self.etiqueta_autocompletado.setObjectName("TextoConfiguracion")  # Mantiene el aspecto normal del contenido.
+        self.etiqueta_autocompletado.setContentsMargins(2, 0, 2, 0)  # Mantiene una pequeña separación interna alrededor del texto.
 
-        fila_activacion.addWidget(self.boton_activar)  # Coloca primero el control interactivo.
-        fila_activacion.addWidget(self.etiqueta_activar)  # Coloca inmediatamente después su descripción.
-        fila_activacion.addStretch()  # Mantiene el conjunto alineado hacia la izquierda.
+        fila_autocompletado.addWidget(self.boton_autocompletado)  # Coloca primero el control interactivo.
+        fila_autocompletado.addWidget(self.etiqueta_autocompletado)  # Coloca inmediatamente después su descripción.
+        fila_autocompletado.addStretch()  # Mantiene el conjunto alineado hacia la izquierda.
+        diseno_funciones.addLayout(fila_autocompletado)  # Incorpora la primera función al grupo.
 
-        diseno_autocompletado.addLayout(fila_activacion)  # Incorpora la opción de activación.
-        diseno.addWidget(panel_autocompletado)  # Incorpora la segunda tarjeta completa.
+        fila_diagnosticos = QHBoxLayout()  # Crea una segunda fila independiente sin aumentar el ancho de la tarjeta.
+        fila_diagnosticos.setContentsMargins(4, 2, 4, 2)  # Mantiene la misma alineación horizontal que el autocompletado.
+        fila_diagnosticos.setSpacing(9)  # Conserva la misma distancia entre casilla y descripción.
+
+        self.boton_diagnosticos = BotonCasillaIA("Mejorar soluciones de diagnósticos con IA", self)  # Crea la preferencia destinada a errores y advertencias detectados.
+        self.etiqueta_diagnosticos = QLabel("Mejorar soluciones de diagnósticos con IA")  # Describe la generación automática que aparecerá en la columna Solución.
+        self.etiqueta_diagnosticos.setObjectName("TextoConfiguracion")  # Mantiene el estilo común del resto de opciones.
+        self.etiqueta_diagnosticos.setContentsMargins(2, 0, 2, 0)  # Conserva el mismo padding visual que la primera fila.
+
+        fila_diagnosticos.addWidget(self.boton_diagnosticos)  # Coloca la segunda casilla en el mismo eje horizontal.
+        fila_diagnosticos.addWidget(self.etiqueta_diagnosticos)  # Coloca su explicación inmediatamente después.
+        fila_diagnosticos.addStretch()  # Mantiene la opción alineada hacia la izquierda.
+        diseno_funciones.addLayout(fila_diagnosticos)  # Incorpora la mejora automática debajo del autocompletado.
+
+        diseno.addWidget(panel_funciones)  # Incorpora la tarjeta completa de funciones.
 
         panel_componente = QFrame()  # Agrupa las operaciones relacionadas con los archivos físicos de la IA.
         panel_componente.setObjectName("TarjetaConfiguracion")  # Mantiene la misma composición visual de las otras secciones.
@@ -331,7 +348,8 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         diseno.addWidget(panel_componente)  # Incorpora la tarjeta de administración.
         diseno.addStretch()  # Mantiene el contenido agrupado hacia la parte superior del panel.
 
-        self.boton_activar.toggled.connect(self._cambiar_activacion)  # Procesa las decisiones después de actualizar visualmente la marca.
+        self.boton_autocompletado.toggled.connect(self._cambiar_autocompletado)  # Procesa únicamente la preferencia del ghost text.
+        self.boton_diagnosticos.toggled.connect(self._cambiar_diagnosticos)  # Procesa únicamente la preferencia de soluciones automáticas.
 
     def _actualizar_estado(self) -> None:
         instalado = self.componente_ia.instalado()  # Comprueba únicamente los archivos administrados del runtime y el modelo.
@@ -340,51 +358,92 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_instalacion.setObjectName("EstadoIACorrecto" if instalado else "EstadoIANeutral")  # Distingue visualmente presencia y ausencia.
 
         if self.asistencia_disponible and instalado:
-            self.etiqueta_ejecucion.setText("Estado de ejecución: Activa")  # Representa el estado conocido por la aplicación.
+            self.etiqueta_ejecucion.setText("Estado de ejecución: Activa")  # Representa que al menos una función dispone realmente del servicio local.
             self.etiqueta_ejecucion.setObjectName("EstadoIACorrecto")  # Utiliza la apariencia positiva.
-        elif instalado and self.preferencias_ia.asistencia_activada():
-            self.etiqueta_ejecucion.setText("Estado de ejecución: No disponible")  # Indica que se deseaba utilizar pero el servicio no se encuentra operativo.
+        elif instalado and self._alguna_funcion_solicitada():
+            self.etiqueta_ejecucion.setText("Estado de ejecución: No disponible")  # Indica que existe una función solicitada pero Ollama no respondió correctamente.
             self.etiqueta_ejecucion.setObjectName("EstadoIAAdvertencia")  # Utiliza un estado de atención.
         else:
-            self.etiqueta_ejecucion.setText("Estado de ejecución: Inactiva")  # Representa la característica detenida o físicamente ausente.
+            self.etiqueta_ejecucion.setText("Estado de ejecución: Inactiva")  # Representa el componente detenido o físicamente ausente.
             self.etiqueta_ejecucion.setObjectName("EstadoIANeutral")  # Utiliza una apariencia neutra.
 
         self.etiqueta_ruta.setText(f"Ubicación: {self.componente_ia.ruta_base}")  # Informa dónde reside el componente opcional.
 
-        self.actualizando_controles = True  # Evita que sincronizar visualmente el control produzca otra operación.
-        self.boton_activar.setChecked(instalado and self.asistencia_disponible)  # Refleja el estado efectivo conocido de esta ejecución.
+        self.actualizando_controles = True  # Evita que sincronizar visualmente las casillas produzca nuevas operaciones.
+        self.boton_autocompletado.setChecked(instalado and self.autocompletado_solicitado)  # Refleja la decisión específica cuando existe una instalación utilizable.
+        self.boton_diagnosticos.setChecked(instalado and self.diagnosticos_solicitados)  # Refleja independientemente la decisión sobre soluciones automáticas.
         self.actualizando_controles = False  # Permite nuevamente procesar decisiones reales.
 
-        controles_habilitados = not self.operacion_en_curso  # Impide cualquier administración simultánea mientras existe un trabajo pendiente.
-        self.boton_activar.setEnabled(instalado and controles_habilitados)  # Solo permite encender o apagar una instalación completa.
-        self.boton_instalar.setEnabled(not instalado and controles_habilitados)  # Solo ofrece instalación cuando el componente todavía no existe.
-        self.boton_desinstalar.setEnabled(instalado and controles_habilitados)  # Solo ofrece eliminación cuando existen archivos administrados.
+        controles_habilitados = instalado and not self.operacion_en_curso  # Impide modificar funciones cuando no existe componente o una operación todavía está activa.
+        self.boton_autocompletado.setEnabled(controles_habilitados)  # Permite controlar el ghost text solamente sobre una instalación completa.
+        self.boton_diagnosticos.setEnabled(controles_habilitados)  # Aplica la misma condición a la mejora de diagnósticos.
+        self.boton_instalar.setEnabled(not instalado and not self.operacion_en_curso)  # Solo ofrece instalación cuando el componente todavía no existe.
+        self.boton_desinstalar.setEnabled(instalado and not self.operacion_en_curso)  # Solo ofrece eliminación cuando existen archivos administrados.
 
         for etiqueta in (self.etiqueta_instalacion, self.etiqueta_ejecucion):
             etiqueta.style().unpolish(etiqueta)  # Retira temporalmente el estilo anterior.
             etiqueta.style().polish(etiqueta)  # Aplica la apariencia correspondiente al nuevo estado.
             etiqueta.update()  # Solicita el redibujado inmediato.
 
-    def _cambiar_activacion(self, activar: bool) -> None:
+    def _cambiar_autocompletado(self, activar: bool) -> None:
         if self.actualizando_controles or self.operacion_en_curso:
-            return  # Ignora cambios internos o clics durante una operación ya iniciada.
+            return  # Ignora sincronizaciones internas o clics mientras existe otra operación.
 
-        if activar:
-            self._iniciar_operacion("activar")  # Inicia el servicio en segundo plano mientras la marca ya se encuentra visible.
-            return  # Evita ejecutar también la ruta correspondiente a la desactivación.
+        self._cambiar_funcion("autocompletado", activar)  # Delega el ciclo de vida común conservando la identidad de la función.
 
-        guardado = self.preferencias_ia.establecer_asistencia_activada(False)  # Conserva inmediatamente la decisión de dejar de utilizar IA.
-        self.asistencia_disponible = False  # Desactiva lógicamente la característica sin esperar al cierre del proceso.
-        self.activacion_cambiada.emit(False)  # Detiene inmediatamente nuevas solicitudes desde el editor.
+    def _cambiar_diagnosticos(self, activar: bool) -> None:
+        if self.actualizando_controles or self.operacion_en_curso:
+            return  # Ignora sincronizaciones internas o clics mientras existe otra operación.
+
+        self._cambiar_funcion("diagnosticos", activar)  # Reutiliza las mismas reglas sin vincular esta opción con el ghost text.
+
+    def _cambiar_funcion(self, funcion: str, activar: bool) -> None:
+        if funcion == "autocompletado":
+            self.autocompletado_solicitado = bool(activar)  # Actualiza inmediatamente el estado utilizado durante esta ejecución.
+            guardado = self.preferencias_ia.establecer_autocompletado_activado(activar)  # Conserva exclusivamente la primera función.
+        else:
+            self.diagnosticos_solicitados = bool(activar)  # Actualiza independientemente la mejora de diagnósticos.
+            guardado = self.preferencias_ia.establecer_diagnosticos_ia_activados(activar)  # Conserva exclusivamente la segunda función.
 
         if not guardado:
             QMessageBox.warning(
                 self,
                 "Preferencias",
-                "La asistencia se desactivó para esta ejecución, pero no fue posible guardar la preferencia.",
-            )  # Informa únicamente un problema de persistencia.
+                "La opción cambió para esta ejecución, pero no fue posible guardar la preferencia.",
+            )  # Informa un problema de persistencia sin impedir utilizar la elección actual.
 
-        self._iniciar_operacion("desactivar")  # Cierra los procesos en otro hilo sin congelar la interfaz.
+        if not activar:
+            self._emitir_funcion(funcion, False)  # Detiene inmediatamente nuevas solicitudes pertenecientes únicamente a la función apagada.
+
+            if self.asistencia_disponible and not self._alguna_funcion_solicitada():
+                self._iniciar_operacion("desactivar")  # Cierra Ollama únicamente cuando ninguna otra función continúa necesitándolo.
+                return
+
+            self._actualizar_estado()  # Conserva el servicio activo cuando la otra función todavía está habilitada.
+            return
+
+        if self.asistencia_disponible:
+            self._emitir_funcion(funcion, True)  # Activa inmediatamente la nueva función porque el servicio compartido ya responde.
+            self._actualizar_estado()  # Refleja la nueva selección sin reiniciar Ollama.
+            return
+
+        self._iniciar_operacion("activar")  # Inicia el servicio una sola vez y después habilita todas las funciones actualmente solicitadas.
+
+    def _emitir_funcion(self, funcion: str, habilitada: bool) -> None:
+        if funcion == "autocompletado":
+            self.autocompletado_cambiado.emit(bool(habilitada))  # Comunica exclusivamente el estado efectivo del ghost text.
+            return
+
+        self.diagnosticos_ia_cambiados.emit(bool(habilitada))  # Comunica exclusivamente el estado efectivo de las soluciones automáticas.
+
+    def _emitir_funciones_efectivas(self) -> None:
+        instalado = self.componente_ia.instalado()  # Impide habilitar consumidores si la instalación dejó de estar completa.
+        disponible = instalado and self.asistencia_disponible  # Exige simultáneamente archivos y servicio operativo.
+        self.autocompletado_cambiado.emit(disponible and self.autocompletado_solicitado)  # Aplica la primera preferencia sobre el estado real.
+        self.diagnosticos_ia_cambiados.emit(disponible and self.diagnosticos_solicitados)  # Aplica de forma independiente la segunda preferencia.
+
+    def _alguna_funcion_solicitada(self) -> bool:
+        return self.autocompletado_solicitado or self.diagnosticos_solicitados  # Decide el ciclo de vida de Ollama sin privilegiar una función concreta.
 
     def _preguntar_confirmacion(self, titulo: str, mensaje: str) -> bool:
         dialogo = QMessageBox(self)  # Crea un cuadro controlado para poder personalizar los textos de sus botones.
@@ -432,26 +491,31 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
             "Se eliminarán el runtime local de Ollama y el modelo utilizado por TecNet Finder.\n\n"
             "El compilador seguirá funcionando normalmente y podrás volver a instalar la asistencia más adelante.\n\n"
             "¿Deseas desinstalar el componente?",
-        )  # Solicita confirmación utilizando Sí y No sin depender del idioma configurado por Qt.
+        )  # Solicita confirmación porque la operación retirará todos los archivos pesados administrados.
 
         if not confirmado:
             return  # Conserva completamente la instalación cuando el usuario cancela.
 
-        self.preferencias_ia.establecer_asistencia_activada(False)  # Evita volver a iniciar automáticamente un componente que está a punto de desaparecer.
-        self.asistencia_disponible = False  # Desactiva lógicamente las sugerencias antes de comenzar la eliminación física.
-        self.activacion_cambiada.emit(False)  # Detiene inmediatamente cualquier nueva solicitud desde el editor.
-        self._sincronizar_casilla_desactivada()  # Retira la marca visual antes de iniciar la operación larga.
+        self.autocompletado_solicitado = False  # Evita volver a habilitar ghost text durante o después de la eliminación física.
+        self.diagnosticos_solicitados = False  # Detiene también cualquier mejora automática pendiente.
+        self.preferencias_ia.establecer_autocompletado_activado(False)  # Conserva el estado seguro para próximos inicios.
+        self.preferencias_ia.establecer_diagnosticos_ia_activados(False)  # Conserva también apagada la segunda función.
+        self.autocompletado_cambiado.emit(False)  # Detiene inmediatamente nuevas propuestas en el editor.
+        self.diagnosticos_ia_cambiados.emit(False)  # Restaura inmediatamente las soluciones oficiales en la tabla.
+        self._sincronizar_casillas_desactivadas()  # Retira ambas marcas antes de iniciar la operación larga.
         self._iniciar_operacion("desinstalar")  # Realiza cierre y eliminación dentro del hilo secundario.
 
-    def _sincronizar_casilla_desactivada(self) -> None:
-        self.actualizando_controles = True  # Impide que modificar programáticamente la casilla vuelva a iniciar otra operación.
-        self.boton_activar.setChecked(False)  # Retira inmediatamente la marca porque el autocompletado ya fue desactivado lógicamente.
+    def _sincronizar_casillas_desactivadas(self) -> None:
+        self.actualizando_controles = True  # Impide que modificar programáticamente las casillas vuelva a iniciar otra operación.
+        self.boton_autocompletado.setChecked(False)  # Retira inmediatamente la primera marca.
+        self.boton_diagnosticos.setChecked(False)  # Retira también la marca correspondiente a las soluciones.
         self.actualizando_controles = False  # Recupera el procesamiento normal de decisiones del usuario.
 
     def _iniciar_operacion(self, operacion: str) -> None:
         self.operacion_en_curso = True  # Impide iniciar otra operación simultánea.
         self.operacion_cambiada.emit(True)  # Solicita a la ventana general impedir temporalmente su cierre.
-        self.boton_activar.setEnabled(False)  # Evita clics repetidos durante cualquier transición.
+        self.boton_autocompletado.setEnabled(False)  # Evita cambios mientras el servicio compartido se encuentra en transición.
+        self.boton_diagnosticos.setEnabled(False)  # Protege también la segunda preferencia durante la misma transición.
         self.boton_instalar.setEnabled(False)  # Evita comenzar una instalación adicional.
         self.boton_desinstalar.setEnabled(False)  # Evita eliminar mientras existe otra modificación pendiente.
 
@@ -504,25 +568,20 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         texto_mensaje = ""  # Conserva el texto que se mostrará después de repintar el panel.
 
         if operacion == "activar":
-            if resultado:
-                self.asistencia_disponible = True  # Registra que Ollama respondió correctamente.
-                guardado = self.preferencias_ia.establecer_asistencia_activada(True)  # Conserva la elección para próximos inicios.
-                self.activacion_cambiada.emit(True)  # Permite que el editor vuelva a utilizar ghost text.
+            self.asistencia_disponible = bool(resultado)  # Conserva el estado real obtenido al iniciar el servicio compartido.
+            self.servicio_cambiado.emit(self.asistencia_disponible)  # Sincroniza al controlador general con la disponibilidad real.
+            self._emitir_funciones_efectivas()  # Habilita únicamente las funciones que el usuario mantiene seleccionadas.
 
-                if not guardado:
-                    tipo_mensaje = "advertencia"  # Programa una advertencia sin interrumpir todavía la actualización visual.
-                    titulo_mensaje = "Preferencias"  # Identifica que solamente falló la persistencia de la elección.
-                    texto_mensaje = "La asistencia se activó para esta ejecución, pero no fue posible guardar la preferencia."  # Explica que la función actual sí continúa operativa.
-            else:
-                self.asistencia_disponible = False  # Conserva desactivada la característica cuando Ollama no pudo iniciar.
-                self.preferencias_ia.establecer_asistencia_activada(False)  # Evita intentarlo automáticamente la próxima vez.
-                self.activacion_cambiada.emit(False)  # Mantiene detenido también el autocompletado.
-                tipo_mensaje = "advertencia"  # Programa el aviso después de que el panel refleje el fallo.
-                titulo_mensaje = "Asistencia de IA"  # Identifica la función que no pudo iniciarse.
-                texto_mensaje = mensaje  # Conserva la explicación producida por el trabajo.
+            if not resultado:
+                tipo_mensaje = "advertencia"  # Programa el aviso después de que el panel represente el fallo.
+                titulo_mensaje = "Asistencia de IA"  # Identifica el servicio que no pudo iniciarse.
+                texto_mensaje = mensaje  # Conserva la explicación producida por el gestor.
 
         elif operacion == "desactivar":
-            self.asistencia_disponible = False  # Mantiene lógicamente apagada la asistencia.
+            self.asistencia_disponible = False  # Confirma que ninguna función mantiene vivo el servicio.
+            self.servicio_cambiado.emit(False)  # Actualiza el estado compartido utilizado al reabrir Configuración.
+            self.autocompletado_cambiado.emit(False)  # Garantiza que no quede un consumidor activo después del cierre.
+            self.diagnosticos_ia_cambiados.emit(False)  # Garantiza también la restauración de soluciones oficiales.
 
             if not resultado:
                 tipo_mensaje = "advertencia"  # Programa únicamente los fallos de cierre.
@@ -532,41 +591,47 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         elif operacion == "instalar":
             if resultado:
                 self.asistencia_disponible = True  # Aprovecha la instancia que quedó activa después de descargar el modelo.
-                guardado = self.preferencias_ia.establecer_asistencia_activada(True)  # Hace que la nueva instalación permanezca habilitada en futuros inicios.
-                self.activacion_cambiada.emit(True)  # Activa inmediatamente el ghost text sin reiniciar TecNet Finder.
+                self.autocompletado_solicitado = True  # Habilita inicialmente el ghost text después de una instalación voluntaria.
+                self.diagnosticos_solicitados = True  # Habilita también la mejora automática como segunda función del mismo componente.
+                guardado_autocompletado = self.preferencias_ia.establecer_autocompletado_activado(True)  # Conserva la primera función para futuros inicios.
+                guardado_diagnosticos = self.preferencias_ia.establecer_diagnosticos_ia_activados(True)  # Conserva de forma independiente la segunda.
+                self.servicio_cambiado.emit(True)  # Informa que la instalación dejó un servicio utilizable.
+                self._emitir_funciones_efectivas()  # Activa inmediatamente ambas funciones sin reiniciar TecNet Finder.
                 tipo_mensaje = "informacion"  # Programa la confirmación para después del repintado.
                 titulo_mensaje = "Asistencia de IA"  # Identifica la instalación terminada.
                 texto_mensaje = mensaje  # Conserva el mensaje producido por el gestor.
 
-                if not guardado:
-                    tipo_mensaje = "advertencia"  # Prioriza advertir que la nueva instalación no pudo conservar su preferencia.
+                if not guardado_autocompletado or not guardado_diagnosticos:
+                    tipo_mensaje = "advertencia"  # Prioriza advertir cuando alguna elección no pudo conservarse.
                     titulo_mensaje = "Preferencias"  # Identifica que el componente sí quedó instalado físicamente.
-                    texto_mensaje = "El componente se instaló, pero no fue posible guardar que la asistencia debe iniciar automáticamente."  # Explica exactamente qué parte quedó pendiente.
+                    texto_mensaje = "El componente se instaló y está activo, pero no fue posible guardar todas las preferencias de IA."  # Explica exactamente el alcance del problema.
             else:
-                self.asistencia_disponible = False  # Conserva desactivado el editor después de una instalación fallida.
-                self.preferencias_ia.establecer_asistencia_activada(False)  # Evita intentos automáticos sobre un componente incompleto.
-                self.activacion_cambiada.emit(False)  # Mantiene detenido el autocompletado.
+                self.asistencia_disponible = False  # Conserva desactivados los consumidores después de una instalación fallida.
+                self.servicio_cambiado.emit(False)  # Informa que el servicio no quedó disponible.
+                self.autocompletado_cambiado.emit(False)  # Mantiene detenido el autocompletado.
+                self.diagnosticos_ia_cambiados.emit(False)  # Mantiene también las soluciones oficiales.
                 tipo_mensaje = "advertencia"  # Programa la explicación después de restaurar visualmente los botones.
                 titulo_mensaje = "Instalación de IA"  # Identifica la operación que no pudo completarse.
                 texto_mensaje = mensaje  # Conserva la causa reportada por el gestor.
 
         elif operacion == "desinstalar":
             self.asistencia_disponible = False  # Mantiene la asistencia apagada después del intento de eliminación.
-            self.preferencias_ia.establecer_asistencia_activada(False)  # Conserva el comportamiento seguro incluso si Windows impidió borrar algún archivo.
-            self.activacion_cambiada.emit(False)  # Mantiene detenido el autocompletado.
-            self._sincronizar_casilla_desactivada()  # Garantiza que la marca continúe apagada independientemente del resultado físico.
+            self.servicio_cambiado.emit(False)  # El componente administrado ya no debe considerarse disponible para consumidores.
+            self.autocompletado_cambiado.emit(False)  # Mantiene detenido el ghost text.
+            self.diagnosticos_ia_cambiados.emit(False)  # Mantiene visible únicamente la solución oficial.
+            self._sincronizar_casillas_desactivadas()  # Garantiza que ambas marcas continúen apagadas independientemente del resultado físico.
 
             if resultado:
                 tipo_mensaje = "informacion"  # Programa la confirmación después de mostrar que el componente ya no existe.
                 titulo_mensaje = "Asistencia de IA"  # Identifica la eliminación completada.
                 texto_mensaje = mensaje  # Conserva el mensaje de éxito producido por el gestor.
             else:
-                tipo_mensaje = "advertencia"  # Programa el fallo después de reflejar el estado real que todavía permanece instalado.
+                tipo_mensaje = "advertencia"  # Programa el fallo después de reflejar el estado real.
                 titulo_mensaje = "Desinstalación de IA"  # Identifica la operación afectada.
                 texto_mensaje = mensaje  # Conserva la explicación concreta del problema.
 
         self._mostrar_progreso(False)  # Recupera primero la página normal de botones dentro del mismo espacio reservado.
-        self._actualizar_estado()  # Sincroniza completamente etiquetas, casilla y acciones antes de abrir cualquier mensaje modal.
+        self._actualizar_estado()  # Sincroniza completamente etiquetas, casillas y acciones antes de abrir cualquier mensaje modal.
 
         if tipo_mensaje == "informacion":
             QMessageBox.information(self, titulo_mensaje, texto_mensaje)  # Muestra el éxito solamente cuando la interfaz ya representa el resultado definitivo.

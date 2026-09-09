@@ -6,10 +6,14 @@
 # Este archivo comprueba el procesamiento de las respuestas HTTP
 # utilizadas por el motor local sin depender de una instancia
 # real de Ollama durante pytest.
+#
+# También verifica que una función pueda ampliar su tiempo de
+# espera sin modificar el comportamiento predeterminado de otras.
 # ============================================================
 
 import urllib.request  # Permite sustituir temporalmente la operación HTTP real utilizada por el motor.
 
+from AsistenteIA.configuracion import TIEMPO_ESPERA_SEGUNDOS  # Permite comprobar que el autocompletado conserva el tiempo breve original.
 from AsistenteIA.motor_local import MotorLocalOllama  # Importa la implementación completa que debe ejercitarse durante las pruebas.
 
 
@@ -27,8 +31,11 @@ class RespuestaHTTPSimulada:  # Imita únicamente el comportamiento utilizado po
         return self.contenido  # Devuelve exactamente el cuerpo preparado por la prueba.
 
 
-def _simular_respuesta(monkeypatch, contenido: str) -> None:
+def _simular_respuesta(monkeypatch, contenido: str, tiempos: list[float] | None = None) -> None:
     def urlopen_simulado(_solicitud, timeout=None):
+        if tiempos is not None:
+            tiempos.append(timeout)  # Registra el valor real utilizado por urllib para comprobar tiempos independientes.
+
         return RespuestaHTTPSimulada(contenido)  # Sustituye la conexión real por una respuesta completamente controlada.
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen_simulado)  # Aplica la sustitución solamente durante la prueba actual.
@@ -76,3 +83,18 @@ def prueba_motor_descarta_generacion_json_invalida(monkeypatch):
     resultado = motor.generar_json("prompt")
 
     assert resultado is None
+
+
+def prueba_motor_permite_tiempo_de_espera_especifico_por_funcion(monkeypatch):
+    tiempos = []
+    _simular_respuesta(
+        monkeypatch,
+        '{"response": "{\\"soluciones\\": []}"}',
+        tiempos,
+    )
+    motor = MotorLocalOllama()
+
+    motor.generar_json("prompt", tiempo_espera_segundos=20.0)
+    motor.generar_json("prompt")
+
+    assert tiempos == [20.0, TIEMPO_ESPERA_SEGUNDOS]

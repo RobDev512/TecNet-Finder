@@ -8,9 +8,9 @@
 # de Ollama utilizada por el asistente local.
 #
 # Permite obtener texto normal o datos JSON estructurados sin
-# introducir dependencias externas de Python. Los problemas de
-# conexión se convierten en ausencia de respuesta para que la
-# aplicación pueda seguir funcionando aunque la IA no esté activa.
+# introducir dependencias externas de Python. Cada consumidor
+# puede utilizar el tiempo de espera apropiado para su tarea sin
+# afectar a las demás funciones del asistente.
 # ============================================================
 
 import json  # Permite construir las solicitudes HTTP y convertir las respuestas JSON recibidas desde Ollama.
@@ -32,7 +32,12 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
         except OSError:
             return False  # Mantiene TecNet Finder funcional aunque el servidor local no se encuentre iniciado.
 
-    def generar(self, prompt: str, maximo_tokens: int = 80) -> str | None:
+    def generar(
+        self,
+        prompt: str,
+        maximo_tokens: int = 80,
+        tiempo_espera_segundos: float | None = None,
+    ) -> str | None:
         datos = {
             "model": self.modelo,
             "prompt": prompt,
@@ -44,7 +49,12 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
         }  # Construye una generación breve y poco aleatoria apropiada para autocompletado.
 
         try:
-            respuesta = self._solicitar_json("/api/generate", datos=datos, metodo="POST")  # Envía la solicitud a la instancia privada de Ollama.
+            respuesta = self._solicitar_json(
+                "/api/generate",
+                datos=datos,
+                metodo="POST",
+                tiempo_espera_segundos=tiempo_espera_segundos,
+            )  # Envía la solicitud utilizando el tiempo específico cuando el consumidor lo proporciona.
         except OSError:
             return None  # Trata los problemas del modelo o del servidor como ausencia de sugerencia.
 
@@ -60,7 +70,12 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
 
         return texto  # Entrega el contenido sin interpretarlo como código válido.
 
-    def generar_json(self, prompt: str, maximo_tokens: int = 120) -> dict | None:
+    def generar_json(
+        self,
+        prompt: str,
+        maximo_tokens: int = 120,
+        tiempo_espera_segundos: float | None = None,
+    ) -> dict | None:
         datos = {
             "model": self.modelo,
             "prompt": prompt,
@@ -73,7 +88,12 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
         }  # Solicita explícitamente a Ollama una respuesta JSON para reducir errores de formato del modelo.
 
         try:
-            respuesta = self._solicitar_json("/api/generate", datos=datos, metodo="POST")  # Obtiene la generación estructurada mediante el mismo servidor privado.
+            respuesta = self._solicitar_json(
+                "/api/generate",
+                datos=datos,
+                metodo="POST",
+                tiempo_espera_segundos=tiempo_espera_segundos,
+            )  # Obtiene la generación estructurada usando el tiempo apropiado para la tarea solicitante.
         except OSError:
             return None  # Permite continuar utilizando TecNet Finder aunque la consulta de IA falle.
 
@@ -88,15 +108,16 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
             return None  # Rechaza cualquier generación que no sea realmente JSON válido.
 
         if not isinstance(resultado, dict):
-            return None  # Exige un objeto porque el predictor trabaja mediante campos con nombres conocidos.
+            return None  # Exige un objeto porque los consumidores trabajan mediante campos con nombres conocidos.
 
-        return resultado  # Entrega los datos todavía sin considerarlos válidos para el lenguaje.
+        return resultado  # Entrega los datos todavía sin considerarlos válidos para ninguna función concreta.
 
     def _solicitar_json(
         self,
         endpoint: str,
         datos: dict | None = None,
         metodo: str = "GET",
+        tiempo_espera_segundos: float | None = None,
     ) -> dict:
         cuerpo = None  # Mantiene vacía la solicitud cuando el endpoint solamente necesita lectura.
 
@@ -110,8 +131,10 @@ class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el 
             method=metodo,
         )  # Construye una solicitud HTTP explícita hacia la instancia local configurada.
 
+        tiempo_espera = TIEMPO_ESPERA_SEGUNDOS if tiempo_espera_segundos is None else max(0.1, float(tiempo_espera_segundos))  # Conserva el tiempo breve predeterminado y permite ampliarlo únicamente donde se necesita.
+
         try:
-            with urllib.request.urlopen(solicitud, timeout=TIEMPO_ESPERA_SEGUNDOS) as respuesta:
+            with urllib.request.urlopen(solicitud, timeout=tiempo_espera) as respuesta:
                 contenido = respuesta.read().decode("utf-8")  # Lee completamente la respuesta y la convierte desde UTF-8.
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise OSError("No fue posible comunicarse con Ollama.") from error  # Unifica los fallos de red para que las capas superiores puedan degradarse con seguridad.
