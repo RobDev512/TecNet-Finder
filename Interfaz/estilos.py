@@ -80,9 +80,53 @@ QPushButton#BotonCerrar:pressed {
     background-color: #a52016;
 }
 
+QMenuBar#MenuPrincipal {
+    background-color: #181825;
+    color: #cdd6f4;
+    border: none;
+    border-bottom: 1px solid #313244;
+    padding: 1px 6px;
+    font-family: "Segoe UI";
+    font-size: 9pt;
+}
+
+QMenuBar#MenuPrincipal::item {
+    background-color: transparent;
+    padding: 5px 10px;
+}
+
+QMenuBar#MenuPrincipal::item:selected {
+    background-color: #313244;
+}
+
+QMenu {
+    background-color: #181825;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    padding: 4px;
+    font-family: "Segoe UI";
+    font-size: 9pt;
+}
+
+QMenu::item {
+    padding: 6px 24px 6px 12px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #45475a;
+    color: #ffffff;
+}
+
 QFrame#Panel {
     background-color: #181825;
     border: 1px solid #313244;
+    border-radius: 8px;
+}
+
+QFrame#PanelAsistenciaIA {
+    background-color: #181825;
+    border: 1px solid #45475a;
     border-radius: 8px;
 }
 
@@ -106,6 +150,31 @@ QLabel#TituloSeccion {
 QLabel#TituloResumen {
     color: #89b4fa;
     font-size: 14pt;
+    font-weight: bold;
+}
+
+QLabel#TituloDialogoIA {
+    color: #89b4fa;
+    font-size: 16pt;
+    font-weight: bold;
+}
+
+QLabel#DescripcionDialogoIA {
+    color: #a6adc8;
+}
+
+QLabel#EstadoIACorrecto {
+    color: #a6e3a1;
+    font-weight: bold;
+}
+
+QLabel#EstadoIAAdvertencia {
+    color: #f9e2af;
+    font-weight: bold;
+}
+
+QLabel#EstadoIANeutral {
+    color: #a6adc8;
     font-weight: bold;
 }
 
@@ -238,6 +307,12 @@ QPushButton:pressed {
     background-color: #585b70;
 }
 
+QPushButton:disabled {
+    background-color: #242536;
+    color: #6c7086;
+    border-color: #313244;
+}
+
 QPushButton#BotonPrincipal {
     background-color: #89b4fa;
     color: #1e1e2e;
@@ -270,6 +345,34 @@ QPushButton#BotonFlotantePanel:disabled {
     background-color: #2b2d42;
     color: #6c7086;
     border: 1px solid #3b3d56;
+}
+
+QCheckBox {
+    color: #cdd6f4;
+    spacing: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+QCheckBox::indicator {
+    width: 17px;
+    height: 17px;
+}
+
+QCheckBox::indicator:unchecked {
+    background-color: #11111b;
+    border: 1px solid #585b70;
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #89b4fa;
+    border: 1px solid #89b4fa;
+    border-radius: 4px;
+}
+
+QCheckBox:disabled {
+    color: #6c7086;
 }
 
 QPlainTextEdit {
@@ -325,5 +428,91 @@ QToolTip {
     background-color: #313244;
     color: #cdd6f4;
     border: 1px solid #89b4fa;
+}
+
+QFrame#EncabezadoConfiguracion {
+    background-color: #181825;
+    border-bottom: 1px solid #313244;
+}
+
+QLabel#TituloVentanaConfiguracion {
+    background-color: transparent;
+    color: #cdd6f4;
+    font-size: 14pt;
+    font-weight: bold;
+}
+
+QListWidget#ListaConfiguracion {
+    background-color: #181825;
+    color: #cdd6f4;
+    border: none;
+    border-right: 1px solid #313244;
+    padding: 8px;
+    outline: none;
+}
+
+QListWidget#ListaConfiguracion::item {
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 3px;
+}
+
+QListWidget#ListaConfiguracion::item:hover {
+    background-color: #313244;
+}
+
+QListWidget#ListaConfiguracion::item:selected {
+    background-color: #45475a;
+    color: #89b4fa;
+    font-weight: bold;
+}
+
+QStackedWidget#PanelesConfiguracion {
+    background-color: #1e1e2e;
+    border: none;
+}
+
+QLabel#TituloConfiguracion {
+    color: #89b4fa;
+    font-size: 18pt;
+    font-weight: bold;
+}
+
+QLabel#SubtituloConfiguracion {
+    color: #cdd6f4;
+    font-size: 11pt;
+    font-weight: bold;
+}
+
+QLabel#DescripcionConfiguracion {
+    color: #a6adc8;
+}
+
+QLabel#TextoConfiguracion {
+    color: #cdd6f4;
+}
+
+QFrame#TarjetaConfiguracion {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+}
+
+QFrame#PieConfiguracion {
+    background-color: #181825;
+    border-top: 1px solid #313244;
+}
+
+QPushButton#CasillaIA {
+    background-color: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 4px;
+    padding: 0px;
+}
+
+QPushButton#CasillaIA:hover {
+    border-color: #89b4fa;
+    background-color: #181825;
 }
 """

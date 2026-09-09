@@ -8,8 +8,9 @@
 # interfaz gráfica de TecNet Finder.
 #
 # Espera una breve pausa al escribir, ejecuta la predicción en
-# segundo plano, descarta respuestas obsoletas y otorga prioridad
-# a Escape cuando existe un ghost text visible.
+# segundo plano, descarta respuestas obsoletas, permite activar o
+# desactivar el asistente y otorga prioridad a Escape cuando existe
+# un ghost text visible.
 # ============================================================
 
 from PySide6.QtCore import QEvent, QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, Slot  # Importa eventos, temporización, señales y ejecución en segundo plano.
@@ -39,14 +40,15 @@ class TrabajoPrediccion(QRunnable):  # Ejecuta una consulta al predictor sin ocu
         self.senales.terminada.emit(self.identificador, self.prefijo, sugerencia)  # Regresa el resultado sin modificar widgets desde el hilo secundario.
 
 
-class ControlAutocompletado(QObject):  # Administra debounce, concurrencia, cancelación y prioridad del teclado.
+class ControlAutocompletado(QObject):  # Administra debounce, concurrencia, cancelación, activación y prioridad del teclado.
     sugerencia_lista = Signal(str, str)  # Informa al editor qué prefijo produjo una continuación válida.
 
     def __init__(self, padre=None, predictor: PredictorCodigo | None = None, demora_ms: int = 500):
         super().__init__(padre)  # Asocia el ciclo de vida del controlador con el editor propietario.
-        self.editor = padre  # Conserva el editor para interceptar Escape cuando exista una sugerencia.
+        self.editor = padre  # Conserva el editor para controlar visualmente las sugerencias.
         self.predictor = predictor or PredictorCodigo()  # Utiliza el predictor real salvo en pruebas.
         self.demora_ms = demora_ms  # Mantiene una breve pausa para no consultar el modelo después de cada tecla.
+        self.habilitado = True  # Conserva el comportamiento actual hasta que la configuración del usuario indique lo contrario.
         self.prefijo_pendiente = ""  # Conserva el texto asociado con la solicitud más reciente.
         self.identificador_solicitud = 0  # Aumenta con cada cambio para invalidar respuestas anteriores.
 
@@ -61,10 +63,26 @@ class ControlAutocompletado(QObject):  # Administra debounce, concurrencia, canc
         if self.editor is not None:
             self.editor.installEventFilter(self)  # Permite reclamar Escape antes del atajo global de la ventana principal.
 
+    def establecer_habilitado(self, habilitado: bool) -> None:
+        self.habilitado = bool(habilitado)  # Conserva únicamente un estado booleano explícito.
+
+        if self.habilitado:
+            return  # Las nuevas solicitudes podrán programarse normalmente a partir de este momento.
+
+        self.cancelar()  # Invalida cualquier generación iniciada antes de desactivar el asistente.
+        ocultar = getattr(self.editor, "_ocultar_sugerencia_ia", None)  # Obtiene la operación visual disponible en el editor.
+
+        if callable(ocultar):
+            ocultar()  # Retira inmediatamente cualquier ghost text que todavía estuviera visible.
+
     def programar(self, prefijo: str) -> None:
         self.identificador_solicitud += 1  # Invalida cualquier respuesta asociada con una versión anterior.
         self.prefijo_pendiente = prefijo  # Conserva el texto exacto que deberá completarse.
         self.temporizador.stop()  # Reinicia la espera cada vez que el usuario continúa escribiendo.
+
+        if not self.habilitado:
+            self.prefijo_pendiente = ""  # Evita conservar texto que no debe llegar posteriormente al modelo.
+            return  # No utiliza recursos mientras el usuario tenga desactivada la asistencia.
 
         if not prefijo.strip():
             return  # Evita utilizar recursos para entradas sin contenido significativo.
@@ -102,6 +120,9 @@ class ControlAutocompletado(QObject):  # Administra debounce, concurrencia, canc
         return bool(getattr(self.editor, "sugerencia_ia", ""))  # Consulta si existe una continuación virtual visible.
 
     def _iniciar_prediccion(self) -> None:
+        if not self.habilitado:
+            return  # Impide iniciar una generación que fue desactivada durante el tiempo de espera.
+
         prefijo = self.prefijo_pendiente  # Copia el texto para evitar depender de modificaciones posteriores.
         identificador = self.identificador_solicitud  # Copia también la versión utilizada para comprobar vigencia.
 
@@ -114,6 +135,9 @@ class ControlAutocompletado(QObject):  # Administra debounce, concurrencia, canc
 
     @Slot(int, str, object)
     def _recibir_prediccion(self, identificador: int, prefijo: str, sugerencia) -> None:
+        if not self.habilitado:
+            return  # Descarta cualquier resultado terminado después de desactivar el asistente.
+
         if identificador != self.identificador_solicitud:
             return  # Descarta respuestas terminadas después de que el usuario cambió la entrada.
 

@@ -6,8 +6,9 @@
 # Este archivo comprueba el ciclo de vida del servidor privado
 # utilizando una instalación opcional simulada.
 #
-# También verifica que en Windows se cierre el árbol completo
-# iniciado por Ollama para evitar procesos secundarios huérfanos.
+# También verifica el cierre del árbol de procesos en Windows,
+# el arranque temporal sin modelo y la posibilidad de utilizar
+# un tiempo de inicio especial durante una instalación nueva.
 # ============================================================
 
 import subprocess  # Permite sustituir la creación y terminación real de procesos durante las comprobaciones.
@@ -82,6 +83,7 @@ def prueba_gestor_reutiliza_servidor_ya_activo(tmp_path, monkeypatch):
 
     assert resultado is True
     assert gestor.iniciado_por_aplicacion is False
+    assert gestor.ultimo_error_inicio == ""
 
 
 def prueba_gestor_no_inicia_si_falta_componente(tmp_path, monkeypatch):
@@ -98,6 +100,7 @@ def prueba_gestor_no_inicia_si_falta_componente(tmp_path, monkeypatch):
 
     assert resultado is False
     assert gestor.iniciado_por_aplicacion is False
+    assert gestor.ultimo_error_inicio
 
 
 def prueba_gestor_inicia_componente_privado_con_configuracion_correcta(tmp_path, monkeypatch):
@@ -118,6 +121,7 @@ def prueba_gestor_inicia_componente_privado_con_configuracion_correcta(tmp_path,
 
     assert resultado is True
     assert gestor.iniciado_por_aplicacion is True
+    assert gestor.ultimo_error_inicio == ""
     assert captura["argumentos"] == [str(componente.ruta_ejecutable_ollama), "serve"]
     assert captura["opciones"]["env"]["OLLAMA_HOST"] == "127.0.0.1:11435"
     assert captura["opciones"]["env"]["OLLAMA_MODELS"] == str(componente.ruta_modelos)
@@ -194,3 +198,33 @@ def prueba_gestor_detecta_proceso_que_falla_durante_arranque(tmp_path, monkeypat
 
     assert resultado is False
     assert gestor.iniciado_por_aplicacion is False
+    assert "código 0" in gestor.ultimo_error_inicio
+
+
+def prueba_gestor_permite_tiempo_especial_para_primera_instalacion(tmp_path, monkeypatch):
+    componente = _crear_componente_temporal(tmp_path)  # Prepara una instalación completa para comprobar solamente la política de espera.
+    motor = MotorSimulado([False, True])  # Mantiene apagada la primera consulta y disponible la realizada después de crear el proceso.
+    proceso = ProcesoSimulado()  # Representa un servidor que consigue iniciar dentro del tiempo especial.
+
+    monkeypatch.setattr(subprocess, "Popen", lambda *_argumentos, **_opciones: proceso)  # Evita ejecutar Ollama real.
+
+    gestor = GestorOllama(
+        motor=motor,
+        componente_ia=componente,
+        tiempo_inicio_segundos=0.0,
+        intervalo_comprobacion=0.01,
+    )  # Configura deliberadamente un tiempo normal insuficiente para demostrar que el valor especial lo sustituye.
+
+    resultado = gestor.iniciar(
+        requerir_modelo=False,
+        tiempo_inicio_segundos=0.5,
+    )  # Utiliza una espera específica equivalente a la que requiere una primera instalación.
+
+    assert resultado is True
+    assert gestor.iniciado_por_aplicacion is True
+    assert gestor.ultimo_error_inicio == ""
+
+    monkeypatch.setattr(gestor, "_es_windows", lambda: False)  # Evita taskkill durante la limpieza de la prueba.
+    gestor.detener()
+
+    assert proceso.terminacion_solicitada is True
