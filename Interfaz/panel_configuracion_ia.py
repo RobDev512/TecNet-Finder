@@ -12,11 +12,13 @@
 # el estado efectivo del autocompletado con TecNet Finder.
 #
 # Las acciones normales y el progreso utilizan la misma región
-# visual y mantienen márgenes internos uniformes para conservar
-# una presentación limpia dentro del tamaño fijo de Configuración.
+# visual. La barra de progreso representa el porcentaje mediante
+# texto cuyo color cambia dinámicamente al ser cubierto por el
+# avance de la operación.
 # ============================================================
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite ejecutar operaciones potencialmente lentas sin bloquear la interfaz.
+from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
+from PySide6.QtGui import QColor, QPainter  # Permite dibujar manualmente el porcentaje dinámico sobre la barra de progreso.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QStackedWidget, QVBoxLayout, QWidget  # Importa los controles utilizados por el panel.
 
 from AsistenteIA.configuracion import MODELO_IA  # Permite mostrar el modelo técnico utilizado actualmente.
@@ -88,6 +90,57 @@ class BotonCasillaIA(QPushButton):  # Representa una casilla que muestra clarame
         self.style().unpolish(self)  # Retira la apariencia anterior.
         self.style().polish(self)  # Aplica el nuevo estado visual.
         self.update()  # Solicita el redibujado inmediato.
+
+
+class BarraProgresoIA(QProgressBar):  # Representa una barra cuyo porcentaje adapta su color según la región cubierta por el avance.
+    def __init__(self, padre=None):
+        super().__init__(padre)  # Conserva todo el funcionamiento normal de QProgressBar.
+        self.color_texto_libre = QColor("#cdd6f4")  # Utiliza texto claro sobre la parte oscura todavía no recorrida.
+        self.color_texto_cubierto = QColor("#11111b")  # Utiliza texto oscuro cuando el relleno azul alcanza cada región del porcentaje.
+        self.setTextVisible(False)  # Evita que Qt dibuje un segundo porcentaje debajo del texto personalizado.
+
+    def paintEvent(self, evento) -> None:
+        super().paintEvent(evento)  # Permite que Qt dibuje primero fondo, borde y relleno utilizando el estilo configurado.
+
+        minimo = self.minimum()  # Obtiene el límite inferior de la operación representada.
+        maximo = self.maximum()  # Obtiene el límite superior de la operación representada.
+
+        if minimo == 0 and maximo == 0:
+            return  # Mantiene solamente la animación indeterminada cuando todavía no existe un porcentaje confiable.
+
+        if maximo <= minimo:
+            return  # Evita divisiones inválidas ante un rango incorrecto.
+
+        proporcion = (self.value() - minimo) / (maximo - minimo)  # Convierte el valor actual a una proporción entre cero y uno.
+        proporcion = max(0.0, min(proporcion, 1.0))  # Mantiene el cálculo dentro de los límites visibles de la barra.
+        porcentaje = int(round(proporcion * 100))  # Obtiene el mismo porcentaje entero que espera ver el usuario.
+        texto = f"{porcentaje}%"  # Construye el contenido centrado que será dibujado en dos colores.
+
+        pintor = QPainter(self)  # Crea un pintor adicional sobre la barra ya representada por Qt.
+        pintor.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)  # Mantiene los caracteres suaves durante el cambio de color.
+        pintor.setFont(self.font())  # Conserva la misma tipografía utilizada por el resto de TecNet Finder.
+
+        pintor.setPen(self.color_texto_libre)  # Prepara primero el color utilizado sobre el fondo oscuro.
+        pintor.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, texto)  # Dibuja el porcentaje completo con el color correspondiente a la región libre.
+
+        area_interior = self.rect().adjusted(1, 1, -1, -1)  # Descuenta el borde visual para aproximarse exactamente a la región utilizada por el relleno.
+        ancho_cubierto = int(round(area_interior.width() * proporcion))  # Calcula hasta qué píxel ha llegado actualmente la parte azul.
+
+        if ancho_cubierto <= 0:
+            return  # Conserva todo el texto claro mientras el relleno todavía no alcanza ninguna región.
+
+        zona_cubierta = QRect(
+            area_interior.left(),
+            area_interior.top(),
+            ancho_cubierto,
+            area_interior.height(),
+        )  # Construye una región de recorte que coincide con la parte actualmente cubierta por el relleno.
+
+        pintor.save()  # Conserva el estado utilizado para el texto claro antes de aplicar un recorte.
+        pintor.setClipRect(zona_cubierta)  # Limita el siguiente dibujo únicamente a la región azul ya recorrida.
+        pintor.setPen(self.color_texto_cubierto)  # Cambia a un tono oscuro que contrasta correctamente sobre el azul.
+        pintor.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, texto)  # Redibuja solamente la parte del porcentaje alcanzada por el relleno.
+        pintor.restore()  # Recupera el estado original del pintor después del dibujo recortado.
 
 
 class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de la ventana general de configuración.
@@ -250,19 +303,17 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_progreso.setWordWrap(False)  # Conserva una sola línea dentro del espacio fijo reservado.
         diseno_progreso.addWidget(self.etiqueta_progreso)  # Coloca la descripción antes de la barra.
 
-        self.barra_progreso = QProgressBar()  # Permite visualizar transferencias y tareas largas sin aparentar que la aplicación se congeló.
+        self.barra_progreso = BarraProgresoIA()  # Utiliza la variante capaz de colorear dinámicamente el porcentaje según el avance.
         self.barra_progreso.setRange(0, 100)  # Utiliza inicialmente progreso determinado.
         self.barra_progreso.setValue(0)  # Comienza desde cero antes de cualquier instalación.
-        self.barra_progreso.setTextVisible(True)  # Muestra el porcentaje cuando la etapa permite calcularlo.
         self.barra_progreso.setFixedHeight(18)  # Mantiene la barra compacta dentro del espacio reservado.
         self.barra_progreso.setStyleSheet(
             """
             QProgressBar {
                 background-color: #11111b;
-                color: #cdd6f4;
                 border: 1px solid #45475a;
                 border-radius: 6px;
-                text-align: center;
+                padding: 0px;
             }
 
             QProgressBar::chunk {
@@ -270,7 +321,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
                 border-radius: 5px;
             }
             """
-        )  # Integra visualmente el progreso con los colores utilizados por TecNet Finder.
+        )  # Mantiene la apariencia actual mientras el porcentaje personalizado se dibuja por encima.
         diseno_progreso.addWidget(self.barra_progreso)  # Coloca la barra debajo de la descripción de la etapa.
 
         self.zona_administracion.addWidget(pagina_botones)  # Registra como primera página las acciones utilizadas normalmente.
@@ -335,21 +386,39 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
 
         self._iniciar_operacion("desactivar")  # Cierra los procesos en otro hilo sin congelar la interfaz.
 
+    def _preguntar_confirmacion(self, titulo: str, mensaje: str) -> bool:
+        dialogo = QMessageBox(self)  # Crea un cuadro controlado para poder personalizar los textos de sus botones.
+        dialogo.setWindowTitle(titulo)  # Conserva el mismo título utilizado anteriormente por QMessageBox.question.
+        dialogo.setIcon(QMessageBox.Icon.Question)  # Mantiene el icono de interrogación propio de una confirmación.
+        dialogo.setText(mensaje)  # Coloca el contenido correspondiente a instalar o desinstalar.
+        dialogo.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)  # Conserva semánticamente los botones estándar de confirmación.
+        dialogo.setDefaultButton(QMessageBox.StandardButton.No)  # Mantiene No como decisión predeterminada para evitar operaciones accidentales.
+
+        boton_si = dialogo.button(QMessageBox.StandardButton.Yes)  # Obtiene el botón afirmativo creado por Qt.
+        boton_no = dialogo.button(QMessageBox.StandardButton.No)  # Obtiene el botón negativo creado por Qt.
+
+        if boton_si is not None:
+            boton_si.setText("Sí")  # Traduce explícitamente la acción afirmativa al español.
+
+        if boton_no is not None:
+            boton_no.setText("No")  # Mantiene explícitamente la acción negativa en español.
+
+        dialogo.exec()  # Muestra la confirmación de forma modal igual que la implementación anterior.
+
+        return dialogo.standardButton(dialogo.clickedButton()) == QMessageBox.StandardButton.Yes  # Considera aceptada la operación solamente cuando se seleccionó Sí.
+
     def _solicitar_instalacion(self) -> None:
         if self.operacion_en_curso or self.componente_ia.instalado():
             return  # Evita iniciar otra descarga cuando no corresponde.
 
-        respuesta = QMessageBox.question(
-            self,
+        confirmado = self._preguntar_confirmacion(
             "Instalar asistencia de IA",
             "TecNet Finder descargará aproximadamente 2.5 GB entre el runtime local y el modelo.\n\n"
             "La instalación se guardará únicamente en los datos locales de TecNet Finder y puede tardar varios minutos.\n\n"
             "¿Deseas continuar?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )  # Solicita una decisión explícita antes de utilizar red y varios gigabytes de almacenamiento.
+        )  # Solicita una decisión explícita con botones traducidos completamente al español.
 
-        if respuesta != QMessageBox.StandardButton.Yes:
+        if not confirmado:
             return  # Abandona completamente la operación cuando el usuario decidió no instalar.
 
         self._iniciar_operacion("instalar")  # Entrega descarga, verificación y modelo al hilo secundario.
@@ -358,17 +427,14 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         if self.operacion_en_curso or not self.componente_ia.instalado():
             return  # Evita eliminar durante otra operación o cuando no existe componente.
 
-        respuesta = QMessageBox.question(
-            self,
+        confirmado = self._preguntar_confirmacion(
             "Desinstalar asistencia de IA",
             "Se eliminarán el runtime local de Ollama y el modelo utilizado por TecNet Finder.\n\n"
             "El compilador seguirá funcionando normalmente y podrás volver a instalar la asistencia más adelante.\n\n"
             "¿Deseas desinstalar el componente?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )  # Solicita confirmación porque la operación liberará todos los archivos pesados del componente.
+        )  # Solicita confirmación utilizando Sí y No sin depender del idioma configurado por Qt.
 
-        if respuesta != QMessageBox.StandardButton.Yes:
+        if not confirmado:
             return  # Conserva completamente la instalación cuando el usuario cancela.
 
         self.preferencias_ia.establecer_asistencia_activada(False)  # Evita volver a iniciar automáticamente un componente que está a punto de desaparecer.
@@ -422,11 +488,10 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
 
         if porcentaje is None:
             self.barra_progreso.setRange(0, 0)  # Utiliza animación indeterminada cuando la etapa no ofrece un porcentaje confiable.
-            self.barra_progreso.setTextVisible(False)  # Evita mostrar un porcentaje inexistente.
-        else:
-            self.barra_progreso.setRange(0, 100)  # Recupera el modo determinado cuando existe avance cuantificable.
-            self.barra_progreso.setValue(max(0, min(int(porcentaje), 100)))  # Limita cualquier valor recibido al rango representable.
-            self.barra_progreso.setTextVisible(True)  # Muestra nuevamente el porcentaje calculado.
+            return  # Evita asignar un valor inexistente durante esta fase.
+
+        self.barra_progreso.setRange(0, 100)  # Recupera el modo determinado cuando existe avance cuantificable.
+        self.barra_progreso.setValue(max(0, min(int(porcentaje), 100)))  # Limita cualquier valor recibido al rango representable.
 
     @Slot(str, bool, str)
     def _finalizar_operacion(self, operacion: str, resultado: bool, mensaje: str) -> None:
@@ -512,7 +577,6 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         if mostrar:
             self.etiqueta_progreso.setText("Preparando operación...")  # Proporciona retroalimentación incluso antes de la primera actualización del hilo.
             self.barra_progreso.setRange(0, 0)  # Comienza en modo indeterminado hasta conocer la primera fase cuantificable.
-            self.barra_progreso.setTextVisible(False)  # Evita mostrar un porcentaje antes de recibir datos reales.
             self.zona_administracion.setCurrentIndex(1)  # Sustituye los botones por el progreso dentro del mismo espacio físico.
             return  # Conserva la zona de progreso hasta que termine la operación.
 
@@ -520,4 +584,3 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_progreso.setText("Preparando operación...")  # Deja lista una descripción inicial para el siguiente trabajo.
         self.barra_progreso.setRange(0, 100)  # Recupera la configuración determinada para futuras transferencias.
         self.barra_progreso.setValue(0)  # Reinicia completamente cualquier avance perteneciente al trabajo anterior.
-        self.barra_progreso.setTextVisible(True)  # Recupera la presentación de porcentaje para el próximo uso.

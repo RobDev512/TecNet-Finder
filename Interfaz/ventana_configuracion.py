@@ -11,6 +11,9 @@
 # mantiene un tamaño fijo, presenta bordes exteriores redondeados
 # y organiza sus categorías mediante una navegación lateral con
 # paneles intercambiables.
+#
+# El control de cierre respeta la curvatura superior derecha
+# durante sus estados normal, hover y presionado.
 # ============================================================
 
 from pathlib import Path  # Permite localizar el icono oficial utilizado por la barra personalizada.
@@ -130,6 +133,40 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
             }
             """
         )  # Hace transparente únicamente esta instancia para que el contenedor redondeado controle correctamente sus esquinas.
+
+        if self.barra_titulo.boton_cerrar is not None:
+            self.barra_titulo.boton_cerrar.setObjectName("BotonCerrarConfiguracion")  # Distingue esta X de la correspondiente a la ventana principal.
+            self.barra_titulo.boton_cerrar.setStyleSheet(
+                """
+                QPushButton#BotonCerrarConfiguracion {
+                    background-color: transparent;
+                    color: #cdd6f4;
+                    border: none;
+                    border-top-right-radius: 12px;
+                    padding: 0px;
+                }
+
+                QPushButton#BotonCerrarConfiguracion:hover {
+                    background-color: #c42b1c;
+                    color: #ffffff;
+                    border: none;
+                    border-top-right-radius: 12px;
+                }
+
+                QPushButton#BotonCerrarConfiguracion:pressed {
+                    background-color: #a52016;
+                    color: #ffffff;
+                    border: none;
+                    border-top-right-radius: 12px;
+                }
+
+                QPushButton#BotonCerrarConfiguracion:disabled {
+                    background-color: transparent;
+                    border: none;
+                    border-top-right-radius: 12px;
+                }
+                """
+            )  # Hace que todos los fondos temporales del botón respeten físicamente la curva exterior de Configuración.
 
         diseno_barra.addWidget(self.barra_titulo)  # Coloca la barra reutilizable sobre el fondo superior redondeado.
         diseno_general.addWidget(contenedor_barra)  # Incorpora la región completa como primera parte de la ventana.
