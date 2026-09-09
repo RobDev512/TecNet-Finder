@@ -48,7 +48,7 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         self.setWindowTitle("Configuración")  # Conserva un nombre identificable para Windows y herramientas de accesibilidad.
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)  # Sustituye completamente la barra estándar de Windows por la barra propia.
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)  # Permite que las zonas exteriores a las esquinas redondeadas sean realmente transparentes.
-        self.setFixedSize(850, 560)  # Mantiene exactamente el tamaño acordado sin permitir agrandar ni reducir la ventana.
+        self.setFixedSize(850, 760)  # Mantiene exactamente el tamaño acordado sin permitir agrandar ni reducir la ventana.
         self.setModal(True)  # Evita abrir varias ventanas de configuración simultáneamente.
         self.setStyleSheet("QDialog#VentanaConfiguracion { background-color: transparent; }")  # Impide que el estilo global pinte un rectángulo oscuro detrás de las esquinas redondeadas.
 
