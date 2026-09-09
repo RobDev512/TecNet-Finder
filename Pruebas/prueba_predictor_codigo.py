@@ -3,99 +3,177 @@
 # Proyecto: TecNet Finder
 #
 # Descripción:
-# Este archivo comprueba que el predictor de código basado en IA
-# mantenga la autoridad del compilador formal.
+# Este archivo comprueba que el predictor solicite únicamente los
+# datos todavía faltantes y conserve de forma determinista todo
+# valor que el usuario ya haya escrito.
 #
-# Las pruebas utilizan un motor simulado para no depender de
-# Ollama, Internet, GPU ni del modelo real durante pytest.
+# Las propuestas se simulan mediante JSON para que las pruebas no
+# dependan de Ollama ni de respuestas aleatorias de un modelo real.
 # ============================================================
 
-from AsistenteIA.predictor_codigo import PredictorCodigo  # Importa el predictor que filtra las propuestas antes de entregarlas a la interfaz.
+from AsistenteIA.predictor_codigo import PredictorCodigo  # Importa el predictor contextual utilizado por el ghost text.
 
 
-class MotorSimulado:  # Sustituye Ollama durante las pruebas para producir respuestas completamente controladas.
-    def __init__(self, respuesta: str | None):
-        self.respuesta = respuesta  # Conserva la salida que será devuelta cuando el predictor solicite una generación.
-        self.cantidad_llamadas = 0  # Permite comprobar cuándo el predictor evita consultar innecesariamente la IA.
+class MotorSimulado:  # Sustituye el modelo local mediante una respuesta JSON completamente controlada.
+    def __init__(self, respuesta: dict | None):
+        self.respuesta = respuesta  # Conserva los datos preparados para el escenario actual.
+        self.cantidad_llamadas = 0  # Permite comprobar cuándo la IA no debería utilizarse.
 
-    def generar(self, prompt: str, maximo_tokens: int = 48) -> str | None:
-        self.cantidad_llamadas += 1  # Registra cada solicitud realizada por el predictor.
-        return self.respuesta  # Devuelve exactamente la respuesta preparada para cada escenario.
+    def generar_json(self, prompt: str, maximo_tokens: int = 120) -> dict | None:
+        self.cantidad_llamadas += 1  # Registra cada solicitud que habría llegado al modelo local.
+        return self.respuesta  # Devuelve exactamente la estructura preparada por la prueba.
 
 
-def prueba_predictor_devuelve_solo_continuacion_valida():  # Comprueba que una línea correcta produzca únicamente la parte todavía no escrita.
+def prueba_predictor_generaliza_desde_i():
     motor = MotorSimulado(
-        "IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina"
+        {
+            "ip": "10.44.2.0",
+            "cidr": 20,
+            "hosts": [40],
+            "nombre": "Campus",
+        }
     )
     predictor = PredictorCodigo(motor=motor)
 
-    sugerencia = predictor.sugerir(
-        "IP 192.168.1.0 MASK /24 HOSTS"
-    )
+    sugerencia = predictor.sugerir("I")
 
-    assert sugerencia == " 50 NAME Oficina"
-    assert motor.cantidad_llamadas == 1
+    assert sugerencia == "P 10.44.2.0 MASK /20 HOSTS 40 NAME Campus"
 
 
-def prueba_predictor_completa_palabra_reservada_incompleta():  # Comprueba que la IA pueda terminar una palabra reservada sin modificar el prefijo existente.
+def prueba_predictor_continua_direccion_iniciada_en_diez():
     motor = MotorSimulado(
-        "IP 192.168.10.0 MASK /24 HOSTS 30 NAME Oficina"
+        {
+            "ip": "10.30.5.0",
+            "cidr": 24,
+            "hosts": [18],
+            "nombre": "Taller",
+        }
     )
     predictor = PredictorCodigo(motor=motor)
 
-    sugerencia = predictor.sugerir(
-        "IP 192.168.10.0 MAS"
-    )
+    sugerencia = predictor.sugerir("IP 10")
 
-    assert sugerencia == "K /24 HOSTS 30 NAME Oficina"
+    assert sugerencia == ".30.5.0 MASK /24 HOSTS 18 NAME Taller"
 
 
-def prueba_predictor_rechaza_respuesta_que_modifica_prefijo():  # Impide que la IA cambie caracteres que el usuario ya escribió.
+def prueba_predictor_continua_direccion_arbitraria():
     motor = MotorSimulado(
-        "IP 10.0.0.0 MASK /24 HOSTS 50 NAME Oficina"
+        {
+            "ip": "172.25.4.0",
+            "cidr": 24,
+            "hosts": [26],
+            "nombre": "Laboratorio",
+        }
     )
     predictor = PredictorCodigo(motor=motor)
 
-    sugerencia = predictor.sugerir(
-        "IP 192.168.1.0 MASK"
+    sugerencia = predictor.sugerir("IP 172.25.4")
+
+    assert sugerencia == ".0 MASK /24 HOSTS 26 NAME Laboratorio"
+
+
+def prueba_predictor_ip_completa_no_vuelve_a_pedir_ip():
+    motor = MotorSimulado(
+        {
+            "cidr": 27,
+            "hosts": [7, 3],
+            "nombre": "Taller",
+        }
     )
+    predictor = PredictorCodigo(motor=motor)
+
+    sugerencia = predictor.sugerir("IP 172.22.8.0")
+
+    assert sugerencia == " MASK /27 HOSTS 7,3 NAME Taller"
+
+
+def prueba_predictor_completa_mask_parcial_con_ip_bloqueada():
+    motor = MotorSimulado(
+        {
+            "cidr": 26,
+            "hosts": [22],
+            "nombre": "OficinaSur",
+        }
+    )
+    predictor = PredictorCodigo(motor=motor)
+
+    sugerencia = predictor.sugerir("IP 10.55.0.0 MAS")
+
+    assert sugerencia == "K /26 HOSTS 22 NAME OficinaSur"
+
+
+def prueba_predictor_completa_hosts_sin_repetir_ip_ni_cidr():
+    motor = MotorSimulado(
+        {
+            "hosts_nuevos": [13],
+            "nombre": "Laboratorio",
+        }
+    )
+    predictor = PredictorCodigo(motor=motor)
+
+    sugerencia = predictor.sugerir("IP 192.168.50.0 MASK /24 HOS")
+
+    assert sugerencia == "TS 13 NAME Laboratorio"
+
+
+def prueba_predictor_conserva_host_existente_despues_de_coma():
+    motor = MotorSimulado(
+        {
+            "hosts_nuevos": [20],
+            "nombre": "Sucursal",
+        }
+    )
+    predictor = PredictorCodigo(motor=motor)
+
+    sugerencia = predictor.sugerir("IP 10.5.0.0 MASK /24 HOSTS 50,")
+
+    assert sugerencia == "20 NAME Sucursal"
+
+
+def prueba_predictor_rechaza_ip_generada_incompatible_con_fragmento():
+    motor = MotorSimulado(
+        {
+            "ip": "192.168.1.0",
+            "cidr": 24,
+            "hosts": [20],
+            "nombre": "OtraRed",
+        }
+    )
+    predictor = PredictorCodigo(motor=motor)
+
+    sugerencia = predictor.sugerir("IP 10")
 
     assert sugerencia is None
 
 
-def prueba_predictor_rechaza_propuesta_lexicamente_invalida():  # Comprueba que símbolos ajenos al lenguaje nunca lleguen al ghost text.
+def prueba_predictor_rechaza_hosts_nuevos_invalidos():
     motor = MotorSimulado(
-        "IP 192.168.1.0 MASK /24 HOSTS 50 @ Oficina"
+        {
+            "hosts_nuevos": "20",
+            "nombre": "Sucursal",
+        }
     )
     predictor = PredictorCodigo(motor=motor)
 
-    sugerencia = predictor.sugerir(
-        "IP 192.168.1.0 MASK /24 HOSTS"
-    )
+    sugerencia = predictor.sugerir("IP 10.5.0.0 MASK /24 HOSTS 50,")
 
     assert sugerencia is None
 
 
-def prueba_predictor_rechaza_propuesta_sintacticamente_invalida():  # Comprueba que una secuencia con tokens válidos pero orden incorrecto también sea descartada.
+def prueba_predictor_no_consulta_ia_para_linea_valida_o_texto_ajeno():
     motor = MotorSimulado(
-        "IP 192.168.1.0 MASK /24 HOSTS NAME Oficina"
+        {
+            "ip": "10.20.30.0",
+            "cidr": 24,
+            "hosts": [15],
+            "nombre": "",
+        }
     )
     predictor = PredictorCodigo(motor=motor)
 
-    sugerencia = predictor.sugerir(
-        "IP 192.168.1.0 MASK /24 HOSTS"
-    )
+    sugerencia_valida = predictor.sugerir("IP 10.20.30.0 MASK /24 HOSTS 15")
+    sugerencia_ajena = predictor.sugerir("hola mundo")
 
-    assert sugerencia is None
-
-
-def prueba_predictor_no_consulta_ia_con_entrada_vacia():  # Evita consumir recursos del modelo cuando el usuario todavía no ha escrito contenido útil.
-    motor = MotorSimulado(
-        "IP 192.168.1.0 MASK /24 HOSTS 50"
-    )
-    predictor = PredictorCodigo(motor=motor)
-
-    sugerencia = predictor.sugerir("   ")
-
-    assert sugerencia is None
+    assert sugerencia_valida is None
+    assert sugerencia_ajena is None
     assert motor.cantidad_llamadas == 0

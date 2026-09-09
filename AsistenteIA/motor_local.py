@@ -4,90 +4,124 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo implementa la comunicación entre TecNet Finder
-# y el servidor Ollama privado utilizado por la aplicación.
+# Este archivo comunica TecNet Finder con la instancia privada
+# de Ollama utilizada por el asistente local.
 #
-# Utiliza únicamente la biblioteca estándar de Python y trata
-# la IA como un componente opcional: si Ollama no responde,
-# el compilador continúa funcionando con normalidad.
+# Permite obtener texto normal o datos JSON estructurados sin
+# introducir dependencias externas de Python. Los problemas de
+# conexión se convierten en ausencia de respuesta para que la
+# aplicación pueda seguir funcionando aunque la IA no esté activa.
 # ============================================================
 
-import json  # Convierte las solicitudes y respuestas entre objetos de Python y JSON.
-import urllib.error  # Permite distinguir fallos de conexión o respuestas HTTP incorrectas.
-import urllib.request  # Realiza las peticiones HTTP contra la API local de Ollama.
+import json  # Permite construir las solicitudes HTTP y convertir las respuestas JSON recibidas desde Ollama.
+import urllib.error  # Permite controlar errores producidos por la comunicación HTTP.
+import urllib.request  # Permite utilizar la API local de Ollama sin agregar librerías externas.
 
-from AsistenteIA.configuracion import MODELO_IA, TIEMPO_ESPERA_SEGUNDOS, URL_BASE_OLLAMA  # Importa la configuración única utilizada por el motor local.
+from AsistenteIA.configuracion import MODELO_IA, TIEMPO_ESPERA_SEGUNDOS, URL_BASE_OLLAMA  # Importa la configuración central de la instancia privada.
 
 
-class MotorLocalOllama:  # Encapsula las operaciones de red necesarias para utilizar el modelo privado.
-    def __init__(self, url_base: str = URL_BASE_OLLAMA, modelo: str = MODELO_IA):  # Permite sustituir dirección o modelo durante pruebas sin cambiar la configuración global.
-        self.url_base = url_base.rstrip("/")  # Normaliza la dirección evitando diagonales duplicadas al formar endpoints.
-        self.modelo = modelo  # Conserva el nombre exacto del modelo que TecNet Finder debe solicitar.
+class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el servidor local de Ollama.
+    def __init__(self, url_base: str = URL_BASE_OLLAMA, modelo: str = MODELO_IA):
+        self.url_base = url_base.rstrip("/")  # Normaliza la dirección para construir endpoints sin diagonales duplicadas.
+        self.modelo = modelo  # Conserva el modelo local que deberá utilizar cada generación.
 
-    def disponible(self) -> bool:  # Comprueba rápidamente si el servidor privado responde y contiene el modelo requerido.
+    def disponible(self) -> bool:
         try:
-            respuesta = self._solicitar_json("/api/tags", metodo="GET")  # Consulta la lista de modelos disponibles en Ollama.
-        except (OSError, ValueError):
-            return False  # Considera la IA inactiva si la API no puede consultarse correctamente.
+            self._solicitar_json("/api/tags")  # Consulta un endpoint ligero para comprobar que el servidor privado responde.
+            return True  # Considera disponible la IA cuando Ollama devuelve una respuesta válida.
+        except OSError:
+            return False  # Mantiene TecNet Finder funcional aunque el servidor local no se encuentre iniciado.
 
-        modelos = respuesta.get("models", [])  # Obtiene la colección devuelta por Ollama sin asumir que siempre estará presente.
-
-        return any(
-            modelo.get("name") == self.modelo or modelo.get("model") == self.modelo
-            for modelo in modelos
-        )  # Exige que además del servidor esté disponible exactamente el modelo configurado.
-
-    def generar(self, prompt: str, maximo_tokens: int = 48) -> str | None:  # Solicita una respuesta breve apropiada para autocompletado.
+    def generar(self, prompt: str, maximo_tokens: int = 80) -> str | None:
         datos = {
             "model": self.modelo,
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.1,
+                "temperature": 0.2,
                 "num_predict": maximo_tokens,
             },
-        }  # Limita creatividad y longitud para obtener propuestas rápidas y más deterministas.
+        }  # Construye una generación breve y poco aleatoria apropiada para autocompletado.
 
         try:
-            respuesta = self._solicitar_json("/api/generate", datos=datos, metodo="POST")  # Envía la solicitud de generación al proceso privado.
-        except (OSError, ValueError):
-            return None  # Convierte cualquier indisponibilidad de IA en ausencia silenciosa de sugerencia.
+            respuesta = self._solicitar_json("/api/generate", datos=datos, metodo="POST")  # Envía la solicitud a la instancia privada de Ollama.
+        except OSError:
+            return None  # Trata los problemas del modelo o del servidor como ausencia de sugerencia.
 
-        texto = respuesta.get("response")  # Recupera únicamente el contenido generado por el modelo.
+        texto = respuesta.get("response")  # Recupera exclusivamente el texto producido por el modelo.
 
         if not isinstance(texto, str):
-            return None  # Descarta respuestas incompletas o con un formato inesperado.
+            return None  # Rechaza respuestas inesperadas que no contengan texto.
 
-        texto = texto.strip()  # Elimina espacios y saltos agregados alrededor de la generación.
+        texto = texto.strip("\r\n")  # Conserva espacios horizontales porque pueden ser significativos para el autocompletado.
 
-        return texto or None  # Devuelve None cuando el modelo no produjo contenido útil.
+        if not texto.strip():
+            return None  # Descarta generaciones vacías o compuestas solamente por espacios.
 
-    def _solicitar_json(self, endpoint: str, datos: dict | None = None, metodo: str = "GET") -> dict:  # Ejecuta una petición JSON reutilizable contra la API local.
-        cuerpo = None  # Mantiene las peticiones GET sin cuerpo de forma predeterminada.
-        encabezados = {"Content-Type": "application/json"}  # Informa que cualquier contenido enviado utiliza JSON.
+        return texto  # Entrega el contenido sin interpretarlo como código válido.
+
+    def generar_json(self, prompt: str, maximo_tokens: int = 120) -> dict | None:
+        datos = {
+            "model": self.modelo,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+            "options": {
+                "temperature": 0.3,
+                "num_predict": maximo_tokens,
+            },
+        }  # Solicita explícitamente a Ollama una respuesta JSON para reducir errores de formato del modelo.
+
+        try:
+            respuesta = self._solicitar_json("/api/generate", datos=datos, metodo="POST")  # Obtiene la generación estructurada mediante el mismo servidor privado.
+        except OSError:
+            return None  # Permite continuar utilizando TecNet Finder aunque la consulta de IA falle.
+
+        contenido = respuesta.get("response")  # Recupera la cadena JSON generada por el modelo.
+
+        if not isinstance(contenido, str) or not contenido.strip():
+            return None  # Descarta respuestas sin contenido estructurado utilizable.
+
+        try:
+            resultado = json.loads(contenido)  # Convierte la cadena generada en una estructura Python controlable.
+        except json.JSONDecodeError:
+            return None  # Rechaza cualquier generación que no sea realmente JSON válido.
+
+        if not isinstance(resultado, dict):
+            return None  # Exige un objeto porque el predictor trabaja mediante campos con nombres conocidos.
+
+        return resultado  # Entrega los datos todavía sin considerarlos válidos para el lenguaje.
+
+    def _solicitar_json(
+        self,
+        endpoint: str,
+        datos: dict | None = None,
+        metodo: str = "GET",
+    ) -> dict:
+        cuerpo = None  # Mantiene vacía la solicitud cuando el endpoint solamente necesita lectura.
 
         if datos is not None:
-            cuerpo = json.dumps(datos).encode("utf-8")  # Serializa la solicitud utilizando UTF-8 antes de enviarla.
+            cuerpo = json.dumps(datos).encode("utf-8")  # Serializa el contenido de una solicitud POST mediante UTF-8.
 
         solicitud = urllib.request.Request(
-            url=f"{self.url_base}{endpoint}",
+            f"{self.url_base}{endpoint}",
             data=cuerpo,
-            headers=encabezados,
+            headers={"Content-Type": "application/json"},
             method=metodo,
-        )  # Construye una petición explícita para evitar dependencias HTTP externas.
+        )  # Construye una solicitud HTTP explícita hacia la instancia local configurada.
 
         try:
             with urllib.request.urlopen(solicitud, timeout=TIEMPO_ESPERA_SEGUNDOS) as respuesta:
-                contenido = respuesta.read().decode("utf-8")  # Lee completamente la respuesta local y la convierte nuevamente en texto.
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
-            raise OSError("No fue posible comunicarse con la IA local.") from error  # Normaliza los fallos de transporte para que el resto del proyecto no dependa de urllib.
+                contenido = respuesta.read().decode("utf-8")  # Lee completamente la respuesta y la convierte desde UTF-8.
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            raise OSError("No fue posible comunicarse con Ollama.") from error  # Unifica los fallos de red para que las capas superiores puedan degradarse con seguridad.
 
         try:
-            datos_respuesta = json.loads(contenido)  # Convierte el JSON devuelto por Ollama en una estructura de Python.
+            resultado = json.loads(contenido)  # Interpreta la respuesta HTTP utilizando el formato esperado por la API de Ollama.
         except json.JSONDecodeError as error:
-            raise ValueError("Ollama devolvió una respuesta JSON inválida.") from error  # Impide propagar contenido corrupto hacia el predictor.
+            raise OSError("Ollama devolvió una respuesta JSON inválida.") from error  # Impide propagar respuestas corruptas hacia el asistente.
 
-        if not isinstance(datos_respuesta, dict):
-            raise ValueError("Ollama devolvió una respuesta inesperada.")  # Exige la estructura utilizada por todos los endpoints consumidos.
+        if not isinstance(resultado, dict):
+            raise OSError("Ollama devolvió una estructura inesperada.")  # Exige que el cuerpo principal corresponda con un objeto de la API.
 
-        return datos_respuesta  # Entrega únicamente respuestas ya comprobadas y convertidas.
+        return resultado  # Devuelve la respuesta normalizada a la operación que realizó la consulta.
