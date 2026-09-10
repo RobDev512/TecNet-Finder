@@ -14,12 +14,17 @@
 #
 # Cada categoría utiliza desplazamiento vertical únicamente
 # cuando su contenido no cabe dentro del tamaño fijo acordado.
+#
+# La ventana se centra horizontal y verticalmente dentro del área
+# útil del monitor donde se encuentra TecNet Finder, excluyendo
+# espacios ocupados por elementos del sistema como la barra de
+# tareas de Windows.
 # ============================================================
 
 from pathlib import Path  # Permite localizar el icono oficial utilizado por la barra personalizada.
 
 from PySide6.QtCore import Qt, Signal  # Permite controlar apariencia, navegación y señales emitidas por los paneles.
-from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout  # Importa los componentes utilizados por la configuración.
+from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout  # Importa los componentes utilizados por la configuración.
 
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite compartir la instalación opcional con el panel correspondiente.
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite compartir el servicio activo de inteligencia artificial.
@@ -48,7 +53,7 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         self.setWindowTitle("Configuración")  # Conserva un nombre identificable para Windows y herramientas de accesibilidad.
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)  # Sustituye completamente la barra estándar de Windows por la barra propia.
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)  # Permite que las zonas exteriores a las esquinas redondeadas sean realmente transparentes.
-        self.setFixedSize(850, 760)  # Mantiene exactamente el tamaño acordado sin permitir agrandar ni reducir la ventana.
+        self.setFixedSize(850, 770)  # Mantiene exactamente el tamaño acordado sin permitir agrandar ni reducir la ventana.
         self.setModal(True)  # Evita abrir varias ventanas de configuración simultáneamente.
         self.setStyleSheet("QDialog#VentanaConfiguracion { background-color: transparent; }")  # Impide que el estilo global pinte un rectángulo oscuro detrás de las esquinas redondeadas.
 
@@ -64,6 +69,32 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
 
     def _ruta_icono(self) -> Path:
         return Path(__file__).resolve().parent.parent / "Recursos" / "LogoTNF.ico"  # Localiza el mismo recurso utilizado por la ventana principal.
+
+    def _centrar_en_area_disponible(self) -> None:
+        pantalla = None  # Comienza sin asumir qué monitor debe utilizarse como referencia.
+        padre = self.parentWidget()  # Obtiene la ventana principal asociada con Configuración.
+
+        if padre is not None and padre.windowHandle() is not None:
+            pantalla = padre.windowHandle().screen()  # Prefiere el monitor donde actualmente se encuentra TecNet Finder.
+
+        if pantalla is None:
+            pantalla = self.screen()  # Utiliza la pantalla asignada al propio diálogo cuando el padre no permite determinarla.
+
+        if pantalla is None:
+            pantalla = QApplication.primaryScreen()  # Utiliza el monitor principal únicamente como último respaldo.
+
+        if pantalla is None:
+            return  # Mantiene la posición administrada por Qt si el sistema no proporcionara información de pantallas.
+
+        area_disponible = pantalla.availableGeometry()  # Obtiene el área útil del monitor excluyendo la barra de tareas y otras zonas reservadas por el sistema.
+
+        desplazamiento_x = max(0, (area_disponible.width() - self.width()) // 2)  # Calcula el espacio horizontal necesario para centrar la ventana.
+        desplazamiento_y = max(0, (area_disponible.height() - self.height()) // 2)  # Calcula el espacio vertical necesario para centrarla sin contar la barra de tareas.
+
+        posicion_x = area_disponible.x() + desplazamiento_x  # Respeta también el origen real del monitor cuando existen varias pantallas.
+        posicion_y = area_disponible.y() + desplazamiento_y  # Respeta cualquier zona superior reservada por el sistema operativo.
+
+        self.move(posicion_x, posicion_y)  # Sitúa Configuración exactamente en el centro del área de trabajo disponible.
 
     def _construir_interfaz(
         self,
@@ -294,6 +325,10 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
 
         if self.barra_titulo.boton_cerrar is not None:
             self.barra_titulo.boton_cerrar.setEnabled(not self.operacion_en_curso)  # Protege también la X personalizada mientras existe un trabajo pendiente.
+
+    def showEvent(self, evento) -> None:
+        super().showEvent(evento)  # Permite que Qt prepare completamente la geometría y los controles antes de reposicionar el diálogo.
+        self._centrar_en_area_disponible()  # Centra Configuración cada vez que se muestra utilizando únicamente el área útil del monitor.
 
     def accept(self) -> None:
         if self.operacion_en_curso:
