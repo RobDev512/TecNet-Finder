@@ -11,9 +11,9 @@
 # El catálogo también indica qué códigos están disponibles en
 # la base actual y cuáles permanecen pendientes para LyAII.
 #
-# Durante el refuerzo previo al análisis semántico se agregaron
-# diagnósticos léxicos más específicos y nuevas advertencias
-# no bloqueantes sin modificar los códigos heredados.
+# Durante Lenguajes y Autómatas II, el estado de cada diagnóstico
+# semántico se actualiza únicamente cuando su validación ya está
+# implementada, integrada y comprobada mediante pruebas.
 # ============================================================
 
 from dataclasses import dataclass  # Importa el decorador utilizado para crear clases de datos.
@@ -132,14 +132,14 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Indica que el diagnóstico se encuentra implementado.
         "etapa": "Base LyAI",  # Conserva su procedencia académica.
     },
-    "SEM-001": {  # Reserva el diagnóstico semántico para máscaras fuera del rango permitido por TecNet Finder.
-        "categoria": "Semántico",  # Clasifica el diagnóstico dentro de la futura fase semántica.
-        "nombre": "Máscara fuera de rango",  # Resume la condición que deberá verificarse en U1.
+    "SEM-001": {  # Registra la validación semántica de máscaras fuera del rango permitido por TecNet Finder.
+        "categoria": "Semántico",  # Clasifica el diagnóstico dentro del análisis semántico.
+        "nombre": "Máscara fuera de rango",  # Resume la condición comprobada durante U1.
         "descripcion": "La máscara CIDR existe sintácticamente, pero está fuera del rango permitido.",  # Diferencia explícitamente validez sintáctica y validez semántica.
-        "solucion": "Usa una máscara entre /8 y /30. Ejemplo: MASK /24.",  # Indica el rango previsto para la validación semántica.
-        "severidad": "error",  # Determina que la condición futura será bloqueante.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Evita presentar como implementada una validación que corresponde a U1.
-        "etapa": "U1",  # Registra la unidad académica donde deberá habilitarse.
+        "solucion": "Usa una máscara entre /8 y /30. Ejemplo: MASK /24.",  # Indica el rango admitido por la validación semántica.
+        "severidad": "error",  # Determina que una máscara fuera del rango impide continuar con el bloque.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-001 ya está implementado e integrado en el flujo principal.
+        "etapa": "U1",  # Registra que la validación pertenece a la primera unidad de LyAII.
     },
     "SEM-002": {  # Reserva el diagnóstico para una IP que no representa la dirección de su red base.
         "categoria": "Semántico",  # Clasifica la comprobación dentro de U1.
@@ -147,7 +147,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "descripcion": "La IP indicada no corresponde a la dirección de red para la máscara dada.",  # Explica la relación que deberá evaluarse entre IP y prefijo.
         "solucion": "Usa la dirección de red correcta para esa máscara. Por ejemplo, para 192.168.1.5/24 la red correcta sería 192.168.1.0.",  # Proporciona un ejemplo de corrección.
         "severidad": "error",  # Determina que una IP base incorrecta invalidará semánticamente la instrucción.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la regla deshabilitada hasta implementar U1.
+        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la regla deshabilitada hasta implementar su comprobación.
         "etapa": "U1",  # Registra la unidad responsable de la validación.
     },
     "SEM-003": {  # Reserva la comprobación semántica de cantidades de hosts no positivas.
@@ -165,7 +165,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "descripcion": "La suma de subredes solicitadas excede la capacidad de la red base.",  # Explica la condición que deberá calcularse.
         "solucion": "Usa una máscara base más grande, por ejemplo /23 en lugar de /24, o reduce los hosts solicitados.",  # Sugiere aumentar capacidad o reducir requerimientos.
         "severidad": "error",  # Determina que el exceso de capacidad invalidará el bloque.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la validación pendiente hasta U1.
+        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la validación pendiente hasta implementarla.
         "etapa": "U1",  # Registra la unidad correspondiente.
     },
     "SEM-005": {  # Reserva la comprobación de una solicitud individual demasiado grande.
@@ -174,7 +174,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "descripcion": "Una cantidad de hosts necesita más direcciones de las disponibles en la red base.",  # Explica la diferencia respecto del exceso total.
         "solucion": "Reduce la cantidad de hosts o usa una red base con más direcciones disponibles.",  # Indica las alternativas de corrección.
         "severidad": "error",  # Determina que la solicitud no podrá procesarse normalmente.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Conserva la comprobación fuera de la fase actual.
+        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Conserva la comprobación fuera del comportamiento disponible.
         "etapa": "U1",  # Asocia el código con análisis semántico.
     },
     "SEM-006": {  # Reserva la comprobación de redes base que ocupan direcciones comunes.
@@ -183,7 +183,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "descripcion": "Dos instrucciones usan redes base que se cruzan entre sí.",  # Explica el problema de solapamiento.
         "solucion": "Cambia la IP base o la máscara para que las redes no se traslapen.",  # Indica cómo separar los espacios de direcciones.
         "severidad": "error",  # Determina que el conflicto será bloqueante.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la comprobación pendiente hasta U1.
+        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la comprobación pendiente hasta su implementación.
         "etapa": "U1",  # Registra la unidad donde será implementada.
     },
     "ADV-001": {  # Registra la advertencia utilizada cuando algunos bloques fallan y otros pueden continuar.
@@ -228,7 +228,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "descripcion": "La red base tiene mucha más capacidad de la que realmente se utiliza.",  # Explica la condición futura.
         "solucion": "Considera usar una máscara base más pequeña si deseas optimizar mejor el espacio de direcciones.",  # Sugiere ajustar el tamaño de la red.
         "severidad": "advertencia",  # Mantiene la condición como recomendación y no como error.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Evita ejecutarla antes de tener análisis semántico formal.
+        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Evita ejecutarla antes de tener disponible la información semántica necesaria.
         "etapa": "U1",  # Registra la unidad donde podrá evaluarse correctamente.
     },
     "ADV-006": {  # Registra identificadores considerados demasiado genéricos.

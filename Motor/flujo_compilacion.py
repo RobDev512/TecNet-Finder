@@ -8,14 +8,15 @@
 # sin implementar directamente ninguna fase del compilador.
 #
 # Actualmente ejecuta análisis léxico, análisis sintáctico,
-# advertencias no bloqueantes y cálculo VLSM.
+# análisis semántico, advertencias no bloqueantes y cálculo VLSM.
 #
 # Conforme avance Lenguajes y Autómatas II, este mismo flujo
-# incorporará análisis semántico, código intermedio,
-# optimización y generación de código objeto.
+# incorporará código intermedio, optimización y generación
+# de código objeto.
 # ============================================================
 
 from Compilador.analizador_lexico import AnalizadorLexico  # Importa la primera fase encargada de convertir el código fuente en tokens.
+from Compilador.analizador_semantico import AnalizadorSemantico  # Importa la fase que comprueba el significado de los bloques sintácticamente válidos.
 from Compilador.analizador_sintactico import AnalizadorSintactico  # Importa la fase que comprueba el orden gramatical de los tokens.
 from Motor.advertencias import generar_advertencias  # Importa las recomendaciones no bloqueantes separadas de las fases formales.
 from Motor.diagnosticos import crear_diagnostico  # Importa la construcción estructurada utilizada para controlar fallos técnicos conocidos.
@@ -24,30 +25,42 @@ from Redes.calculadora_vlsm import ErrorCalculoVLSM, calcular_vlsm  # Importa el
 
 
 class FlujoCompilacion:  # Coordina las fases disponibles sin colocar su lógica dentro de la interfaz gráfica.
-    def analizar(self, codigo_fuente: str) -> ResultadoCompilacion:  # Ejecuta ordenadamente todas las etapas actualmente reconstruidas.
+    def analizar(self, codigo_fuente: str) -> ResultadoCompilacion:  # Ejecuta ordenadamente todas las etapas actualmente disponibles.
         analizador_lexico = AnalizadorLexico()  # Crea una nueva instancia del lexer para analizar el código fuente recibido.
         resultado_lexico = analizador_lexico.analizar(codigo_fuente)  # Obtiene los tokens y diagnósticos generados durante la fase léxica.
 
         analizador_sintactico = AnalizadorSintactico(resultado_lexico.tokens)  # Crea el parser utilizando únicamente los tokens reconocidos por el lexer.
         resultado_sintactico = analizador_sintactico.analizar()  # Obtiene bloques válidos, diagnósticos, árboles, producciones y derivación.
 
+        analizador_semantico = AnalizadorSemantico(
+            bloques=resultado_sintactico.bloques,
+            tokens=resultado_lexico.tokens,
+        )  # Crea la fase semántica utilizando solamente los bloques aceptados por el parser y sus tokens originales.
+        resultado_semantico = analizador_semantico.analizar()  # Obtiene los bloques que también cumplen las reglas semánticas disponibles.
+
         advertencias = generar_advertencias(
             codigo_fuente=codigo_fuente,
             resultado_lexico=resultado_lexico,
             resultado_sintactico=resultado_sintactico,
-        )  # Genera recomendaciones sin alterar la aceptación de ningún bloque.
+        )  # Genera recomendaciones sin alterar la aceptación formal de los bloques.
 
-        subredes_vlsm = []  # Crea la lista donde se reunirán las subredes calculadas para todos los bloques sintácticamente válidos.
-        diagnosticos_generales = []  # Conserva fallos técnicos controlados sin convertirlos prematuramente en errores semánticos.
+        advertencias = [
+            diagnostico
+            for diagnostico in advertencias
+            if diagnostico.codigo != "ADV-001"
+        ]  # Retira temporalmente ADV-001 para recalcularlo después usando también el resultado semántico real.
 
-        for bloque in resultado_sintactico.bloques:  # Recorre únicamente las instrucciones que lograron cumplir la gramática actual.
+        subredes_vlsm = []  # Crea la lista donde se reunirán las subredes calculadas para los bloques semánticamente válidos.
+        diagnosticos_generales = []  # Conserva fallos técnicos controlados que todavía no pertenecen a una fase formal específica.
+
+        for bloque in resultado_semantico.bloques_validos:  # Permite llegar a VLSM únicamente a las instrucciones aprobadas también por el semántico.
             try:
                 resultados_bloque = calcular_vlsm(
                     direccion_ip=bloque.direccion_ip,
                     mascara_subred=bloque.mascara_subred,
                     cantidades_hosts=bloque.cantidades_hosts,
                     nombre_red=bloque.nombre,
-                )
+                )  # Calcula las subredes solamente después de superar todas las fases formales disponibles.
             except ErrorCalculoVLSM as error:
                 token_host = self._localizar_token_host(
                     tokens=resultado_lexico.tokens,
@@ -68,35 +81,38 @@ class FlujoCompilacion:  # Coordina las fases disponibles sin colocar su lógica
                         longitud=len(token_host.valor) if token_host is not None else 1,
                         fragmento=token_host.valor if token_host is not None else str(error.hosts_solicitados),
                     )
+                )  # Convierte el fallo técnico de VLSM en un diagnóstico controlado y localizado.
+                continue  # Permite que otros bloques independientes continúen procesándose.
+
+            subredes_vlsm.extend(resultados_bloque)  # Agrega las subredes calculadas correctamente a la salida general.
+
+        existen_errores = (
+            resultado_lexico.tiene_errores
+            or resultado_sintactico.tiene_errores
+            or resultado_semantico.tiene_errores
+            or bool(diagnosticos_generales)
+        )  # Comprueba errores de todas las fases ejecutadas antes de decidir si hubo procesamiento parcial.
+
+        if existen_errores and subredes_vlsm:
+            advertencias.append(
+                crear_diagnostico(
+                    codigo="ADV-001",
+                    mensaje=(
+                        "La entrada contiene errores, pero se procesarán únicamente "
+                        "los bloques que superaron las fases disponibles correctamente."
+                    ),
+                    severidad="advertencia",
                 )
-                continue
-
-            subredes_vlsm.extend(resultados_bloque)  # Agrega las subredes del bloque actual a la lista general del programa.
-
-        if diagnosticos_generales and subredes_vlsm:  # Comprueba si algún bloque falló técnicamente mientras otros sí pudieron procesarse.
-            tiene_advertencia_parcial = any(
-                diagnostico.codigo == "ADV-001"
-                for diagnostico in advertencias
-            )  # Evita repetir una advertencia de procesamiento parcial ya generada por errores léxicos o sintácticos.
-
-            if not tiene_advertencia_parcial:
-                advertencias.append(
-                    crear_diagnostico(
-                        codigo="ADV-001",
-                        mensaje=(
-                            "La entrada contiene errores, pero se procesarán únicamente "
-                            "los bloques cuyos resultados pudieron generarse correctamente."
-                        ),
-                    )
-                )
+            )  # Informa procesamiento parcial únicamente cuando existen errores y al menos algún resultado VLSM válido.
 
         return ResultadoCompilacion(
             resultado_lexico=resultado_lexico,
             resultado_sintactico=resultado_sintactico,
+            resultado_semantico=resultado_semantico,
             subredes_vlsm=subredes_vlsm,
             advertencias=advertencias,
             diagnosticos_generales=diagnosticos_generales,
-        )
+        )  # Reúne los resultados de todas las fases actualmente conectadas al compilador.
 
     def _localizar_token_host(self, tokens: list[Token], bloque: BloqueRed, indice_host: int) -> Token | None:  # Relaciona una solicitud VLSM con el NUMBER exacto reconocido originalmente por el lexer.
         for indice_inicio, token_inicio in enumerate(tokens):  # Recorre todos los posibles comienzos de instrucción conservados por el lexer.
@@ -114,12 +130,12 @@ class FlujoCompilacion:  # Coordina las fases disponibles sin colocar su lógica
             posicion += 1  # Avanza hacia MASK.
 
             if posicion >= len(tokens) or tokens[posicion].tipo != "MASK":
-                continue
+                continue  # Descarta secuencias donde MASK no aparezca en la posición esperada.
 
             posicion += 1  # Avanza hacia la máscara CIDR.
 
             if posicion >= len(tokens) or tokens[posicion].tipo != "SUBNET_MASK":
-                continue
+                continue  # Descarta secuencias que no contengan una máscara reconocida.
 
             if tokens[posicion].valor != bloque.mascara_subred:
                 continue  # Descarta bloques con la misma IP pero distinta máscara.
@@ -127,7 +143,7 @@ class FlujoCompilacion:  # Coordina las fases disponibles sin colocar su lógica
             posicion += 1  # Avanza hacia HOSTS.
 
             if posicion >= len(tokens) or tokens[posicion].tipo != "HOSTS":
-                continue
+                continue  # Descarta secuencias donde no pueda localizarse la lista solicitada.
 
             posicion += 1  # Coloca el recorrido sobre la primera cantidad solicitada.
             tokens_hosts: list[Token] = []  # Conserva los NUMBER que pertenecen exclusivamente a la lista HOSTS actual.
@@ -137,12 +153,12 @@ class FlujoCompilacion:  # Coordina las fases disponibles sin colocar su lógica
 
                 if token_actual.tipo == "NUMBER":
                     tokens_hosts.append(token_actual)  # Conserva el NUMBER con su línea y columna originales.
-                    posicion += 1
-                    continue
+                    posicion += 1  # Avanza después de registrar la cantidad encontrada.
+                    continue  # Continúa examinando la lista actual.
 
                 if token_actual.tipo == "COMMA":
                     posicion += 1  # Omite únicamente el separador porque no representa una solicitud de hosts.
-                    continue
+                    continue  # Continúa hacia la siguiente cantidad.
 
                 break  # Finaliza la lista al encontrar la sección NAME o el comienzo de otro bloque.
 

@@ -72,6 +72,19 @@ class ResultadoSintactico:  # Agrupa los bloques válidos y diagnósticos produc
 
 
 @dataclass
+class ResultadoSemantico:  # Agrupa los bloques aceptados y los diagnósticos producidos por el análisis semántico.
+    bloques_validos: list[BloqueRed] = field(default_factory=list)  # Guarda únicamente las instrucciones que cumplen las reglas semánticas.
+    diagnosticos: list[Diagnostico] = field(default_factory=list)  # Guarda los errores detectados durante la validación semántica.
+
+    @property
+    def tiene_errores(self) -> bool:  # Indica si existe al menos un diagnóstico semántico marcado como error.
+        return any(
+            diagnostico.severidad == "error"
+            for diagnostico in self.diagnosticos
+        )
+
+
+@dataclass
 class SubredVLSM:  # Representa una subred calculada a partir de una solicitud de hosts.
     hosts_solicitados: int  # Guarda la cantidad de hosts pedida para esta subred.
     hosts_disponibles: int  # Guarda la cantidad real de hosts utilizables dentro del bloque asignado.
@@ -89,22 +102,33 @@ class SubredVLSM:  # Representa una subred calculada a partir de una solicitud d
 class ResultadoCompilacion:  # Agrupa en un solo objeto todo lo producido por el flujo actual de TecNet Finder.
     resultado_lexico: ResultadoLexico  # Guarda el resultado completo producido por el analizador léxico.
     resultado_sintactico: ResultadoSintactico  # Guarda el resultado completo producido por el analizador sintáctico.
+    resultado_semantico: ResultadoSemantico | None = None  # Guarda el resultado semántico cuando esta fase ya fue ejecutada.
     subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes generadas a partir de los bloques válidos.
     advertencias: list[Diagnostico] = field(default_factory=list)  # Guarda recomendaciones no bloqueantes producidas fuera de las fases formales.
     diagnosticos_generales: list[Diagnostico] = field(default_factory=list)  # Guarda errores técnicos controlados que no pertenecen todavía a una fase formal específica.
 
     @property
     def diagnosticos(self) -> list[Diagnostico]:  # Reúne en una sola colección todos los diagnósticos disponibles.
+        diagnosticos_semanticos = (
+            self.resultado_semantico.diagnosticos
+            if self.resultado_semantico is not None
+            else []
+        )  # Utiliza los diagnósticos semánticos únicamente cuando la nueva fase ya fue ejecutada.
+
         return [
             *self.resultado_lexico.diagnosticos,
             *self.resultado_sintactico.diagnosticos,
+            *diagnosticos_semanticos,
             *self.diagnosticos_generales,
             *self.advertencias,
         ]
 
     @property
-    def bloques_validos(self) -> list[BloqueRed]:  # Devuelve los bloques aceptados actualmente por el analizador sintáctico.
-        return self.resultado_sintactico.bloques
+    def bloques_validos(self) -> list[BloqueRed]:  # Devuelve los bloques que pueden continuar hacia las siguientes etapas del compilador.
+        if self.resultado_semantico is not None:
+            return self.resultado_semantico.bloques_validos  # Prioriza los bloques aprobados por la fase semántica cuando esta ya fue ejecutada.
+
+        return self.resultado_sintactico.bloques  # Conserva temporalmente el comportamiento anterior mientras el semántico aún no participe en el flujo.
 
     @property
     def tiene_errores(self) -> bool:  # Indica si al menos un diagnóstico combinado posee severidad de error.
