@@ -17,6 +17,11 @@
 # permite navegar al fragmento correspondiente en el editor,
 # mientras que la columna Solución conserva una interacción
 # independiente para solicitar una mejora mediante IA local.
+#
+# Detectados y Catálogo utilizan columnas responsivas. Cada
+# columna conserva un ancho mínimo legible y, cuando no existe
+# espacio suficiente, se habilita desplazamiento horizontal en
+# lugar de comprimir excesivamente mensajes y soluciones.
 # ============================================================
 
 from PySide6.QtCore import QEvent, QTimer, Qt, Signal  # Importa eventos, temporización, roles, alineaciones, cursores y navegación.
@@ -26,6 +31,72 @@ from PySide6.QtWidgets import QApplication, QAbstractItemView, QHeaderView, QTab
 from AsistenteIA.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
 from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Permite relacionar cada resultado de IA con la identidad exacta del diagnóstico.
 from Motor.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos, texto_estado_diagnostico  # Importa el modelo y el catálogo centralizado de diagnósticos.
+
+
+class TablaDiagnosticosResponsiva(QTableWidget):  # Conserva columnas legibles y habilita scroll horizontal cuando la ventana no ofrece espacio suficiente.
+    def __init__(
+        self,
+        filas: int,
+        columnas: int,
+        anchos_minimos: list[int],
+        pesos_expansion: list[float],
+        padre=None,
+    ):
+        super().__init__(filas, columnas, padre)  # Inicializa la tabla convencional utilizada como base.
+        self.anchos_minimos_columnas = anchos_minimos  # Conserva el espacio mínimo permitido para cada columna.
+        self.pesos_expansion_columnas = pesos_expansion  # Define qué columnas deben aprovechar principalmente el espacio sobrante.
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra desplazamiento solo cuando los mínimos ya no caben.
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite recorrer horizontalmente el contenido de forma continua.
+
+    def resizeEvent(self, evento) -> None:
+        super().resizeEvent(evento)  # Permite que Qt procese primero la nueva geometría.
+        self._distribuir_columnas()  # Recalcula los anchos después de conocer el nuevo espacio visible.
+
+    def showEvent(self, evento) -> None:
+        super().showEvent(evento)  # Permite que Qt muestre primero la tabla.
+        self._distribuir_columnas()  # Realiza la primera distribución utilizando su ancho real.
+
+    def _distribuir_columnas(self) -> None:
+        if len(self.anchos_minimos_columnas) != self.columnCount():  # Comprueba que cada columna posea un ancho mínimo.
+            return
+
+        if len(self.pesos_expansion_columnas) != self.columnCount():  # Comprueba que cada columna posea también un peso de expansión.
+            return
+
+        ancho_disponible = max(self.viewport().width() - 2, 1)  # Obtiene únicamente el espacio visible destinado a las columnas.
+        ancho_minimo_total = sum(self.anchos_minimos_columnas)  # Calcula cuánto espacio necesitan las columnas para seguir siendo legibles.
+
+        if ancho_disponible <= ancho_minimo_total:
+            anchos = list(self.anchos_minimos_columnas)  # Conserva los mínimos y deja que Qt habilite el scroll horizontal.
+        else:
+            espacio_adicional = ancho_disponible - ancho_minimo_total  # Obtiene los píxeles que pueden utilizarse para expandir las columnas.
+            suma_pesos = sum(self.pesos_expansion_columnas)  # Calcula el peso total de expansión.
+
+            if suma_pesos <= 0:
+                anchos = list(self.anchos_minimos_columnas)  # Mantiene únicamente los mínimos cuando ninguna columna fue marcada para expansión.
+            else:
+                anchos = []  # Acumula los anchos definitivos antes de aplicarlos.
+
+                for minimo, peso in zip(
+                    self.anchos_minimos_columnas[:-1],
+                    self.pesos_expansion_columnas[:-1],
+                ):
+                    adicional = int(
+                        espacio_adicional * peso / suma_pesos
+                    )  # Reparte únicamente el espacio sobrante según la importancia visual de cada columna.
+                    anchos.append(minimo + adicional)  # Conserva siempre el mínimo y agrega la expansión calculada.
+
+                ancho_ultima = (
+                    ancho_disponible - sum(anchos)
+                )  # Entrega a la última columna los píxeles restantes producidos por redondeos.
+                ancho_ultima = max(
+                    ancho_ultima,
+                    self.anchos_minimos_columnas[-1],
+                )  # Impide que la última columna termine por debajo de su mínimo.
+                anchos.append(ancho_ultima)  # Completa la distribución definitiva.
+
+        for columna, ancho in enumerate(anchos):
+            self.setColumnWidth(columna, ancho)  # Aplica los anchos calculados a la tabla real.
 
 
 class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y catálogo general dentro de dos subpestañas.
@@ -39,8 +110,18 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.codigo_catalogo_pendiente: str | None = None  # Retrasa el clic simple sobre Código para distinguirlo correctamente del doble clic.
         self.clave_solucion_pendiente: str | None = None  # Identifica la solución que actualmente espera una respuesta de IA.
 
-        self.tabla_detectados = QTableWidget(0, 6)  # Crea la tabla de diagnósticos correspondientes a la compilación actual.
-        self.tabla_catalogo = QTableWidget(0, 6)  # Crea la tabla de referencia con todos los diagnósticos conocidos.
+        self.tabla_detectados = TablaDiagnosticosResponsiva(
+            0,
+            6,
+            [90, 110, 320, 70, 80, 360],
+            [0.10, 0.10, 1.00, 0.05, 0.05, 1.15],
+        )  # Mantiene compactas las columnas técnicas y reserva buen espacio para Mensaje y Solución.
+        self.tabla_catalogo = TablaDiagnosticosResponsiva(
+            0,
+            6,
+            [90, 100, 110, 220, 340, 380],
+            [0.05, 0.05, 0.05, 0.35, 1.00, 1.10],
+        )  # Evita que Descripción y Solución sugerida se conviertan en columnas excesivamente estrechas.
         self.control_diagnosticos_ia = ControlDiagnosticosIA(self)  # Prepara la generación asíncrona de explicaciones.
 
         self.temporizador_catalogo = QTimer(self)  # Permite diferenciar un clic simple de un doble clic sobre Código.
@@ -79,6 +160,8 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.tabla_detectados.setAlternatingRowColors(True)  # Facilita distinguir visualmente diagnósticos consecutivos.
         self.tabla_detectados.setWordWrap(True)  # Permite mostrar mensajes y soluciones extensos en varias líneas.
         self.tabla_detectados.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar contenido mediante puntos suspensivos.
+        self.tabla_detectados.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Habilita scroll solamente cuando los mínimos no caben.
+        self.tabla_detectados.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite recorrer suavemente las columnas.
         self.tabla_detectados.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
         self.tabla_detectados.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta cada fila según la cantidad de texto mostrada.
         self.tabla_detectados.setMouseTracking(True)  # Permite actualizar el cursor sin necesidad de pulsar.
@@ -86,13 +169,10 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.tabla_detectados.viewport().installEventFilter(self)  # Permite representar Código como un enlace mediante el cursor.
 
         encabezado = self.tabla_detectados.horizontalHeader()  # Obtiene el encabezado para controlar el ancho de cada columna.
-
-        encabezado.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Código compacto.
-        encabezado.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Categoría compacta.
-        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # Permite que Mensaje utilice una parte amplia del espacio.
-        encabezado.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Línea compacta.
-        encabezado.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Columna compacta.
-        encabezado.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # Permite que Solución comparta el espacio principal.
+        encabezado.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)  # Deja que la tabla responsiva administre todos los anchos.
+        encabezado.setStretchLastSection(False)  # Evita que Solución absorba arbitrariamente el espacio restante.
+        encabezado.setMinimumSectionSize(50)  # Impide que Qt reduzca internamente alguna columna hasta volverla ilegible.
+        encabezado.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene los encabezados técnicos centrados.
 
     def _configurar_tabla_catalogo(self) -> None:
         self.tabla_catalogo.setHorizontalHeaderLabels(
@@ -112,17 +192,16 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.tabla_catalogo.setAlternatingRowColors(True)  # Facilita distinguir los diagnósticos consecutivos.
         self.tabla_catalogo.setWordWrap(True)  # Permite mostrar completamente descripciones y soluciones.
         self.tabla_catalogo.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita recortar información.
+        self.tabla_catalogo.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra scroll cuando el catálogo necesita más espacio que el disponible.
+        self.tabla_catalogo.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite explorar horizontalmente el catálogo de forma cómoda.
         self.tabla_catalogo.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
         self.tabla_catalogo.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta cada ficha según su contenido.
 
         encabezado = self.tabla_catalogo.horizontalHeader()  # Obtiene el encabezado para administrar sus columnas.
-
-        encabezado.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Código compacto.
-        encabezado.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Tipo compacto.
-        encabezado.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene Estado compacto.
-        encabezado.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Mantiene visible el nombre completo.
-        encabezado.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Permite que Descripción utilice buena parte del espacio.
-        encabezado.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # Permite que Solución sugerida comparta el espacio restante.
+        encabezado.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)  # Deja todos los anchos bajo control de la tabla responsiva.
+        encabezado.setStretchLastSection(False)  # Evita deformar Solución sugerida únicamente para rellenar espacio.
+        encabezado.setMinimumSectionSize(50)  # Conserva un límite interno seguro para todas las secciones.
+        encabezado.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene los títulos del catálogo centrados.
 
     def eventFilter(self, objeto, evento) -> bool:
         if objeto is self.tabla_detectados.viewport():  # Comprueba que el evento pertenezca al área visible de Detectados.

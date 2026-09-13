@@ -9,16 +9,17 @@
 #
 # Utiliza la barra de título personalizada de la aplicación,
 # mantiene un tamaño fijo, presenta bordes exteriores redondeados
-# y organiza sus categorías mediante una navegación lateral con
-# paneles intercambiables.
+# y organiza sus categorías mediante navegación lateral.
+#
+# Configuración incluye actualmente preferencias generales de
+# ventana y resultados, además de la administración independiente
+# de las funciones de inteligencia artificial local.
 #
 # Cada categoría utiliza desplazamiento vertical únicamente
 # cuando su contenido no cabe dentro del tamaño fijo acordado.
 #
-# La ventana se centra horizontal y verticalmente dentro del área
-# útil del monitor donde se encuentra TecNet Finder, excluyendo
-# espacios ocupados por elementos del sistema como la barra de
-# tareas de Windows.
+# La ventana se centra dentro del área útil del monitor donde se
+# encuentra TecNet Finder.
 # ============================================================
 
 from pathlib import Path  # Permite localizar el icono oficial utilizado por la barra personalizada.
@@ -30,12 +31,17 @@ from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite compa
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite compartir el servicio activo de inteligencia artificial.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite compartir las preferencias persistentes del usuario.
 from Interfaz.barra_titulo import BarraTitulo  # Reutiliza la misma barra personalizada utilizada por la ventana principal.
-from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Importa la primera sección disponible dentro de Configuración.
+from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Importa la sección dedicada a las funciones locales de IA.
+from Interfaz.panel_configuracion_resultados import PanelConfiguracionResultados  # Importa las preferencias generales de ventana, compilación y resultados.
+from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Comparte las preferencias generales persistentes con su panel.
 
 
 class VentanaConfiguracion(QDialog):  # Representa la configuración general y permite cambiar entre diferentes categorías.
+    lado_media_pantalla_cambiado = Signal(str)  # Reenvía la mitad predeterminada elegida por el usuario.
+    navegacion_automatica_cambiada = Signal(bool)  # Reenvía el comportamiento elegido después de compilar.
+    advertencias_vlsm_cambiadas = Signal(bool)  # Reenvía la visibilidad elegida para las advertencias compactas.
     autocompletado_ia_cambiado = Signal(bool)  # Reenvía el estado efectivo de la función de ghost text.
-    diagnosticos_ia_cambiados = Signal(bool)  # Reenvía independientemente la mejora automática de soluciones.
+    diagnosticos_ia_cambiados = Signal(bool)  # Reenvía independientemente la mejora de soluciones.
     servicio_ia_cambiado = Signal(bool)  # Informa al controlador principal si Ollama se encuentra realmente disponible.
 
     def __init__(
@@ -44,18 +50,27 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         componente_ia: GestorComponenteIA,
         preferencias_ia: PreferenciasIA,
         asistencia_disponible_inicial: bool,
+        preferencias_aplicacion: PreferenciasAplicacion | None = None,
         padre=None,
     ):
         super().__init__(padre)  # Mantiene la configuración vinculada con la ventana principal.
         self.operacion_en_curso = False  # Evita cerrar la ventana mientras algún componente todavía está cambiando de estado.
+        self.preferencias_aplicacion = preferencias_aplicacion or PreferenciasAplicacion()  # Reutiliza la configuración recibida o crea una instancia compatible como respaldo.
 
         self.setObjectName("VentanaConfiguracion")  # Permite distinguir este diálogo frameless del resto de las ventanas.
         self.setWindowTitle("Configuración")  # Conserva un nombre identificable para Windows y herramientas de accesibilidad.
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)  # Sustituye completamente la barra estándar de Windows por la barra propia.
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)  # Permite que las zonas exteriores a las esquinas redondeadas sean realmente transparentes.
+        self.setWindowFlags(
+            Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
+        )  # Sustituye completamente la barra estándar de Windows por la barra propia.
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground,
+            True,
+        )  # Permite que las zonas exteriores a las esquinas redondeadas sean realmente transparentes.
         self.setFixedSize(850, 770)  # Mantiene exactamente el tamaño acordado sin permitir agrandar ni reducir la ventana.
         self.setModal(True)  # Evita abrir varias ventanas de configuración simultáneamente.
-        self.setStyleSheet("QDialog#VentanaConfiguracion { background-color: transparent; }")  # Impide que el estilo global pinte un rectángulo oscuro detrás de las esquinas redondeadas.
+        self.setStyleSheet(
+            "QDialog#VentanaConfiguracion { background-color: transparent; }"
+        )  # Impide que el estilo global pinte un rectángulo oscuro detrás de las esquinas redondeadas.
 
         if padre is not None:
             self.setWindowIcon(padre.windowIcon())  # Conserva el icono oficial de TecNet Finder dentro del sistema operativo.
@@ -86,15 +101,22 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         if pantalla is None:
             return  # Mantiene la posición administrada por Qt si el sistema no proporcionara información de pantallas.
 
-        area_disponible = pantalla.availableGeometry()  # Obtiene el área útil del monitor excluyendo la barra de tareas y otras zonas reservadas por el sistema.
+        area_disponible = pantalla.availableGeometry()  # Obtiene el área útil del monitor excluyendo barra de tareas y demás zonas reservadas.
 
-        desplazamiento_x = max(0, (area_disponible.width() - self.width()) // 2)  # Calcula el espacio horizontal necesario para centrar la ventana.
-        desplazamiento_y = max(0, (area_disponible.height() - self.height()) // 2)  # Calcula el espacio vertical necesario para centrarla sin contar la barra de tareas.
+        desplazamiento_x = max(
+            0,
+            (area_disponible.width() - self.width()) // 2,
+        )  # Calcula el espacio horizontal necesario para centrar la ventana.
 
-        posicion_x = area_disponible.x() + desplazamiento_x  # Respeta también el origen real del monitor cuando existen varias pantallas.
-        posicion_y = area_disponible.y() + desplazamiento_y  # Respeta cualquier zona superior reservada por el sistema operativo.
+        desplazamiento_y = max(
+            0,
+            (area_disponible.height() - self.height()) // 2,
+        )  # Calcula el espacio vertical necesario para centrarla.
 
-        self.move(posicion_x, posicion_y)  # Sitúa Configuración exactamente en el centro del área de trabajo disponible.
+        posicion_x = area_disponible.x() + desplazamiento_x  # Respeta también el origen real cuando existen varios monitores.
+        posicion_y = area_disponible.y() + desplazamiento_y  # Respeta cualquier zona superior reservada.
+
+        self.move(posicion_x, posicion_y)  # Sitúa Configuración exactamente dentro del área de trabajo disponible.
 
     def _construir_interfaz(
         self,
@@ -104,12 +126,15 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         asistencia_disponible_inicial: bool,
     ) -> None:
         diseno_exterior = QVBoxLayout(self)  # Reserva el diálogo transparente para colocar dentro la ventana visual real.
-        diseno_exterior.setContentsMargins(7, 7, 7, 7)  # Deja espacio transparente alrededor para que las curvas exteriores puedan apreciarse correctamente.
-        diseno_exterior.setSpacing(0)  # Evita introducir separaciones adicionales alrededor del marco.
+        diseno_exterior.setContentsMargins(7, 7, 7, 7)  # Deja espacio transparente alrededor para apreciar las curvas exteriores.
+        diseno_exterior.setSpacing(0)  # Evita separaciones adicionales alrededor del marco.
 
         self.marco_ventana = QFrame(self)  # Crea el contenedor visible que representa realmente la superficie de Configuración.
-        self.marco_ventana.setObjectName("MarcoVentanaConfiguracion")  # Permite aplicar exclusivamente el estilo exterior de esta ventana.
-        self.marco_ventana.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que Qt represente correctamente fondo, borde y radios definidos mediante QSS.
+        self.marco_ventana.setObjectName("MarcoVentanaConfiguracion")  # Permite aplicar exclusivamente el estilo exterior.
+        self.marco_ventana.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )  # Garantiza que Qt represente correctamente fondo, borde y radios.
         self.marco_ventana.setStyleSheet(
             """
             QFrame#MarcoVentanaConfiguracion {
@@ -118,16 +143,19 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
                 border-radius: 14px;
             }
             """
-        )  # Dibuja un contorno claro y redondea las cuatro esquinas exteriores del cuadro principal.
-        diseno_exterior.addWidget(self.marco_ventana)  # Coloca la superficie redondeada dentro del área transparente exterior.
+        )  # Dibuja un contorno claro y redondea las cuatro esquinas exteriores.
+        diseno_exterior.addWidget(self.marco_ventana)  # Coloca la superficie redondeada dentro del área transparente.
 
-        diseno_general = QVBoxLayout(self.marco_ventana)  # Organiza barra, contenido y pie dentro del marco redondeado.
-        diseno_general.setContentsMargins(1, 1, 1, 1)  # Reserva únicamente el espacio necesario para que el borde exterior permanezca visible.
-        diseno_general.setSpacing(0)  # Mantiene unidas visualmente las regiones internas de la ventana.
+        diseno_general = QVBoxLayout(self.marco_ventana)  # Organiza barra, contenido y pie dentro del marco.
+        diseno_general.setContentsMargins(1, 1, 1, 1)  # Reserva únicamente el espacio necesario para conservar visible el borde.
+        diseno_general.setSpacing(0)  # Mantiene unidas visualmente las regiones internas.
 
-        contenedor_barra = QFrame()  # Crea una superficie propia para las esquinas superiores de la ventana.
-        contenedor_barra.setObjectName("ContenedorBarraConfiguracion")  # Permite diferenciar esta región de la barra utilizada en la ventana principal.
-        contenedor_barra.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que el fondo redondeado superior sea representado correctamente.
+        contenedor_barra = QFrame()  # Crea una superficie propia para las esquinas superiores.
+        contenedor_barra.setObjectName("ContenedorBarraConfiguracion")  # Permite diferenciar esta región.
+        contenedor_barra.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )  # Garantiza que el fondo redondeado superior sea representado correctamente.
         contenedor_barra.setStyleSheet(
             """
             QFrame#ContenedorBarraConfiguracion {
@@ -139,7 +167,7 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
             """
         )  # Conserva el color de la barra principal y redondea únicamente sus esquinas superiores.
 
-        diseno_barra = QVBoxLayout(contenedor_barra)  # Permite colocar la barra reutilizable dentro de la superficie redondeada.
+        diseno_barra = QVBoxLayout(contenedor_barra)  # Permite colocar la barra reutilizable dentro de la superficie.
         diseno_barra.setContentsMargins(0, 0, 0, 0)  # Hace que la barra ocupe completamente su contenedor.
         diseno_barra.setSpacing(0)  # Evita cualquier separación entre la barra y su fondo.
 
@@ -152,7 +180,7 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
             mostrar_pantalla_completa=False,
             mostrar_cerrar=True,
             permitir_arrastre=True,
-        )  # Reutiliza la barra oficial mostrando solamente nombre, logotipo y botón de cierre.
+        )  # Reutiliza la barra oficial mostrando solamente nombre, logotipo y cierre.
 
         self.barra_titulo.setStyleSheet(
             """
@@ -165,10 +193,13 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
                 background-color: transparent;
             }
             """
-        )  # Hace transparente únicamente esta instancia para que el contenedor redondeado controle correctamente sus esquinas.
+        )  # Hace transparente únicamente esta instancia para respetar el fondo redondeado exterior.
 
         if self.barra_titulo.boton_cerrar is not None:
-            self.barra_titulo.boton_cerrar.setObjectName("BotonCerrarConfiguracion")  # Distingue esta X de la correspondiente a la ventana principal.
+            self.barra_titulo.boton_cerrar.setObjectName(
+                "BotonCerrarConfiguracion"
+            )  # Distingue esta X de la correspondiente con la ventana principal.
+
             self.barra_titulo.boton_cerrar.setStyleSheet(
                 """
                 QPushButton#BotonCerrarConfiguracion {
@@ -199,13 +230,13 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
                     border-top-right-radius: 12px;
                 }
                 """
-            )  # Hace que todos los fondos temporales del botón respeten físicamente la curva exterior de Configuración.
+            )  # Hace que todos los fondos temporales respeten físicamente la curva exterior.
 
-        diseno_barra.addWidget(self.barra_titulo)  # Coloca la barra reutilizable sobre el fondo superior redondeado.
+        diseno_barra.addWidget(self.barra_titulo)  # Coloca la barra reutilizable sobre el fondo superior.
         diseno_general.addWidget(contenedor_barra)  # Incorpora la región completa como primera parte de la ventana.
 
         contenedor_separador = QFrame()  # Reserva una pequeña región independiente para separar barra y contenido.
-        contenedor_separador.setObjectName("ContenedorSeparadorConfiguracion")  # Permite mantener el fondo alineado con la interfaz.
+        contenedor_separador.setObjectName("ContenedorSeparadorConfiguracion")  # Permite mantener su fondo alineado con la interfaz.
         contenedor_separador.setStyleSheet(
             """
             QFrame#ContenedorSeparadorConfiguracion {
@@ -213,28 +244,32 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
                 border: none;
             }
             """
-        )  # Conserva el mismo fondo inmediatamente debajo de la barra personalizada.
+        )  # Conserva el mismo fondo inmediatamente debajo de la barra.
 
-        diseno_separador = QHBoxLayout(contenedor_separador)  # Permite dar un pequeño margen lateral a la línea clara.
-        diseno_separador.setContentsMargins(8, 0, 8, 0)  # Evita que la línea choque visualmente contra el borde exterior.
-        diseno_separador.setSpacing(0)  # Mantiene la línea como único elemento del separador.
+        diseno_separador = QHBoxLayout(contenedor_separador)  # Permite dar un pequeño margen lateral a la línea.
+        diseno_separador.setContentsMargins(8, 0, 8, 0)  # Evita que la línea choque contra el borde exterior.
+        diseno_separador.setSpacing(0)  # Mantiene la línea como único elemento.
 
-        separador_barra = QFrame()  # Crea la línea que divide visualmente la barra del resto de Configuración.
-        separador_barra.setFixedHeight(1)  # Mantiene la delimitación discreta y consistente con el borde exterior.
-        separador_barra.setStyleSheet("background-color: #cdd6f4; border: none;")  # Utiliza el mismo tono claro empleado alrededor de la ventana.
-        diseno_separador.addWidget(separador_barra)  # Coloca la línea dentro del margen lateral definido.
+        separador_barra = QFrame()  # Crea la línea que divide visualmente barra y contenido.
+        separador_barra.setFixedHeight(1)  # Mantiene la delimitación discreta.
+        separador_barra.setStyleSheet(
+            "background-color: #cdd6f4; border: none;"
+        )  # Utiliza el mismo tono claro del borde exterior.
+        diseno_separador.addWidget(separador_barra)  # Coloca la línea dentro de su margen.
 
         diseno_general.addWidget(contenedor_separador)  # Inserta la separación inmediatamente debajo de la barra.
 
         contenido = QHBoxLayout()  # Organiza navegación lateral y panel seleccionado.
         contenido.setContentsMargins(0, 0, 0, 0)  # Evita separaciones externas innecesarias.
-        contenido.setSpacing(0)  # Une visualmente ambas áreas de configuración.
+        contenido.setSpacing(0)  # Une visualmente ambas regiones.
 
         self.lista_secciones = QListWidget()  # Crea la navegación lateral utilizada para seleccionar categorías.
-        self.lista_secciones.setObjectName("ListaConfiguracion")  # Permite aplicar el estilo general destinado a la navegación.
-        self.lista_secciones.setFixedWidth(210)  # Reserva un ancho constante similar a configuraciones modernas.
-        self.lista_secciones.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Impide mostrar desplazamiento horizontal en nombres breves.
-        contenido.addWidget(self.lista_secciones)  # Coloca la navegación lateral en el lado izquierdo.
+        self.lista_secciones.setObjectName("ListaConfiguracion")  # Permite aplicar el estilo general destinado a esta navegación.
+        self.lista_secciones.setFixedWidth(210)  # Reserva un ancho constante.
+        self.lista_secciones.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )  # Impide desplazamiento horizontal en nombres breves.
+        contenido.addWidget(self.lista_secciones)  # Coloca la navegación en el lado izquierdo.
 
         self.paneles = QStackedWidget()  # Conserva todos los paneles registrados y muestra solamente el seleccionado.
         self.paneles.setObjectName("PanelesConfiguracion")  # Permite aplicar la apariencia general del área principal.
@@ -245,27 +280,68 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         contenedor_contenido.setLayout(contenido)  # Asigna navegación y paneles al contenedor central.
         diseno_general.addWidget(contenedor_contenido, 1)  # Hace que esta región aproveche todo el espacio vertical disponible.
 
+        self.panel_resultados = PanelConfiguracionResultados(
+            preferencias_aplicacion=self.preferencias_aplicacion,
+            padre=self,
+        )  # Construye las preferencias generales de ventana y compilación.
+
+        self._agregar_seccion(
+            "Ventana y resultados",
+            self.panel_resultados,
+        )  # Coloca primero las preferencias generales de la aplicación.
+
         self.panel_ia = PanelConfiguracionIA(
             gestor_ollama=gestor_ollama,
             componente_ia=componente_ia,
             preferencias_ia=preferencias_ia,
             asistencia_disponible_inicial=asistencia_disponible_inicial,
             padre=self,
-        )  # Construye la primera categoría real de configuración utilizando los mismos componentes activos de TecNet Finder.
+        )  # Construye la categoría dedicada exclusivamente con el asistente local.
 
-        self._agregar_seccion("Asistencia de IA", self.panel_ia)  # Registra la sección dentro de un área desplazable reutilizable.
+        self._agregar_seccion(
+            "Asistencia de IA",
+            self.panel_ia,
+        )  # Mantiene la inteligencia artificial como una categoría independiente.
 
-        self.panel_ia.autocompletado_cambiado.connect(self.autocompletado_ia_cambiado.emit)  # Reenvía únicamente los cambios efectivos del ghost text.
-        self.panel_ia.diagnosticos_ia_cambiados.connect(self.diagnosticos_ia_cambiados.emit)  # Reenvía independientemente la mejora de diagnósticos.
-        self.panel_ia.servicio_cambiado.connect(self.servicio_ia_cambiado.emit)  # Mantiene sincronizado el estado compartido de Ollama.
-        self.panel_ia.operacion_cambiada.connect(self._actualizar_operacion)  # Impide cerrar Configuración mientras el servicio local cambia de estado.
+        self.panel_resultados.lado_media_pantalla_cambiado.connect(
+            self.lado_media_pantalla_cambiado.emit
+        )  # Reenvía al controlador la preferencia relacionada con Media pantalla.
 
-        self.lista_secciones.currentRowChanged.connect(self._cambiar_panel)  # Cambia el contenido cuando el usuario selecciona otra categoría.
-        self.lista_secciones.setCurrentRow(0)  # Muestra inicialmente la primera categoría disponible.
+        self.panel_resultados.navegacion_automatica_cambiada.connect(
+            self.navegacion_automatica_cambiada.emit
+        )  # Reenvía al controlador el comportamiento posterior a la compilación.
+
+        self.panel_resultados.advertencias_vlsm_cambiadas.connect(
+            self.advertencias_vlsm_cambiadas.emit
+        )  # Reenvía al controlador la visibilidad elegida para advertencias compactas.
+
+        self.panel_ia.autocompletado_cambiado.connect(
+            self.autocompletado_ia_cambiado.emit
+        )  # Reenvía únicamente los cambios efectivos del ghost text.
+
+        self.panel_ia.diagnosticos_ia_cambiados.connect(
+            self.diagnosticos_ia_cambiados.emit
+        )  # Reenvía independientemente la mejora de diagnósticos.
+
+        self.panel_ia.servicio_cambiado.connect(
+            self.servicio_ia_cambiado.emit
+        )  # Mantiene sincronizado el estado compartido de Ollama.
+
+        self.panel_ia.operacion_cambiada.connect(
+            self._actualizar_operacion
+        )  # Impide cerrar Configuración mientras el servicio local cambia de estado.
+
+        self.lista_secciones.currentRowChanged.connect(
+            self._cambiar_panel
+        )  # Cambia el contenido cuando el usuario selecciona otra categoría.
+        self.lista_secciones.setCurrentRow(0)  # Muestra inicialmente las preferencias generales.
 
         pie = QFrame()  # Crea la región inferior que contendrá el botón general de cierre.
         pie.setObjectName("PieConfiguracionRedondeado")  # Permite controlar específicamente las esquinas inferiores.
-        pie.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que Qt represente correctamente su fondo y sus radios.
+        pie.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )  # Garantiza que Qt represente correctamente fondo y radios.
         pie.setStyleSheet(
             """
             QFrame#PieConfiguracionRedondeado {
@@ -276,9 +352,9 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
                 border-bottom-right-radius: 13px;
             }
             """
-        )  # Mantiene el aspecto del pie existente pero evita que vuelva cuadradas las esquinas inferiores.
+        )  # Mantiene el aspecto del pie existente y las esquinas inferiores redondeadas.
 
-        diseno_pie = QHBoxLayout(pie)  # Organiza el botón general de cierre dentro de la región inferior.
+        diseno_pie = QHBoxLayout(pie)  # Organiza el botón general de cierre.
         diseno_pie.setContentsMargins(16, 10, 16, 10)  # Mantiene espacio suficiente respecto a los bordes.
         diseno_pie.addStretch()  # Empuja el botón hacia el extremo derecho.
 
@@ -286,19 +362,23 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
         self.boton_cerrar.clicked.connect(self.accept)  # Solicita cerrar únicamente esta ventana secundaria.
         diseno_pie.addWidget(self.boton_cerrar)  # Coloca la acción al final de la región inferior.
 
-        diseno_general.addWidget(pie)  # Incorpora el pie redondeado como última región de Configuración.
+        diseno_general.addWidget(pie)  # Incorpora el pie redondeado como última región.
 
     def _agregar_seccion(self, nombre: str, panel) -> None:
         elemento = QListWidgetItem(nombre)  # Crea la entrada visible correspondiente a una categoría.
-        elemento.setToolTip(nombre)  # Conserva el nombre completo como ayuda para futuras etiquetas largas.
+        elemento.setToolTip(nombre)  # Conserva el nombre completo como ayuda contextual.
         self.lista_secciones.addItem(elemento)  # Incorpora la categoría a la navegación lateral.
 
-        desplazamiento = QScrollArea()  # Mantiene el tamaño fijo de Configuración aunque una categoría crezca posteriormente.
-        desplazamiento.setObjectName("AreaDesplazamientoConfiguracion")  # Permite diferenciar esta superficie del resto de widgets.
+        desplazamiento = QScrollArea()  # Mantiene el tamaño fijo aunque una categoría crezca posteriormente.
+        desplazamiento.setObjectName("AreaDesplazamientoConfiguracion")  # Permite diferenciar esta superficie.
         desplazamiento.setFrameShape(QFrame.Shape.NoFrame)  # Evita agregar un segundo borde alrededor del panel.
         desplazamiento.setWidgetResizable(True)  # Adapta horizontalmente el contenido al espacio disponible.
-        desplazamiento.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Impide desplazamiento lateral porque los paneles deben ajustarse al ancho.
-        desplazamiento.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra la barra vertical únicamente cuando el contenido supera la altura disponible.
+        desplazamiento.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )  # Impide desplazamiento lateral porque los paneles deben ajustarse al ancho.
+        desplazamiento.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )  # Muestra desplazamiento vertical únicamente cuando el contenido supera la altura.
         desplazamiento.setStyleSheet(
             """
             QScrollArea#AreaDesplazamientoConfiguracion {
@@ -311,8 +391,8 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
             }
             """
         )  # Integra la superficie desplazable con el mismo fondo del área principal.
-        desplazamiento.setWidget(panel)  # Convierte el panel real en el contenido desplazable sin modificar su lógica.
-        self.paneles.addWidget(desplazamiento)  # Registra la categoría completa en la misma posición que su elemento lateral.
+        desplazamiento.setWidget(panel)  # Convierte el panel real en el contenido desplazable.
+        self.paneles.addWidget(desplazamiento)  # Registra la categoría en la misma posición que su elemento lateral.
 
     def _cambiar_panel(self, indice: int) -> None:
         if 0 <= indice < self.paneles.count():
@@ -320,31 +400,37 @@ class VentanaConfiguracion(QDialog):  # Representa la configuración general y p
 
     def _actualizar_operacion(self, en_curso: bool) -> None:
         self.operacion_en_curso = bool(en_curso)  # Conserva si algún panel está ejecutando una operación que exige mantener abierta la ventana.
-        self.boton_cerrar.setEnabled(not self.operacion_en_curso)  # Impide abandonar Configuración mientras Ollama inicia o termina.
-        self.lista_secciones.setEnabled(not self.operacion_en_curso)  # Evita cambiar de categoría durante una operación que todavía no ha terminado.
+        self.boton_cerrar.setEnabled(
+            not self.operacion_en_curso
+        )  # Impide abandonar Configuración mientras Ollama inicia o termina.
+        self.lista_secciones.setEnabled(
+            not self.operacion_en_curso
+        )  # Evita cambiar de categoría durante una operación pendiente.
 
         if self.barra_titulo.boton_cerrar is not None:
-            self.barra_titulo.boton_cerrar.setEnabled(not self.operacion_en_curso)  # Protege también la X personalizada mientras existe un trabajo pendiente.
+            self.barra_titulo.boton_cerrar.setEnabled(
+                not self.operacion_en_curso
+            )  # Protege también la X personalizada.
 
     def showEvent(self, evento) -> None:
-        super().showEvent(evento)  # Permite que Qt prepare completamente la geometría y los controles antes de reposicionar el diálogo.
-        self._centrar_en_area_disponible()  # Centra Configuración cada vez que se muestra utilizando únicamente el área útil del monitor.
+        super().showEvent(evento)  # Permite que Qt prepare completamente geometría y controles antes de reposicionar.
+        self._centrar_en_area_disponible()  # Centra Configuración utilizando el área útil del monitor actual.
 
     def accept(self) -> None:
         if self.operacion_en_curso:
             return  # Mantiene viva la ventana mientras algún panel espera una respuesta del servicio.
 
-        super().accept()  # Cierra normalmente Configuración cuando todos sus componentes se encuentran estables.
+        super().accept()  # Cierra normalmente Configuración cuando todos sus componentes están estables.
 
     def reject(self) -> None:
         if self.operacion_en_curso:
             return  # Evita cerrar mediante Escape mientras existe una operación pendiente.
 
-        super().reject()  # Conserva el comportamiento normal cuando no hay operaciones activas.
+        super().reject()  # Conserva el comportamiento normal cuando no existen operaciones activas.
 
     def closeEvent(self, evento) -> None:
         if self.operacion_en_curso:
-            evento.ignore()  # Impide que la X personalizada destruya la ventana mientras Ollama cambia de estado.
-            return  # Mantiene Configuración abierta hasta recibir el resultado pendiente.
+            evento.ignore()  # Impide que la X personalizada destruya la ventana durante una operación.
+            return
 
-        evento.accept()  # Permite el cierre inmediato cuando la ventana se encuentra completamente estable.
+        evento.accept()  # Permite el cierre inmediato cuando Configuración se encuentra estable.

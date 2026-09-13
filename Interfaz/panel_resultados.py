@@ -13,53 +13,95 @@
 #
 # También actualiza los diferentes resultados generados por el
 # flujo de compilación sin implementar ninguna fase interna.
+#
+# Las tablas utilizan anchos mínimos legibles y distribución
+# proporcional. Cuando el espacio disponible no permite mostrar
+# todas las columnas correctamente, se habilita desplazamiento
+# horizontal en lugar de comprimir excesivamente el contenido.
+#
+# Cuando una compilación genera VLSM y únicamente presenta
+# advertencias, puede mostrar debajo un panel compacto con esos
+# diagnósticos sin ocultar la Tabla VLSM.
+#
+# Navegación automática y advertencias compactas pueden
+# habilitarse o deshabilitarse desde Configuración sin modificar
+# el resultado formal producido por el compilador.
 # ============================================================
 
 from collections import Counter  # Permite contar cuántas veces aparece cada palabra reservada.
 from pathlib import Path  # Permite localizar los iconos sin utilizar rutas absolutas.
 
-from PySide6.QtCore import QEvent, QSize, Qt  # Aporta eventos, tamaños y opciones generales utilizadas por la interfaz.
+from PySide6.QtCore import QEvent, QSize, QTimer, Qt  # Aporta eventos, tamaños, temporización y opciones generales utilizadas por la interfaz.
 from PySide6.QtGui import QBrush, QColor, QIcon, QPixmap  # Aporta colores, iconos e imágenes utilizados en los resultados.
-from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Aporta los widgets utilizados por el panel.
+from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Aporta los widgets utilizados por el panel.
 
 from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
 from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
 from Motor.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
 
 
-class TablaResultados(QTableWidget):  # Mantiene una distribución proporcional de las columnas de resultados.
-    def __init__(self, filas: int, columnas: int, proporciones: list[float], padre=None):
+class TablaResultados(QTableWidget):  # Mantiene columnas proporcionales sin permitir que se compriman por debajo de un ancho legible.
+    def __init__(
+        self,
+        filas: int,
+        columnas: int,
+        proporciones: list[float],
+        anchos_minimos: list[int] | None = None,
+        padre=None,
+    ):
         super().__init__(filas, columnas, padre)  # Inicializa la tabla estándar.
-        self.proporciones_columnas = proporciones  # Conserva el peso relativo de cada columna.
+        self.proporciones_columnas = proporciones  # Conserva el peso relativo utilizado cuando existe espacio adicional.
+        self.anchos_minimos_columnas = anchos_minimos or [80] * columnas  # Define un ancho mínimo seguro cuando no se proporcionó una configuración específica.
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra desplazamiento horizontal solamente cuando los mínimos ya no caben.
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite desplazar horizontalmente la tabla de forma suave.
 
     def resizeEvent(self, evento) -> None:
         super().resizeEvent(evento)  # Permite que Qt procese primero el cambio de tamaño.
-        self._distribuir_columnas()  # Recalcula los anchos con el nuevo espacio disponible.
+        self._distribuir_columnas()  # Recalcula las columnas después de conocer el nuevo espacio disponible.
 
     def showEvent(self, evento) -> None:
         super().showEvent(evento)  # Permite completar la primera visualización.
-        self._distribuir_columnas()  # Ajusta las columnas usando el ancho real disponible.
+        self._distribuir_columnas()  # Ajusta las columnas utilizando el ancho real de la tabla.
 
     def _distribuir_columnas(self) -> None:
-        if len(self.proporciones_columnas) != self.columnCount():  # Comprueba que exista una proporción para cada columna.
-            return
+        if len(self.proporciones_columnas) != self.columnCount():
+            return  # Comprueba que exista una proporción para cada columna.
+
+        if len(self.anchos_minimos_columnas) != self.columnCount():
+            return  # Comprueba que exista también un ancho mínimo por columna.
 
         ancho_disponible = max(self.viewport().width() - 2, 1)  # Utiliza únicamente el espacio visible de la tabla.
-        suma_proporciones = sum(self.proporciones_columnas)  # Calcula el peso total utilizado como referencia.
+        ancho_minimo_total = sum(self.anchos_minimos_columnas)  # Calcula cuánto espacio requiere la tabla para permanecer legible.
 
-        if suma_proporciones <= 0:  # Evita una distribución matemáticamente inválida.
-            return
+        if ancho_disponible <= ancho_minimo_total:
+            anchos = list(self.anchos_minimos_columnas)  # Conserva los mínimos cuando la ventana no ofrece suficiente espacio.
+        else:
+            espacio_adicional = ancho_disponible - ancho_minimo_total  # Calcula únicamente los píxeles sobrantes después de respetar todos los mínimos.
+            suma_proporciones = sum(self.proporciones_columnas)  # Calcula el peso total utilizado para repartir el espacio adicional.
 
-        anchos = []  # Conserva los anchos calculados antes de aplicar el ajuste final.
+            if suma_proporciones <= 0:
+                return  # Evita una distribución matemáticamente inválida.
 
-        for proporcion in self.proporciones_columnas[:-1]:
-            ancho = int(ancho_disponible * proporcion / suma_proporciones)  # Convierte la proporción en píxeles reales.
-            anchos.append(ancho)
+            anchos = []  # Conserva los anchos definitivos antes de aplicarlos.
 
-        anchos.append(ancho_disponible - sum(anchos))  # Entrega a la última columna los píxeles restantes del redondeo.
+            for minimo, proporcion in zip(
+                self.anchos_minimos_columnas[:-1],
+                self.proporciones_columnas[:-1],
+            ):
+                adicional = int(
+                    espacio_adicional * proporcion / suma_proporciones
+                )  # Reparte proporcionalmente una parte del espacio que sobra.
+                anchos.append(minimo + adicional)  # Mantiene el mínimo y agrega solamente la expansión disponible.
+
+            ancho_ultima = ancho_disponible - sum(anchos)  # Entrega a la última columna los píxeles restantes para evitar huecos por redondeo.
+            ancho_ultima = max(
+                ancho_ultima,
+                self.anchos_minimos_columnas[-1],
+            )  # Garantiza que la última columna tampoco pueda comprimirse por debajo de su mínimo.
+            anchos.append(ancho_ultima)  # Completa la distribución definitiva.
 
         for columna, ancho in enumerate(anchos):
-            self.setColumnWidth(columna, ancho)  # Aplica la distribución proporcional calculada.
+            self.setColumnWidth(columna, ancho)  # Aplica cada ancho respetando los límites calculados.
 
 
 class PanelResultados(QTabWidget):  # Organiza el área central de resultados de TecNet Finder.
@@ -75,6 +117,9 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.codigo_fuente_resultado = ""  # Conserva la entrada exacta asociada con la última compilación.
         self.botones_flotantes: dict[QWidget, tuple[QPushButton, str]] = {}  # Relaciona cada superficie fija con su acción flotante.
         self.superficie_diagnosticos: QWidget | None = None  # Conserva el contenedor exterior utilizado por el botón fijo de diagnósticos.
+        self.advertencias_compactas_actuales = []  # Conserva únicamente las advertencias visibles debajo de la Tabla VLSM.
+        self.navegacion_automatica = True  # Mantiene por defecto el cambio automático hacia la salida más relevante.
+        self.advertencias_compactas_habilitadas = True  # Mantiene por defecto la vista resumida de advertencias debajo de VLSM.
 
         self._construir_entrada_salida()  # Crea la zona principal de entrada y salidas.
         self._construir_tablas()  # Crea las tablas de tokens y palabras reservadas.
@@ -86,6 +131,21 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.addTab(self.tab_tablas, "Tablas")  # Agrega las tablas internas del análisis.
         self.addTab(self.tab_sintaxis, "Sintaxis")  # Agrega los resultados sintácticos.
         self.addTab(self.tab_fases_posteriores, "Fases posteriores")  # Agrega las etapas todavía no implementadas.
+
+    def establecer_navegacion_automatica(self, habilitada: bool) -> None:
+        self.navegacion_automatica = bool(habilitada)  # Conserva la decisión utilizada durante las compilaciones posteriores.
+
+    def establecer_advertencias_compactas(self, habilitadas: bool) -> None:
+        self.advertencias_compactas_habilitadas = bool(habilitadas)  # Conserva la decisión utilizada para la sección inferior de VLSM.
+
+        if not self.advertencias_compactas_habilitadas:
+            self.panel_advertencias_vlsm.hide()  # Oculta inmediatamente la sección cuando el usuario desactiva la preferencia.
+            return  # Mantiene intactos los diagnósticos formales y la pestaña completa de Errores / Advertencias.
+
+        if self.resultado_actual is not None:
+            self._mostrar_advertencias_compactas(
+                self.resultado_actual
+            )  # Recupera inmediatamente el panel cuando existe una compilación vigente que contiene advertencias.
 
     def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str, tamano: int = 18) -> None:
         ruta = self.ruta_iconos / nombre_archivo  # Construye la ruta exacta del recurso solicitado.
@@ -137,7 +197,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         configuracion = self.botones_flotantes.get(objetivo)  # Recupera la acción relacionada con la superficie.
 
         if configuracion is None:
-            return
+            return  # Finaliza cuando la superficie no posee una acción flotante registrada.
 
         boton, _modo = configuracion  # Obtiene el botón flotante registrado.
         boton.setVisible(visible)  # Muestra u oculta por completo la acción según corresponda.
@@ -178,12 +238,12 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         configuracion = self.botones_flotantes.get(objetivo)  # Recupera botón y modo relacionados con el panel.
 
         if configuracion is None:
-            return
+            return  # Finaliza cuando el panel no posee una acción registrada.
 
         boton, modo = configuracion  # Separa la acción y su estrategia de ubicación.
 
         if not boton.isVisible():
-            return
+            return  # Evita calcular posiciones para controles actualmente ocultos.
 
         if modo == "analisis" and isinstance(objetivo, QPlainTextEdit):
             geometria_viewport = objetivo.viewport().geometry()  # Obtiene la superficie visible real excluyendo scrollbars y bordes.
@@ -196,7 +256,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             posicion_y = geometria_panel.y() + (alto_barra - boton.height()) // 2 - 2  # Sube el botón sobre la franja sin quedar limitado por el borde del panel.
         else:
             posicion_x = max(4, objetivo.width() - boton.width() - 8)  # Proporciona una ubicación convencional como respaldo.
-            posicion_y = 8
+            posicion_y = 8  # Mantiene una distancia pequeña desde la parte superior.
 
         boton.move(posicion_x, posicion_y)  # Mueve únicamente el botón fijo, nunca el contenido desplazable.
         boton.raise_()  # Garantiza que permanezca en la capa visual superior.
@@ -252,23 +312,120 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.pestanas_salida = QTabWidget()  # Crea las subpestañas que contienen los diferentes resultados.
         self.tab_resumen = self._crear_resumen()  # Construye la vista rápida del análisis.
         self.tab_analisis = self._crear_tab_analisis()  # Construye la salida léxica y sintáctica.
-        self.tab_vlsm = QWidget()  # Crea el contenedor de la tabla VLSM.
-        self.tab_errores = self._crear_tab_errores()  # Construye la vista de errores y advertencias.
-
-        self.tabla_vlsm = TablaResultados(0, 9, [1.15, 1.35, 1.35, 1.45, 0.55, 1.25, 1.15, 1.15, 1.15])  # Define las proporciones de la tabla VLSM.
-        self.tabla_vlsm.setHorizontalHeaderLabels(["Red", "Hosts solicitados", "Hosts disponibles", "Dirección de red", "CIDR", "Máscara", "Primera IP", "Última IP", "Broadcast"])  # Define las columnas visibles.
-        self._configurar_tabla(self.tabla_vlsm)  # Aplica el comportamiento visual común.
-
-        diseno_vlsm = QVBoxLayout(self.tab_vlsm)  # Organiza la tabla dentro de su subpestaña.
-        diseno_vlsm.setContentsMargins(4, 4, 4, 4)  # Reduce el margen desperdiciado.
-        diseno_vlsm.addWidget(self.tabla_vlsm)  # Permite que la tabla utilice todo el espacio.
+        self.tab_vlsm = self._crear_tab_vlsm()  # Construye la tabla VLSM junto con su panel compacto opcional de advertencias.
+        self.tab_errores = self._crear_tab_errores()  # Construye la vista completa de errores y advertencias.
 
         self.pestanas_salida.addTab(self.tab_resumen, "Resumen")  # Agrega el resumen.
         self.pestanas_salida.addTab(self.tab_analisis, "Análisis léxico-sintáctico")  # Agrega la salida técnica.
         self.pestanas_salida.addTab(self.tab_vlsm, "Tabla VLSM")  # Agrega los resultados de subneteo.
-        self.pestanas_salida.addTab(self.tab_errores, "Errores / Advertencias")  # Agrega los diagnósticos.
+        self.pestanas_salida.addTab(self.tab_errores, "Errores / Advertencias")  # Agrega los diagnósticos completos.
 
         diseno.addWidget(self.pestanas_salida, 3)  # Permite que las salidas utilicen ligeramente más espacio que la entrada.
+
+    def _crear_tab_vlsm(self) -> QWidget:
+        contenedor = QWidget()  # Crea la superficie completa utilizada por la vista de VLSM.
+        diseno = QVBoxLayout(contenedor)  # Permite que el splitter utilice toda la pestaña.
+        diseno.setContentsMargins(4, 4, 4, 4)  # Mantiene el margen compacto utilizado por las demás salidas.
+        diseno.setSpacing(0)  # Deja que el divisor visual sea quien separe ambos bloques.
+
+        self.divisor_vlsm = QSplitter(Qt.Orientation.Vertical, contenedor)  # Permite repartir manualmente espacio entre VLSM y advertencias.
+        self.divisor_vlsm.setChildrenCollapsible(False)  # Evita que el usuario colapse accidentalmente la tabla principal hasta desaparecer.
+        self.divisor_vlsm.setHandleWidth(5)  # Mantiene un divisor suficientemente visible sin ocupar demasiado espacio.
+
+        self.tabla_vlsm = TablaResultados(
+            0,
+            9,
+            [1.15, 1.35, 1.35, 1.45, 0.55, 1.25, 1.15, 1.15, 1.15],
+            [120, 145, 145, 160, 70, 150, 145, 145, 145],
+        )  # Mantiene cada dato VLSM legible y habilita scroll cuando las nueve columnas no caben.
+        self.tabla_vlsm.setHorizontalHeaderLabels(
+            [
+                "Red",
+                "Hosts solicitados",
+                "Hosts disponibles",
+                "Dirección de red",
+                "CIDR",
+                "Máscara",
+                "Primera IP",
+                "Última IP",
+                "Broadcast",
+            ]
+        )  # Define las columnas visibles.
+        self._configurar_tabla(self.tabla_vlsm)  # Aplica el comportamiento visual común.
+
+        self.panel_advertencias_vlsm = QFrame()  # Crea la sección inferior destinada únicamente a advertencias no bloqueantes.
+        self.panel_advertencias_vlsm.setObjectName("Panel")  # Reutiliza el estilo general de paneles de TecNet Finder.
+        self.panel_advertencias_vlsm.setMinimumHeight(150)  # Evita que el divisor comprima el panel hasta ocultar el contenido de las advertencias.
+
+        diseno_advertencias = QVBoxLayout(self.panel_advertencias_vlsm)  # Organiza encabezado y tabla compacta.
+        diseno_advertencias.setContentsMargins(8, 6, 8, 8)  # Mantiene el panel compacto sin pegar su contenido a los bordes.
+        diseno_advertencias.setSpacing(5)  # Separa discretamente el título de la tabla.
+
+        fila_titulo_advertencias = QHBoxLayout()  # Permite mostrar el título y la cantidad de advertencias sobre una misma línea.
+        fila_titulo_advertencias.setContentsMargins(0, 0, 0, 0)  # Evita agregar márgenes adicionales.
+
+        self.titulo_advertencias_vlsm = QLabel("Advertencias")  # Identifica claramente que la información no corresponde con errores bloqueantes.
+        self.titulo_advertencias_vlsm.setObjectName("TituloSeccion")  # Mantiene el mismo formato de los títulos internos.
+        fila_titulo_advertencias.addWidget(self.titulo_advertencias_vlsm)  # Coloca el nombre de la sección a la izquierda.
+
+        self.contador_advertencias_vlsm = QLabel("0")  # Muestra cuántas advertencias acompañan actualmente al resultado.
+        self.contador_advertencias_vlsm.setStyleSheet(
+            "color: #f9e2af; font-weight: 700;"
+        )  # Utiliza el amarillo definido para advertencias semánticas y generales.
+        fila_titulo_advertencias.addWidget(self.contador_advertencias_vlsm)  # Coloca el contador inmediatamente después del título.
+        fila_titulo_advertencias.addStretch()  # Mantiene ambos textos alineados hacia la izquierda.
+
+        self.tabla_advertencias_vlsm = TablaResultados(
+            0,
+            3,
+            [0.35, 1.40, 1.75],
+            [90, 300, 360],
+        )  # Conserva Código compacto y reserva el espacio principal para Mensaje y Solución.
+        self.tabla_advertencias_vlsm.setHorizontalHeaderLabels(
+            [
+                "Código",
+                "Mensaje",
+                "Solución",
+            ]
+        )  # Define una vista resumida sin repetir categoría, línea y columna.
+        self.tabla_advertencias_vlsm.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Impide editar la información mostrada.
+        self.tabla_advertencias_vlsm.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)  # Permite identificar visualmente una advertencia completa.
+        self.tabla_advertencias_vlsm.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)  # Limita la interacción a una advertencia por vez.
+        self.tabla_advertencias_vlsm.setAlternatingRowColors(True)  # Facilita distinguir advertencias consecutivas.
+        self.tabla_advertencias_vlsm.setWordWrap(True)  # Permite que Mensaje y Solución ocupen varias líneas en lugar de quedar recortados horizontalmente.
+        self.tabla_advertencias_vlsm.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar texto mediante puntos suspensivos.
+        self.tabla_advertencias_vlsm.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Permite explorar columnas cuando los mínimos no caben en media pantalla.
+        self.tabla_advertencias_vlsm.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Mantiene suave el desplazamiento horizontal.
+        self.tabla_advertencias_vlsm.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Mantiene accesibles varias advertencias cuando el panel alcanza su altura práctica.
+        self.tabla_advertencias_vlsm.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite recorrer cómodamente filas altas producidas por textos extensos.
+        self.tabla_advertencias_vlsm.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
+        self.tabla_advertencias_vlsm.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )  # Hace crecer automáticamente cada fila según las líneas necesarias para Mensaje y Solución.
+        self.tabla_advertencias_vlsm.verticalHeader().setMinimumSectionSize(38)  # Conserva una altura mínima cómoda aun cuando una advertencia sea corta.
+
+        encabezado_advertencias = self.tabla_advertencias_vlsm.horizontalHeader()  # Obtiene el encabezado de la tabla compacta.
+        encabezado_advertencias.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)  # Deja la distribución bajo control de TablaResultados.
+        encabezado_advertencias.setStretchLastSection(False)  # Evita deformar la última columna únicamente para rellenar espacio.
+        encabezado_advertencias.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra los tres encabezados.
+        encabezado_advertencias.setMinimumSectionSize(50)  # Conserva un mínimo interno seguro.
+
+        self.tabla_advertencias_vlsm.cellDoubleClicked.connect(
+            self._activar_advertencia_compacta
+        )  # Permite saltar al código fuente mediante doble clic sobre una advertencia.
+
+        diseno_advertencias.addLayout(fila_titulo_advertencias)  # Coloca primero el encabezado compacto.
+        diseno_advertencias.addWidget(self.tabla_advertencias_vlsm, 1)  # Entrega el resto del panel a la tabla de advertencias.
+
+        self.divisor_vlsm.addWidget(self.tabla_vlsm)  # Coloca VLSM como sección principal superior.
+        self.divisor_vlsm.addWidget(self.panel_advertencias_vlsm)  # Coloca las advertencias como sección secundaria inferior.
+        self.divisor_vlsm.setStretchFactor(0, 4)  # Da prioridad espacial a los resultados VLSM.
+        self.divisor_vlsm.setStretchFactor(1, 1)  # Reserva una porción menor para las advertencias.
+        self.panel_advertencias_vlsm.hide()  # Mantiene toda la superficie disponible para VLSM mientras no existan advertencias.
+
+        diseno.addWidget(self.divisor_vlsm, 1)  # Hace que ambas secciones utilicen toda la superficie disponible.
+
+        return contenedor  # Devuelve la pestaña VLSM completamente construida.
 
     def _crear_tab_analisis(self) -> QWidget:
         contenedor = QWidget()  # Crea la subpestaña completa.
@@ -291,7 +448,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         self.boton_copiar_analisis.clicked.connect(self._copiar_analisis)  # Copia el contenido actual al portapapeles.
 
-        return contenedor
+        return contenedor  # Devuelve la vista técnica construida.
 
     def _crear_tab_errores(self) -> QWidget:
         contenedor = QWidget()  # Crea la superficie exterior que actuará como capa fija para la acción de copiado.
@@ -315,7 +472,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         self.boton_copiar_diagnosticos.clicked.connect(self._copiar_diagnosticos)  # Copia el registro estructurado.
 
-        return contenedor
+        return contenedor  # Devuelve la pestaña completa de diagnósticos.
 
     def _crear_resumen(self) -> QWidget:
         contenedor = QWidget()  # Crea el widget base del resumen.
@@ -381,7 +538,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         cuadricula.setRowStretch(1, 1)  # Permite expandir la segunda fila.
         diseno.addLayout(cuadricula, 1)  # Entrega todo el espacio restante a las tarjetas.
 
-        return contenedor
+        return contenedor  # Devuelve la vista de resumen terminada.
 
     def _construir_tablas(self) -> None:
         self.tab_tablas = QWidget()  # Crea el contenedor principal.
@@ -391,11 +548,21 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         pestanas = QTabWidget()  # Crea las vistas de tokens y reservadas.
         diseno.addWidget(pestanas)  # Permite que utilicen toda la superficie.
 
-        self.tabla_tokens = TablaResultados(0, 4, [1.25, 1.90, 0.70, 0.80])  # Da mayor espacio a Tipo y Valor.
+        self.tabla_tokens = TablaResultados(
+            0,
+            4,
+            [1.25, 1.90, 0.70, 0.80],
+            [110, 190, 75, 85],
+        )  # Mantiene legibles Tipo, Valor y posiciones incluso cuando la ventana está dividida.
         self.tabla_tokens.setHorizontalHeaderLabels(["Tipo", "Valor", "Línea", "Posición"])  # Define las columnas visibles.
         self._configurar_tabla(self.tabla_tokens)  # Aplica la configuración común.
 
-        self.tabla_reservadas = TablaResultados(0, 2, [1.50, 0.85])  # Da mayor espacio al nombre de la palabra.
+        self.tabla_reservadas = TablaResultados(
+            0,
+            2,
+            [1.50, 0.85],
+            [190, 100],
+        )  # Conserva anchos mínimos apropiados para las palabras reservadas y sus cantidades.
         self.tabla_reservadas.setHorizontalHeaderLabels(["Palabra reservada", "Cantidad"])  # Define sus columnas.
         self._configurar_tabla(self.tabla_reservadas)  # Aplica la configuración común.
 
@@ -442,7 +609,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         salida = QPlainTextEdit()  # Crea un visor adecuado para información técnica extensa.
         salida.setReadOnly(True)  # Impide alterar las salidas generadas.
         salida.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)  # Conserva alineación y estructura de los resultados.
-        return salida
+        return salida  # Devuelve el visor listo para utilizarse.
 
     def _configurar_tabla(self, tabla: QTableWidget) -> None:
         tabla.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Impide modificar los resultados.
@@ -450,18 +617,21 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         tabla.setAlternatingRowColors(True)  # Facilita distinguir filas consecutivas.
         tabla.setWordWrap(False)  # Mantiene uniforme la altura de las filas.
         tabla.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar datos mediante puntos suspensivos.
+        tabla.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra scroll únicamente cuando los anchos mínimos requieren más espacio.
+        tabla.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite desplazamiento horizontal continuo.
         tabla.verticalHeader().setVisible(False)  # Oculta el encabezado numérico automático.
         tabla.verticalHeader().setDefaultSectionSize(36)  # Mantiene una altura uniforme.
 
         encabezado = tabla.horizontalHeader()  # Obtiene el encabezado horizontal.
-        encabezado.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)  # Permite controlar manualmente los anchos proporcionales.
-        encabezado.setStretchLastSection(False)  # Evita que la última columna absorba el espacio restante.
+        encabezado.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)  # Permite que la clase responsiva controle manualmente cada ancho.
+        encabezado.setStretchLastSection(False)  # Evita que la última columna absorba arbitrariamente el espacio restante.
         encabezado.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra todos los títulos.
+        encabezado.setMinimumSectionSize(50)  # Evita que Qt reduzca internamente una sección hasta volverla ilegible.
 
     def _crear_item_centrado(self, valor: str) -> QTableWidgetItem:
         item = QTableWidgetItem(valor)  # Crea la celda utilizando el valor recibido.
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra el contenido en ambas direcciones.
-        return item
+        return item  # Devuelve la celda lista para insertarse.
 
     def _insertar_fila_grupo(self, tabla: QTableWidget, texto: str) -> int:
         fila = tabla.rowCount()  # Obtiene la siguiente posición disponible.
@@ -481,7 +651,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         tabla.setItem(fila, 0, item)  # Inserta la franja en la tabla.
         tabla.setRowHeight(fila, 32)  # Mantiene una altura compacta para el encabezado.
 
-        return fila
+        return fila  # Devuelve la posición de la franja creada.
 
     def mostrar_resultado(self, resultado: ResultadoCompilacion) -> None:
         self.resultado_actual = resultado  # Conserva la compilación actual.
@@ -496,6 +666,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self._mostrar_vlsm(resultado)  # Actualiza las subredes VLSM.
         self._mostrar_tokens(resultado)  # Actualiza los tokens.
         self._mostrar_reservadas(resultado)  # Actualiza el conteo de palabras reservadas.
+        self._mostrar_advertencias_compactas(resultado)  # Actualiza u oculta la sección inferior según la preferencia actual.
 
         sintactico = resultado.resultado_sintactico  # Obtiene una referencia corta al resultado del parser.
         self.texto_producciones.setPlainText(sintactico.producciones_usadas)  # Muestra las producciones utilizadas.
@@ -513,21 +684,137 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
                 bool(resultado.diagnosticos),
             )  # Muestra Copiar diagnósticos únicamente cuando existen problemas o advertencias.
 
+        if not self.navegacion_automatica:
+            return  # Conserva exactamente la pestaña actual cuando el usuario desactivó la navegación automática.
+
         cantidad_advertencias = sum(
             1
             for diagnostico in resultado.diagnosticos
             if diagnostico.severidad in ("warning", "advertencia")
-        )  # Cuenta advertencias para decidir la salida que merece atención inmediata.
+        )  # Cuenta las advertencias independientemente de si la vista compacta se encuentra visible.
 
-        self.setCurrentWidget(self.tab_entrada_salida)  # Regresa siempre a la zona principal.
+        self.setCurrentWidget(self.tab_entrada_salida)  # Regresa a la zona principal únicamente cuando la navegación automática está habilitada.
 
-        if resultado.tiene_errores or cantidad_advertencias > 0:
-            self.pestanas_salida.setCurrentWidget(self.tab_errores)  # Prioriza los diagnósticos cuando requieren revisión.
-            self.panel_diagnosticos.setCurrentIndex(0)  # Garantiza que Detectados quede visible.
+        if resultado.tiene_errores:
+            self.pestanas_salida.setCurrentWidget(self.tab_errores)  # Da prioridad absoluta a la corrección de errores bloqueantes.
+            self.panel_diagnosticos.setCurrentIndex(0)  # Garantiza que Detectados quede visible dentro de la pestaña completa.
         elif resultado.subredes_vlsm:
-            self.pestanas_salida.setCurrentWidget(self.tab_vlsm)  # Muestra VLSM cuando la compilación quedó limpia.
+            self.pestanas_salida.setCurrentWidget(self.tab_vlsm)  # Mantiene Tabla VLSM como salida principal aunque existan advertencias.
+        elif cantidad_advertencias > 0:
+            self.pestanas_salida.setCurrentWidget(self.tab_errores)  # Muestra la vista completa cuando existen advertencias pero no se produjo VLSM.
+            self.panel_diagnosticos.setCurrentIndex(0)  # Garantiza que Detectados quede visible.
         else:
-            self.pestanas_salida.setCurrentWidget(self.tab_resumen)  # Utiliza el resumen como respaldo.
+            self.pestanas_salida.setCurrentWidget(self.tab_resumen)  # Utiliza el resumen cuando no existen subredes ni diagnósticos relevantes.
+
+    def _mostrar_advertencias_compactas(self, resultado: ResultadoCompilacion) -> None:
+        advertencias = [
+            diagnostico
+            for diagnostico in resultado.diagnosticos
+            if diagnostico.severidad in ("warning", "advertencia")
+        ]  # Conserva únicamente diagnósticos no bloqueantes.
+
+        self.advertencias_compactas_actuales = list(advertencias)  # Mantiene la misma secuencia utilizada visualmente para navegación.
+        self.tabla_advertencias_vlsm.setRowCount(0)  # Elimina advertencias pertenecientes a la compilación anterior.
+        self.contador_advertencias_vlsm.setText(str(len(advertencias)))  # Actualiza el contador visible junto al título.
+
+        if (
+            not self.advertencias_compactas_habilitadas
+            or not advertencias
+            or not resultado.subredes_vlsm
+        ):
+            self.panel_advertencias_vlsm.hide()  # Entrega nuevamente toda la superficie a VLSM cuando la vista compacta no corresponde.
+            return  # Conserva los diagnósticos completos disponibles en Errores / Advertencias.
+
+        for diagnostico in advertencias:
+            fila = self.tabla_advertencias_vlsm.rowCount()  # Obtiene la siguiente posición libre.
+            self.tabla_advertencias_vlsm.insertRow(fila)  # Reserva una fila compacta para la advertencia.
+
+            valores = [
+                diagnostico.codigo,
+                diagnostico.mensaje,
+                diagnostico.solucion,
+            ]  # Conserva únicamente la información esencial para la vista resumida.
+
+            for columna, valor in enumerate(valores):
+                item = QTableWidgetItem(valor)  # Construye la celda correspondiente.
+                item.setForeground(QBrush(QColor("#f9e2af")))  # Utiliza el color oficial reservado para advertencias.
+                item.setToolTip(valor)  # Permite consultar el texto completo incluso cuando la ventana sea pequeña.
+
+                if columna == 0:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene el código centrado y fácil de reconocer.
+                    fuente = item.font()  # Obtiene la fuente heredada de la tabla.
+                    fuente.setBold(True)  # Refuerza visualmente el identificador.
+                    item.setFont(fuente)  # Aplica el énfasis al código.
+                else:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+                    )  # Coloca Mensaje y Solución desde la esquina superior izquierda para facilitar la lectura de varias líneas.
+
+                self.tabla_advertencias_vlsm.setItem(fila, columna, item)  # Inserta la celda terminada.
+
+        self.panel_advertencias_vlsm.show()  # Hace visible el bloque únicamente después de cargar advertencias válidas.
+
+        QTimer.singleShot(
+            0,
+            self._ajustar_panel_advertencias_vlsm,
+        )  # Espera a que Qt calcule el ancho real antes de ajustar filas y reparto vertical.
+
+    def _ajustar_panel_advertencias_vlsm(self) -> None:
+        if not self.panel_advertencias_vlsm.isVisible():
+            return  # Evita recalcular una sección que dejó de estar visible.
+
+        self.tabla_advertencias_vlsm._distribuir_columnas()  # Calcula primero los anchos definitivos para que el ajuste de línea utilice el espacio real.
+        self.tabla_advertencias_vlsm.resizeRowsToContents()  # Hace crecer cada advertencia según las líneas necesarias para Mensaje y Solución.
+
+        alto_filas = sum(
+            self.tabla_advertencias_vlsm.rowHeight(fila)
+            for fila in range(self.tabla_advertencias_vlsm.rowCount())
+        )  # Calcula la altura real necesaria para las advertencias visibles.
+
+        alto_encabezado_tabla = self.tabla_advertencias_vlsm.horizontalHeader().height()  # Incluye la fila que muestra Código, Mensaje y Solución.
+        alto_titulo = self.titulo_advertencias_vlsm.sizeHint().height()  # Conserva espacio suficiente para el encabezado Advertencias.
+        alto_margenes = 42  # Reserva espacio para márgenes, separación y bordes del panel.
+
+        alto_necesario = (
+            alto_filas
+            + alto_encabezado_tabla
+            + alto_titulo
+            + alto_margenes
+        )  # Calcula cuánto espacio permitiría mostrar el contenido sin recortes.
+
+        alto_panel = max(
+            165,
+            min(alto_necesario, 280),
+        )  # Mantiene el panel legible pero evita que varias advertencias consuman excesivamente la vista VLSM.
+
+        alto_total = max(
+            self.divisor_vlsm.height(),
+            alto_panel + 180,
+        )  # Conserva siempre una porción suficiente para la tabla VLSM superior.
+
+        alto_vlsm = max(
+            180,
+            alto_total - alto_panel,
+        )  # Da prioridad a VLSM aunque las advertencias necesiten varias líneas.
+
+        self.divisor_vlsm.setSizes(
+            [alto_vlsm, alto_panel]
+        )  # Aplica un reparto inicial adaptado al contenido real; posteriormente el usuario puede mover el divisor.
+
+    def _activar_advertencia_compacta(self, fila: int, _columna: int) -> None:
+        if fila < 0 or fila >= len(self.advertencias_compactas_actuales):
+            return  # Impide navegar cuando la fila dejó de pertenecer a la compilación vigente.
+
+        diagnostico = self.advertencias_compactas_actuales[fila]  # Recupera el diagnóstico original asociado con la fila compacta.
+
+        if diagnostico.linea is None:
+            return  # Conserva la vista actual cuando la advertencia no posee una ubicación concreta.
+
+        self.editor_codigo.ir_a_posicion(
+            diagnostico.linea,
+            diagnostico.columna,
+            diagnostico.longitud,
+        )  # Lleva directamente al fragmento relacionado con la advertencia.
 
     def _mostrar_resumen(self, resultado: ResultadoCompilacion) -> None:
         diagnosticos = resultado.diagnosticos  # Obtiene los diagnósticos combinados.
@@ -550,21 +837,21 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
                 f"Errores: {cantidad_errores} | "
                 f"Advertencias: {cantidad_advertencias} | "
                 f"Subredes generadas: {len(resultado.subredes_vlsm)}"
-            )
+            )  # Resume la compilación cuando existen errores.
         elif cantidad_advertencias > 0:
             self.estado_resumen.setObjectName("EstadoAdvertencia")  # Utiliza amarillo cuando solo existen recomendaciones.
             self.estado_resumen.setText(
                 f"Análisis completo con advertencias | "
                 f"Advertencias: {cantidad_advertencias} | "
                 f"Subredes generadas: {len(resultado.subredes_vlsm)}"
-            )
+            )  # Resume la compilación válida acompañada por advertencias.
         else:
             self.estado_resumen.setObjectName("EstadoCorrecto")  # Utiliza verde para compilaciones completamente limpias.
             self.estado_resumen.setText(
                 f"Análisis completo | "
                 f"Bloques válidos: {len(resultado.bloques_validos)} | "
                 f"Subredes generadas: {len(resultado.subredes_vlsm)}"
-            )
+            )  # Resume una compilación completamente limpia.
 
         self.estado_resumen.style().unpolish(self.estado_resumen)  # Retira temporalmente el estilo anterior.
         self.estado_resumen.style().polish(self.estado_resumen)  # Aplica el estilo correspondiente al nuevo estado.
@@ -575,7 +862,10 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         if resultado.resultado_lexico.tokens:
             for token in resultado.resultado_lexico.tokens:
-                lineas.append(f"Token: {token.tipo:<12} Valor: {token.valor:<18} (Línea {token.linea}, Posición {token.columna})")  # Conserva tipo, valor y ubicación.
+                lineas.append(
+                    f"Token: {token.tipo:<12} Valor: {token.valor:<18} "
+                    f"(Línea {token.linea}, Posición {token.columna})"
+                )  # Conserva tipo, valor y ubicación.
         else:
             lineas.append("No se reconocieron tokens.")  # Informa que el lexer no produjo elementos.
 
@@ -589,7 +879,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
                 lineas.append(f"  Máscara: {bloque.mascara_subred}")  # Muestra la máscara.
                 lineas.append(f"  Hosts requeridos: {bloque.cantidades_hosts}")  # Muestra la lista de hosts.
                 lineas.append(f"  Nombre: {nombre}")  # Muestra el nombre opcional.
-                lineas.append("")
+                lineas.append("")  # Separa visualmente cada bloque.
         else:
             lineas.append("No se encontraron bloques sintácticamente válidos.")  # Informa que ninguna instrucción cumplió la gramática.
 
@@ -628,7 +918,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         tokens = resultado.resultado_lexico.tokens  # Obtiene la secuencia completa del lexer.
 
         if not tokens:
-            return []
+            return []  # Evita construir grupos cuando el lexer no reconoció elementos.
 
         grupos_tokens: list[list[Token]] = []  # Conserva las secuencias asociadas con cada instrucción.
         grupo_actual: list[Token] = []  # Acumula la instrucción recorrida actualmente.
@@ -636,7 +926,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         for token in tokens:
             if token.tipo == "IP" and grupo_actual:
                 grupos_tokens.append(grupo_actual)  # Finaliza el grupo anterior al encontrar otro comienzo de instrucción.
-                grupo_actual = []
+                grupo_actual = []  # Prepara una nueva colección para la instrucción siguiente.
 
             grupo_actual.append(token)  # Agrega el token al grupo activo.
 
@@ -653,18 +943,18 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
             if bloque is not None:
                 nombre = bloque.nombre or bloque.direccion_ip  # Prioriza NAME y utiliza la IP como respaldo.
-                titulo = f"Red: {nombre}    |    IP base: {bloque.direccion_ip}    |    Línea: {linea}"
+                titulo = f"Red: {nombre}    |    IP base: {bloque.direccion_ip}    |    Línea: {linea}"  # Construye el encabezado de una red válida.
             elif primer_token.tipo == "IP":
                 direccion = next((token.valor for token in grupo if token.tipo == "IP_ADDRESS"), "No identificada")  # Intenta recuperar la dirección aun con errores posteriores.
                 nombre = self._buscar_nombre_en_tokens(grupo)  # Intenta recuperar también NAME.
                 identificador = nombre or direccion  # Construye el mejor identificador disponible.
-                titulo = f"Red: {identificador}    |    IP base: {direccion}    |    Línea: {linea}"
+                titulo = f"Red: {identificador}    |    IP base: {direccion}    |    Línea: {linea}"  # Construye un encabezado parcial para una instrucción con problemas.
             else:
                 titulo = f"Tokens sin red asociada    |    Línea: {linea}"  # Identifica contenido anterior a una instrucción IP válida.
 
-            grupos.append((titulo, grupo))
+            grupos.append((titulo, grupo))  # Agrega la agrupación terminada.
 
-        return grupos
+        return grupos  # Devuelve todas las instrucciones agrupadas.
 
     def _buscar_nombre_en_tokens(self, tokens: list[Token]) -> str | None:
         for indice, token in enumerate(tokens[:-1]):
@@ -673,7 +963,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             if token.tipo == "NAME" and siguiente.tipo == "IDENTIFIER":
                 return siguiente.valor  # Recupera el nombre cuando la pareja fue tokenizada correctamente.
 
-        return None
+        return None  # Indica que la instrucción no contiene un nombre recuperable.
 
     def _mostrar_reservadas(self, resultado: ResultadoCompilacion) -> None:
         reservadas = ["IP", "MASK", "HOSTS", "NAME"]  # Define las palabras reservadas del lenguaje actual.
@@ -697,7 +987,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             if grupo_actual != grupo_anterior:
                 titulo_grupo = f"Red: {subred.nombre_red}    |    IP base: {subred.ip_base}"  # Crea el encabezado visual.
                 self._insertar_fila_grupo(self.tabla_vlsm, titulo_grupo)  # Separa la nueva red del grupo anterior.
-                grupo_anterior = grupo_actual
+                grupo_anterior = grupo_actual  # Recuerda qué red se está mostrando actualmente.
 
             fila = self.tabla_vlsm.rowCount()  # Obtiene la siguiente posición libre.
             self.tabla_vlsm.insertRow(fila)  # Reserva una fila para la subred.
@@ -721,21 +1011,21 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         texto = self.texto_analisis.toPlainText()  # Obtiene exactamente el reporte mostrado.
 
         if not texto:
-            return
+            return  # Evita modificar el portapapeles cuando no existe información.
 
         QApplication.clipboard().setText(texto)  # Envía el análisis al portapapeles del sistema.
 
     def _copiar_diagnosticos(self) -> None:
         if self.resultado_actual is None or not self.resultado_actual.diagnosticos:
-            return
+            return  # Evita copiar cuando no existe una compilación vigente con diagnósticos.
 
         lineas = []  # Acumula la representación textual estructurada de los diagnósticos.
 
         for indice, diagnostico in enumerate(self.resultado_actual.diagnosticos, start=1):
             ubicacion = self._formatear_ubicacion(diagnostico.linea, diagnostico.columna)  # Construye una ubicación legible.
-            lineas.append(f"{indice}. [{diagnostico.codigo}] {diagnostico.categoria} - {diagnostico.severidad}")
-            lineas.append(f"   Ubicación: {ubicacion}")
-            lineas.append(f"   Mensaje: {diagnostico.mensaje}")
+            lineas.append(f"{indice}. [{diagnostico.codigo}] {diagnostico.categoria} - {diagnostico.severidad}")  # Identifica el diagnóstico.
+            lineas.append(f"   Ubicación: {ubicacion}")  # Registra su posición de origen.
+            lineas.append(f"   Mensaje: {diagnostico.mensaje}")  # Incluye el mensaje oficial.
 
             if diagnostico.fragmento:
                 lineas.append(f"   Fragmento: {diagnostico.fragmento}")  # Incluye el texto problemático cuando está disponible.
@@ -743,22 +1033,22 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             if diagnostico.solucion:
                 lineas.append(f"   Solución: {diagnostico.solucion}")  # Incluye la recomendación registrada.
 
-            lineas.append("")
+            lineas.append("")  # Separa visualmente cada diagnóstico.
 
         QApplication.clipboard().setText("\n".join(lineas).rstrip())  # Copia todo el registro eliminando el salto sobrante final.
 
     def _formatear_ubicacion(self, linea: int | None, columna: int | None) -> str:
         if linea is None:
-            return "Sin ubicación específica"
+            return "Sin ubicación específica"  # Explica que el diagnóstico afecta globalmente la entrada.
 
         if columna is None:
-            return f"Línea {linea}"
+            return f"Línea {linea}"  # Muestra únicamente la línea cuando no existe posición de columna.
 
-        return f"Línea {linea}, columna {columna}"
+        return f"Línea {linea}, columna {columna}"  # Devuelve la ubicación completa cuando ambos datos están disponibles.
 
     def _exportar_excel(self) -> None:
         if self.resultado_actual is None or not self.resultado_actual.subredes_vlsm:
-            self._mostrar_mensaje("Exportar Excel", "No hay subredes VLSM disponibles para exportar.", "Advertencia.png")
+            self._mostrar_mensaje("Exportar Excel", "No hay subredes VLSM disponibles para exportar.", "Advertencia.png")  # Informa que todavía no existe información exportable.
             return
 
         ruta, _filtro = QFileDialog.getSaveFileName(
@@ -769,7 +1059,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         )  # Solicita la ubicación del libro mediante el diálogo nativo.
 
         if not ruta:
-            return
+            return  # Finaliza cuando el usuario cancela el diálogo.
 
         if not ruta.lower().endswith(".xlsx"):
             ruta += ".xlsx"  # Conserva siempre la extensión correspondiente.
@@ -777,14 +1067,14 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         try:
             ruta_guardada = exportar_vlsm_excel(self.resultado_actual, ruta)  # Delega la escritura al módulo de exportación.
         except Exception as error:
-            self._mostrar_mensaje("Error al exportar", f"No se pudo guardar el archivo de Excel.\n\n{error}", "Error.png")
+            self._mostrar_mensaje("Error al exportar", f"No se pudo guardar el archivo de Excel.\n\n{error}", "Error.png")  # Informa cualquier error de escritura.
             return
 
-        self._mostrar_mensaje("Exportación completada", f"La tabla VLSM se guardó correctamente en:\n{ruta_guardada}", "Correcto.png")
+        self._mostrar_mensaje("Exportación completada", f"La tabla VLSM se guardó correctamente en:\n{ruta_guardada}", "Correcto.png")  # Confirma la ubicación final.
 
     def _exportar_reporte(self) -> None:
         if self.resultado_actual is None:
-            self._mostrar_mensaje("Exportar reporte", "Primero ejecuta una compilación para generar el reporte.", "Advertencia.png")
+            self._mostrar_mensaje("Exportar reporte", "Primero ejecuta una compilación para generar el reporte.", "Advertencia.png")  # Informa que no existe una compilación vigente.
             return
 
         ruta, _filtro = QFileDialog.getSaveFileName(
@@ -795,7 +1085,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         )  # Solicita la ubicación del reporte mediante el diálogo nativo.
 
         if not ruta:
-            return
+            return  # Finaliza cuando el usuario cancela el diálogo.
 
         if not ruta.lower().endswith(".txt"):
             ruta += ".txt"  # Conserva siempre la extensión textual esperada.
@@ -805,10 +1095,10 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         try:
             ruta_guardada = exportar_reporte_txt(codigo_fuente, self.resultado_actual, ruta)  # Delega la construcción del reporte.
         except Exception as error:
-            self._mostrar_mensaje("Error al exportar", f"No se pudo guardar el reporte TXT.\n\n{error}", "Error.png")
+            self._mostrar_mensaje("Error al exportar", f"No se pudo guardar el reporte TXT.\n\n{error}", "Error.png")  # Informa cualquier error de escritura.
             return
 
-        self._mostrar_mensaje("Exportación completada", f"El reporte se guardó correctamente en:\n{ruta_guardada}", "Correcto.png")
+        self._mostrar_mensaje("Exportación completada", f"El reporte se guardó correctamente en:\n{ruta_guardada}", "Correcto.png")  # Confirma la ubicación final.
 
     def _mostrar_mensaje(self, titulo: str, texto: str, nombre_icono: str) -> None:
         mensaje = QMessageBox(self)  # Crea un cuadro modal asociado con TecNet Finder.
@@ -822,14 +1112,19 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             pixmap = QPixmap(str(ruta_icono))  # Carga el PNG original.
 
             if not pixmap.isNull():
-                pixmap = pixmap.scaled(44, 44, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)  # Ajusta suavemente el recurso.
+                pixmap = pixmap.scaled(
+                    44,
+                    44,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )  # Ajusta suavemente el recurso.
                 mensaje.setIconPixmap(pixmap)  # Sustituye el icono estándar de Qt.
 
         mensaje.exec()  # Muestra el cuadro hasta que el usuario lo cierre.
 
     def _invalidar_resultado_exportable(self) -> None:
         if self.resultado_actual is None:
-            return
+            return  # Evita trabajo adicional cuando no existe una compilación vigente.
 
         self.resultado_actual = None  # Descarta la compilación que dejó de corresponder con la entrada.
         self.codigo_fuente_resultado = ""  # Descarta también su copia del código fuente.
@@ -837,6 +1132,11 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.boton_exportar_reporte.setEnabled(False)  # Impide generar reportes obsoletos.
         self.boton_copiar_analisis.setEnabled(False)  # Impide copiar como vigente un análisis anterior.
         self.boton_copiar_diagnosticos.setEnabled(False)  # Impide copiar como vigentes diagnósticos anteriores.
+
+        self.advertencias_compactas_actuales.clear()  # Elimina la relación entre filas compactas y diagnósticos anteriores.
+        self.tabla_advertencias_vlsm.setRowCount(0)  # Vacía la representación resumida anterior.
+        self.contador_advertencias_vlsm.setText("0")  # Recupera el contador inicial.
+        self.panel_advertencias_vlsm.hide()  # Devuelve toda la superficie visual a la tabla VLSM.
 
         self._establecer_visibilidad_boton_flotante(
             self.texto_analisis,
@@ -872,6 +1172,11 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         self.tabla_vlsm.clearSpans()  # Elimina encabezados VLSM combinados.
         self.tabla_vlsm.setRowCount(0)  # Elimina todas las subredes.
+
+        self.advertencias_compactas_actuales.clear()  # Elimina cualquier advertencia relacionada con la compilación anterior.
+        self.tabla_advertencias_vlsm.setRowCount(0)  # Vacía la tabla compacta inferior.
+        self.contador_advertencias_vlsm.setText("0")  # Recupera el contador inicial.
+        self.panel_advertencias_vlsm.hide()  # Devuelve toda la altura disponible a la Tabla VLSM.
 
         self.tabla_tokens.clearSpans()  # Elimina agrupaciones de tokens.
         self.tabla_tokens.setRowCount(0)  # Elimina todos los tokens.
