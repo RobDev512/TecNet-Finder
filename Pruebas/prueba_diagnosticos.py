@@ -21,25 +21,33 @@ def prueba_catalogo_distingue_codigos_disponibles_y_pendientes():  # Comprueba q
 
     assert "LEX-001" in disponibles  # Confirma que los diagnósticos léxicos implementados continúen disponibles.
     assert "SIN-008" in disponibles  # Confirma que los diagnósticos sintácticos implementados continúen disponibles.
-    assert "SEM-001" in disponibles  # Confirma que la primera regla semántica de U1 ya forme parte del comportamiento actual.
+    assert "SEM-001" in disponibles  # Confirma que la primera regla semántica continúe disponible.
+    assert "SEM-002" in disponibles  # Confirma que la validación de dirección de red ya forme parte del comportamiento actual.
+    assert "SEM-003" in disponibles  # Confirma que la validación de cantidades positivas ya forme parte del comportamiento actual.
     assert "ADV-007" in disponibles  # Confirma que las advertencias activas permanezcan disponibles.
     assert "GEN-001" in disponibles  # Confirma que el diagnóstico técnico de respaldo continúe habilitado.
 
     assert "ADV-005" in pendientes  # Confirma que la advertencia semántica todavía no implementada permanezca pendiente.
-    assert "SEM-002" in pendientes  # Confirma que la siguiente regla semántica continúe reservada.
-    assert "SEM-006" in pendientes  # Confirma que la última regla semántica prevista continúe reservada.
-    assert "SEM-001" not in pendientes  # Evita que una regla ya implementada aparezca simultáneamente como pendiente.
+    assert "SEM-004" in pendientes  # Confirma que la siguiente regla de capacidad global continúe reservada.
+    assert "SEM-005" in pendientes  # Confirma que la validación individual de capacidad continúe reservada.
+    assert "SEM-006" in pendientes  # Confirma que la regla de traslape continúe reservada.
+    assert "SEM-001" not in pendientes  # Evita que una regla disponible aparezca simultáneamente como pendiente.
+    assert "SEM-002" not in pendientes  # Evita que SEM-002 mantenga un estado contradictorio.
+    assert "SEM-003" not in pendientes  # Evita que SEM-003 mantenga un estado contradictorio.
 
 
-def prueba_sem001_figura_como_diagnostico_disponible_de_u1():  # Comprueba que el catálogo refleje formalmente la primera regla semántica implementada.
-    assert CATALOGO_DIAGNOSTICOS["SEM-001"]["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE  # Confirma que SEM-001 ya esté habilitado.
-    assert CATALOGO_DIAGNOSTICOS["SEM-001"]["etapa"] == "U1"  # Conserva la unidad académica donde fue incorporado.
-    assert codigo_diagnostico_disponible("SEM-001") is True  # Comprueba la consulta utilizada por consumidores del catálogo.
-    assert texto_estado_diagnostico("SEM-001") == "Disponible"  # Comprueba la etiqueta que podrá mostrar la interfaz.
+def prueba_sem001_a_sem003_figuran_como_diagnosticos_disponibles_de_u1():  # Comprueba formalmente el estado de las tres reglas semánticas implementadas.
+    for numero in range(1, 4):  # Recorre SEM-001, SEM-002 y SEM-003.
+        codigo = f"SEM-{numero:03d}"  # Construye el identificador oficial de la regla evaluada.
+
+        assert CATALOGO_DIAGNOSTICOS[codigo]["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE  # Confirma que la regla ya esté habilitada.
+        assert CATALOGO_DIAGNOSTICOS[codigo]["etapa"] == "U1"  # Conserva la unidad académica correspondiente.
+        assert codigo_diagnostico_disponible(codigo) is True  # Comprueba la consulta utilizada por consumidores del catálogo.
+        assert texto_estado_diagnostico(codigo) == "Disponible"  # Comprueba la etiqueta visible que utilizará la interfaz.
 
 
 def prueba_reglas_semanticas_restantes_permanecen_pendientes_en_u1():  # Evita presentar como implementadas reglas semánticas que todavía no existen.
-    for numero in range(2, 7):  # Recorre SEM-002 hasta SEM-006 sin incluir la regla ya terminada.
+    for numero in range(4, 7):  # Recorre SEM-004, SEM-005 y SEM-006.
         codigo = f"SEM-{numero:03d}"  # Construye el identificador oficial de cada diagnóstico pendiente.
 
         assert CATALOGO_DIAGNOSTICOS[codigo]["estado"] == ESTADO_DIAGNOSTICO_PENDIENTE  # Confirma que la regla todavía permanezca reservada.
@@ -56,8 +64,9 @@ def prueba_catalogo_conserva_diagnosticos_anteriores_disponibles():  # Comprueba
 def prueba_catalogo_distingue_errores_de_advertencias():  # Comprueba que la severidad también provenga de una única fuente central.
     assert codigo_diagnostico_es_error("LEX-001") is True  # Confirma que los errores léxicos mantengan severidad de error.
     assert codigo_diagnostico_es_error("SIN-002") is True  # Confirma que los errores sintácticos mantengan severidad de error.
-    assert codigo_diagnostico_es_error("SEM-001") is True  # Confirma que la regla semántica disponible sea bloqueante.
-    assert codigo_diagnostico_es_error("SEM-002") is True  # Confirma que la futura regla semántica también conserve su severidad prevista.
+    assert codigo_diagnostico_es_error("SEM-001") is True  # Confirma que la primera regla semántica sea bloqueante.
+    assert codigo_diagnostico_es_error("SEM-002") is True  # Confirma que una IP base incorrecta sea un error.
+    assert codigo_diagnostico_es_error("SEM-003") is True  # Confirma que una cantidad no positiva sea un error.
     assert codigo_diagnostico_es_error("ADV-007") is False  # Confirma que una advertencia no sea clasificada como error.
 
 

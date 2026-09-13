@@ -44,6 +44,7 @@ def prueba_flujo_reune_diagnosticos_lexicos():  # Comprueba que los errores del 
     resultado = flujo.analizar(codigo_fuente)  # Ejecuta el flujo permitiendo que el lexer registre el símbolo incorrecto.
 
     codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Extrae todos los códigos reunidos por ResultadoCompilacion.
+
     assert "LEX-002" in codigos  # Comprueba que el diagnóstico léxico aparezca en el resultado global.
     assert resultado.tiene_errores is True  # Verifica que la propiedad general detecte correctamente la presencia del error.
 
@@ -57,6 +58,7 @@ def prueba_flujo_recupera_instruccion_posterior():  # Comprueba que un error sin
     resultado = flujo.analizar(codigo_fuente)  # Ejecuta el flujo completo utilizando la recuperación del parser.
 
     codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne los códigos producidos durante la ejecución.
+
     assert "SIN-001" in codigos  # Comprueba que la IP incompleta de la primera línea haya sido diagnosticada.
     assert len(resultado.bloques_validos) == 1  # Comprueba que la segunda instrucción haya superado las fases posteriores.
     assert resultado.bloques_validos[0].nombre == "Correcta"  # Verifica que el único bloque conservado sea el de la segunda línea.
@@ -107,6 +109,7 @@ def prueba_flujo_continua_despues_de_desbordamiento_ipv4():  # Comprueba que un 
     resultado = flujo.analizar(codigo_fuente)  # Ejecuta ambos bloques dentro de una sola compilación.
 
     codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne errores y advertencias producidos durante el procesamiento.
+
     assert "GEN-001" in codigos  # Comprueba que el primer bloque quede representado mediante un error controlado.
     assert "ADV-001" in codigos  # Comprueba que se informe al usuario que solamente parte de la entrada pudo procesarse.
     assert len(resultado.bloques_validos) == 2  # Confirma que ambos bloques superaron las reglas semánticas actualmente implementadas.
@@ -146,3 +149,35 @@ def prueba_flujo_sem001_permite_procesamiento_parcial():  # Comprueba que un err
     assert resultado.bloques_validos[0].nombre == "Correcta"  # Comprueba que el bloque superviviente sea exactamente el esperado.
     assert len(resultado.subredes_vlsm) == 1  # Confirma que solamente el bloque aprobado produzca una subred VLSM.
     assert resultado.subredes_vlsm[0].nombre_red == "Correcta"  # Comprueba que la salida generada corresponda con la instrucción correcta.
+
+
+def prueba_flujo_sem002_impide_que_ip_host_llegue_a_vlsm():  # Comprueba la integración de la validación que exige una verdadera dirección de red.
+    flujo = FlujoCompilacion()  # Crea un flujo completo independiente.
+    codigo_fuente = "IP 192.168.1.5 MASK /24 HOSTS 50 NAME Invalida"  # Utiliza una dirección de host que no representa el inicio de la red /24.
+    resultado = flujo.analizar(codigo_fuente)  # Ejecuta todas las fases sobre la instrucción semánticamente incorrecta.
+
+    codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne las clasificaciones visibles para la interfaz.
+
+    assert "SEM-002" in codigos  # Confirma que la IP incorrecta sea detectada por la nueva regla.
+    assert len(resultado.resultado_sintactico.bloques) == 1  # Confirma que la estructura sí había sido aceptada por el parser.
+    assert resultado.bloques_validos == []  # Confirma que semántica retire el bloque antes de las siguientes etapas.
+    assert resultado.subredes_vlsm == []  # Comprueba que una IP base incorrecta no produzca ninguna subred.
+
+
+def prueba_flujo_sem003_permite_procesamiento_parcial():  # Comprueba que un bloque con cero hosts sea descartado sin afectar otra instrucción válida.
+    flujo = FlujoCompilacion()  # Crea un flujo aislado para comprobar dos instrucciones independientes.
+    codigo_fuente = (
+        "IP 192.168.1.0 MASK /24 HOSTS 0 NAME Invalida\n"
+        "IP 10.0.0.0 MASK /24 HOSTS 20 NAME Correcta"
+    )  # Combina una cantidad semánticamente inválida con una solicitud completamente válida.
+    resultado = flujo.analizar(codigo_fuente)  # Ejecuta todas las fases disponibles sobre ambos bloques.
+
+    codigos = [diagnostico.codigo for diagnostico in resultado.diagnosticos]  # Reúne errores y advertencias de procesamiento.
+
+    assert "SEM-003" in codigos  # Confirma que la cantidad cero sea clasificada semánticamente.
+    assert "ADV-001" in codigos  # Confirma que el flujo informe el procesamiento parcial.
+    assert len(resultado.resultado_sintactico.bloques) == 2  # Comprueba que ambos bloques poseían una estructura correcta.
+    assert len(resultado.bloques_validos) == 1  # Confirma que solamente la segunda instrucción supere el análisis semántico.
+    assert resultado.bloques_validos[0].nombre == "Correcta"  # Comprueba que la instrucción sobreviviente sea la esperada.
+    assert len(resultado.subredes_vlsm) == 1  # Confirma que únicamente el bloque correcto llegue a VLSM.
+    assert resultado.subredes_vlsm[0].nombre_red == "Correcta"  # Comprueba que el resultado generado pertenezca al bloque válido.

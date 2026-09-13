@@ -16,13 +16,13 @@
 # Separa los bloques válidos de aquellos que contienen errores
 # y genera diagnósticos con la ubicación exacta del problema.
 #
-# La primera regla implementada corresponde a SEM-001:
-# la máscara CIDR debe encontrarse entre /8 y /30.
+# Actualmente implementa las reglas SEM-001, SEM-002 y SEM-003.
 # ============================================================
 
 from dataclasses import dataclass  # Importa el decorador utilizado para representar de forma clara las ubicaciones de un bloque.
+import ipaddress  # Importa las herramientas estándar utilizadas para interpretar direcciones y redes IPv4.
 
-from Motor.diagnosticos import crear_diagnostico  # Importa la función central utilizada para construir diagnósticos estructurados.
+from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Importa el modelo y la función central utilizados para producir diagnósticos semánticos.
 from Motor.modelos import BloqueRed, ResultadoSemantico, Token  # Importa los modelos requeridos por la fase semántica.
 
 
@@ -39,43 +39,121 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         self._bloques = list(bloques)  # Conserva una copia de los bloques para evitar modificar directamente el resultado sintáctico.
         self._tokens = list(tokens)  # Conserva una copia de los tokens para relacionar cada regla semántica con el código fuente.
 
-    def analizar(self) -> ResultadoSemantico:  # Ejecuta las reglas semánticas disponibles sobre todos los bloques recibidos.
+    def analizar(self) -> ResultadoSemantico:  # Ejecuta todas las reglas semánticas disponibles sobre los bloques recibidos.
         bloques_validos: list[BloqueRed] = []  # Reúne únicamente las instrucciones que no presentan errores semánticos.
-        diagnosticos = []  # Reúne los diagnósticos producidos durante esta fase.
+        diagnosticos: list[Diagnostico] = []  # Reúne todos los diagnósticos producidos durante esta fase.
 
         for bloque in self._bloques:  # Analiza individualmente cada instrucción aceptada previamente por el parser.
             ubicacion = self._localizar_ubicacion_bloque(bloque)  # Recupera los tokens exactos asociados con el bloque actual.
-            bloque_tiene_error = False  # Supone inicialmente que el bloque podrá continuar hacia las siguientes etapas.
+            diagnosticos_bloque: list[Diagnostico] = []  # Conserva solamente los errores semánticos correspondientes con la instrucción actual.
 
-            prefijo = int(bloque.mascara_subred[1:])  # Convierte el valor situado después de la diagonal para comprobar el rango CIDR.
+            diagnosticos_mascara = self._validar_mascara(bloque, ubicacion)  # Ejecuta SEM-001 antes de realizar comprobaciones que dependan del prefijo.
+            diagnosticos_bloque.extend(diagnosticos_mascara)  # Agrega los posibles errores relacionados con el rango de la máscara.
 
-            if prefijo < 8 or prefijo > 30:  # Detecta máscaras que existen sintácticamente pero no son admitidas por TecNet Finder.
-                token_mascara = ubicacion.token_mascara if ubicacion is not None else None  # Utiliza el token original cuando pudo localizarse con precisión.
+            if not diagnosticos_mascara:
+                diagnosticos_bloque.extend(
+                    self._validar_direccion_red(bloque, ubicacion)
+                )  # Ejecuta SEM-002 únicamente cuando la máscara puede utilizarse correctamente para interpretar la red.
 
-                diagnosticos.append(
-                    crear_diagnostico(
-                        codigo="SEM-001",
-                        mensaje=(
-                            f"Máscara CIDR fuera del rango permitido en la línea "
-                            f"{token_mascara.linea if token_mascara is not None else bloque.linea_origen}: "
-                            f"'{bloque.mascara_subred}'. TecNet Finder acepta máscaras entre /8 y /30."
-                        ),
-                        linea=token_mascara.linea if token_mascara is not None else bloque.linea_origen,
-                        columna=token_mascara.columna if token_mascara is not None else None,
-                        longitud=len(token_mascara.valor) if token_mascara is not None else len(bloque.mascara_subred),
-                        fragmento=token_mascara.valor if token_mascara is not None else bloque.mascara_subred,
-                    )
-                )  # Registra SEM-001 señalando específicamente la máscara que incumple la regla.
+            diagnosticos_bloque.extend(
+                self._validar_hosts_positivos(bloque, ubicacion)
+            )  # Ejecuta SEM-003 independientemente de la IP y la máscara porque cada cantidad HOSTS posee significado propio.
 
-                bloque_tiene_error = True  # Impide que un bloque con una máscara inválida continúe hacia etapas posteriores.
+            diagnosticos.extend(diagnosticos_bloque)  # Incorpora al resultado general todos los errores encontrados dentro del bloque actual.
 
-            if not bloque_tiene_error:
-                bloques_validos.append(bloque)  # Conserva el bloque solamente cuando todas las reglas ejecutadas fueron superadas.
+            if not diagnosticos_bloque:
+                bloques_validos.append(bloque)  # Conserva únicamente los bloques que superaron todas las reglas semánticas implementadas.
 
         return ResultadoSemantico(
             bloques_validos=bloques_validos,
             diagnosticos=diagnosticos,
         )  # Devuelve por separado los bloques aprobados y los errores semánticos detectados.
+
+    def _validar_mascara(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-001 sobre el rango admitido para la máscara CIDR.
+        prefijo = int(bloque.mascara_subred[1:])  # Convierte únicamente los dígitos situados después de la diagonal.
+        diagnosticos: list[Diagnostico] = []  # Prepara la colección de errores producidos por esta regla.
+
+        if 8 <= prefijo <= 30:
+            return diagnosticos  # Finaliza sin errores cuando el prefijo pertenece al rango permitido.
+
+        token_mascara = ubicacion.token_mascara if ubicacion is not None else None  # Recupera la posición exacta de la máscara cuando fue posible localizar el bloque.
+
+        diagnosticos.append(
+            crear_diagnostico(
+                codigo="SEM-001",
+                mensaje=(
+                    f"Máscara CIDR fuera del rango permitido en la línea "
+                    f"{token_mascara.linea if token_mascara is not None else bloque.linea_origen}: "
+                    f"'{bloque.mascara_subred}'. TecNet Finder acepta máscaras entre /8 y /30."
+                ),
+                linea=token_mascara.linea if token_mascara is not None else bloque.linea_origen,
+                columna=token_mascara.columna if token_mascara is not None else None,
+                longitud=len(token_mascara.valor) if token_mascara is not None else len(bloque.mascara_subred),
+                fragmento=token_mascara.valor if token_mascara is not None else bloque.mascara_subred,
+            )
+        )  # Registra SEM-001 señalando específicamente la máscara que incumple la regla.
+
+        return diagnosticos  # Devuelve el error encontrado para impedir que el bloque sea aceptado.
+
+    def _validar_direccion_red(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-002 relacionando la IP base con la máscara válida.
+        diagnosticos: list[Diagnostico] = []  # Prepara la colección de errores producidos por esta regla.
+        red = ipaddress.IPv4Network(
+            f"{bloque.direccion_ip}{bloque.mascara_subred}",
+            strict=False,
+        )  # Obtiene la red real asociada con la IP y la máscara sin rechazar automáticamente una dirección de host.
+        direccion_red_correcta = str(red.network_address)  # Recupera la dirección que realmente identifica el comienzo del bloque IPv4.
+
+        if bloque.direccion_ip == direccion_red_correcta:
+            return diagnosticos  # Finaliza sin errores cuando la IP escrita ya representa la dirección de red.
+
+        token_ip = ubicacion.token_ip if ubicacion is not None else None  # Recupera la ubicación exacta de la dirección escrita por el usuario.
+
+        diagnosticos.append(
+            crear_diagnostico(
+                codigo="SEM-002",
+                mensaje=(
+                    f"La dirección IP '{bloque.direccion_ip}' de la línea "
+                    f"{token_ip.linea if token_ip is not None else bloque.linea_origen} "
+                    f"no representa la dirección de red para la máscara {bloque.mascara_subred}. "
+                    f"La dirección de red correspondiente es '{direccion_red_correcta}'."
+                ),
+                linea=token_ip.linea if token_ip is not None else bloque.linea_origen,
+                columna=token_ip.columna if token_ip is not None else None,
+                longitud=len(token_ip.valor) if token_ip is not None else len(bloque.direccion_ip),
+                fragmento=token_ip.valor if token_ip is not None else bloque.direccion_ip,
+            )
+        )  # Registra SEM-002 sobre la IP original e informa cuál sería la dirección de red correcta.
+
+        return diagnosticos  # Devuelve el error encontrado para impedir que la instrucción llegue a etapas posteriores.
+
+    def _validar_hosts_positivos(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-003 sobre cada solicitud individual escrita después de HOSTS.
+        diagnosticos: list[Diagnostico] = []  # Prepara la colección donde se almacenará cada cantidad no positiva.
+
+        for indice_host, cantidad_hosts in enumerate(bloque.cantidades_hosts):  # Conserva el índice original para relacionar cada cantidad con su token exacto.
+            if cantidad_hosts > 0:
+                continue  # Ignora cualquier solicitud positiva porque cumple la regla semántica.
+
+            token_host = None  # Considera inicialmente que no se dispone de una posición exacta para la cantidad actual.
+
+            if ubicacion is not None and indice_host < len(ubicacion.tokens_hosts):
+                token_host = ubicacion.tokens_hosts[indice_host]  # Recupera el NUMBER correspondiente con la posición original dentro de HOSTS.
+
+            diagnosticos.append(
+                crear_diagnostico(
+                    codigo="SEM-003",
+                    mensaje=(
+                        f"Cantidad de HOSTS no válida en la línea "
+                        f"{token_host.linea if token_host is not None else bloque.linea_origen}: "
+                        f"'{cantidad_hosts}'. Cada solicitud debe ser mayor que cero."
+                    ),
+                    linea=token_host.linea if token_host is not None else bloque.linea_origen,
+                    columna=token_host.columna if token_host is not None else None,
+                    longitud=len(token_host.valor) if token_host is not None else len(str(cantidad_hosts)),
+                    fragmento=token_host.valor if token_host is not None else str(cantidad_hosts),
+                )
+            )  # Registra un SEM-003 independiente para cada cantidad que no posea hosts utilizables.
+
+        return diagnosticos  # Devuelve todos los errores encontrados dentro de la lista HOSTS.
 
     def _localizar_ubicacion_bloque(self, bloque: BloqueRed) -> UbicacionBloqueSemantico | None:  # Relaciona un bloque sintáctico con los tokens exactos que lo originaron.
         for indice_inicio, token_inicio in enumerate(self._tokens):  # Examina cada token que podría representar el comienzo de una instrucción.

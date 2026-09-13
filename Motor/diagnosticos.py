@@ -141,23 +141,23 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-001 ya está implementado e integrado en el flujo principal.
         "etapa": "U1",  # Registra que la validación pertenece a la primera unidad de LyAII.
     },
-    "SEM-002": {  # Reserva el diagnóstico para una IP que no representa la dirección de su red base.
-        "categoria": "Semántico",  # Clasifica la comprobación dentro de U1.
-        "nombre": "IP base no es dirección de red",  # Resume la regla semántica prevista.
-        "descripcion": "La IP indicada no corresponde a la dirección de red para la máscara dada.",  # Explica la relación que deberá evaluarse entre IP y prefijo.
+    "SEM-002": {  # Registra la comprobación de una IP que no representa la dirección de su red base.
+        "categoria": "Semántico",  # Clasifica la comprobación dentro del análisis semántico.
+        "nombre": "IP base no es dirección de red",  # Resume la relación incorrecta entre la IP y su máscara.
+        "descripcion": "La IP indicada no corresponde a la dirección de red para la máscara dada.",  # Explica la condición evaluada por la regla.
         "solucion": "Usa la dirección de red correcta para esa máscara. Por ejemplo, para 192.168.1.5/24 la red correcta sería 192.168.1.0.",  # Proporciona un ejemplo de corrección.
-        "severidad": "error",  # Determina que una IP base incorrecta invalidará semánticamente la instrucción.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Mantiene la regla deshabilitada hasta implementar su comprobación.
+        "severidad": "error",  # Determina que una IP base incorrecta invalida semánticamente la instrucción.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-002 ya está implementado e integrado en el flujo.
         "etapa": "U1",  # Registra la unidad responsable de la validación.
     },
-    "SEM-003": {  # Reserva la comprobación semántica de cantidades de hosts no positivas.
+    "SEM-003": {  # Registra la comprobación semántica de cantidades de hosts no positivas.
         "categoria": "Semántico",  # Clasifica el código dentro de la fase semántica.
         "nombre": "Cantidad de hosts no válida",  # Resume la regla asociada con NUMBER dentro de HOSTS.
-        "descripcion": "Una cantidad de hosts debe ser mayor que cero.",  # Define la condición semántica prevista.
+        "descripcion": "Una cantidad de hosts debe ser mayor que cero.",  # Define la condición semántica evaluada.
         "solucion": "Cambia la cantidad de hosts por un número positivo. Ejemplo: HOSTS 50.",  # Indica una corrección válida.
-        "severidad": "error",  # Establece que la condición será bloqueante.
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,  # Conserva el diagnóstico como pendiente.
-        "etapa": "U1",  # Asigna la comprobación a la primera unidad de LyA II.
+        "severidad": "error",  # Establece que una cantidad no positiva impide continuar con el bloque.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-003 ya está implementado e integrado en el flujo.
+        "etapa": "U1",  # Asigna la comprobación a la primera unidad de LyAII.
     },
     "SEM-004": {  # Reserva la comprobación de capacidad total de la red base.
         "categoria": "Semántico",  # Clasifica la regla dentro del análisis semántico.
