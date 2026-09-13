@@ -17,7 +17,7 @@
 # y genera diagnósticos con la ubicación exacta del problema.
 #
 # Actualmente implementa SEM-001, SEM-002, SEM-003,
-# SEM-004 y SEM-005.
+# SEM-004, SEM-005 y SEM-006.
 # ============================================================
 
 from dataclasses import dataclass  # Importa el decorador utilizado para representar de forma clara las ubicaciones de un bloque.
@@ -42,7 +42,7 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         self._tokens = list(tokens)  # Conserva una copia de los tokens para relacionar cada regla semántica con el código fuente.
 
     def analizar(self) -> ResultadoSemantico:  # Ejecuta todas las reglas semánticas disponibles sobre los bloques recibidos.
-        bloques_validos: list[BloqueRed] = []  # Reúne únicamente las instrucciones que no presentan errores semánticos.
+        candidatos_traslape: list[tuple[BloqueRed, UbicacionBloqueSemantico | None]] = []  # Conserva los bloques que superaron primero todas las reglas individuales.
         diagnosticos: list[Diagnostico] = []  # Reúne todos los diagnósticos producidos durante esta fase.
 
         for bloque in self._bloques:  # Analiza individualmente cada instrucción aceptada previamente por el parser.
@@ -71,13 +71,16 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
 
             diagnosticos.extend(diagnosticos_bloque)  # Incorpora al resultado general todos los errores encontrados dentro del bloque actual.
 
-            if not diagnosticos_bloque:  # Comprueba si la instrucción superó todas las reglas implementadas.
-                bloques_validos.append(bloque)  # Conserva únicamente los bloques que pueden continuar hacia VLSM.
+            if not diagnosticos_bloque:  # Comprueba si la instrucción superó todas las reglas que dependen únicamente de sí misma.
+                candidatos_traslape.append((bloque, ubicacion))  # Reserva el bloque para comprobar después su relación con las demás redes base.
+
+        bloques_validos, diagnosticos_traslape = self._validar_traslapes(candidatos_traslape)  # Ejecuta SEM-006 únicamente entre bloques individualmente correctos.
+        diagnosticos.extend(diagnosticos_traslape)  # Agrega al resultado general los conflictos encontrados entre diferentes redes base.
 
         return ResultadoSemantico(
             bloques_validos=bloques_validos,
             diagnosticos=diagnosticos,
-        )  # Devuelve por separado los bloques aprobados y los errores semánticos detectados.
+        )  # Devuelve únicamente las redes que superaron reglas individuales y relacionales.
 
     def _validar_mascara(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-001 sobre el rango admitido para la máscara CIDR.
         prefijo = int(bloque.mascara_subred[1:])  # Convierte únicamente los dígitos situados después de la diagonal.
@@ -230,6 +233,55 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         )  # Registra SEM-004 sobre la sección HOSTS porque el error depende de la combinación completa de solicitudes.
 
         return diagnosticos  # Devuelve el exceso global detectado para impedir que el bloque continúe hacia VLSM.
+
+    def _validar_traslapes(
+        self,
+        candidatos: list[tuple[BloqueRed, UbicacionBloqueSemantico | None]],
+    ) -> tuple[list[BloqueRed], list[Diagnostico]]:  # Comprueba SEM-006 comparando las redes base que ya superaron todas las reglas individuales.
+        bloques_validos: list[BloqueRed] = []  # Conserva únicamente la primera red de cada espacio no conflictivo.
+        redes_aceptadas: list[tuple[BloqueRed, ipaddress.IPv4Network]] = []  # Guarda los intervalos IPv4 ya aceptados para compararlos con los siguientes.
+        diagnosticos: list[Diagnostico] = []  # Reúne los traslapes detectados entre diferentes instrucciones.
+
+        for bloque, ubicacion in candidatos:  # Respeta el orden original para conservar la primera declaración válida.
+            red_actual = ipaddress.IPv4Network(
+                f"{bloque.direccion_ip}{bloque.mascara_subred}",
+                strict=True,
+            )  # Construye la red exacta porque IP y máscara ya superaron SEM-001 y SEM-002.
+
+            conflicto = next(
+                (
+                    (bloque_anterior, red_anterior)
+                    for bloque_anterior, red_anterior in redes_aceptadas
+                    if red_actual.overlaps(red_anterior)
+                ),
+                None,
+            )  # Recupera la primera red anteriormente aceptada cuyo intervalo se cruza con la red actual.
+
+            if conflicto is None:  # Comprueba que la red actual sea independiente de todas las anteriores aceptadas.
+                bloques_validos.append(bloque)  # Conserva el bloque para las siguientes etapas del compilador.
+                redes_aceptadas.append((bloque, red_actual))  # Registra también su intervalo para revisar las instrucciones posteriores.
+                continue  # Continúa con la siguiente red sin producir diagnóstico.
+
+            bloque_anterior, red_anterior = conflicto  # Recupera la red previa que provoca el conflicto con la declaración actual.
+            token_ip = ubicacion.token_ip if ubicacion is not None else None  # Recupera la IP de la declaración posterior para señalarla en el editor.
+
+            diagnosticos.append(
+                crear_diagnostico(
+                    codigo="SEM-006",
+                    mensaje=(
+                        f"La red base {red_actual.with_prefixlen} de la línea "
+                        f"{bloque.linea_origen} se traslapa con la red "
+                        f"{red_anterior.with_prefixlen} declarada anteriormente "
+                        f"en la línea {bloque_anterior.linea_origen}."
+                    ),
+                    linea=token_ip.linea if token_ip is not None else bloque.linea_origen,
+                    columna=token_ip.columna if token_ip is not None else None,
+                    longitud=len(token_ip.valor) if token_ip is not None else len(bloque.direccion_ip),
+                    fragmento=token_ip.valor if token_ip is not None else bloque.direccion_ip,
+                )
+            )  # Rechaza solamente la declaración posterior y conserva la primera red válida encontrada.
+
+        return bloques_validos, diagnosticos  # Devuelve las redes independientes junto con los conflictos detectados.
 
     def _calcular_tamano_bloque_vlsm(self, cantidad_hosts: int) -> int:  # Calcula la potencia de dos mínima capaz de contener hosts, red y broadcast.
         direcciones_necesarias = cantidad_hosts + 2  # Agrega las direcciones reservadas para identificar la red y el broadcast.

@@ -11,9 +11,8 @@
 # El catálogo también indica qué códigos están disponibles en
 # la base actual y cuáles permanecen pendientes para LyAII.
 #
-# Durante Lenguajes y Autómatas II, el estado de cada diagnóstico
-# semántico se actualiza únicamente cuando su validación ya está
-# implementada, integrada y comprobada mediante pruebas.
+# Al finalizar las validaciones de U1, SEM-001 a SEM-006 y
+# ADV-005 forman parte del comportamiento disponible.
 # ============================================================
 
 from dataclasses import dataclass  # Importa el decorador utilizado para crear clases de datos.
@@ -23,8 +22,8 @@ ESTADO_DIAGNOSTICO_DISPONIBLE = "disponible"  # Identifica diagnósticos que la 
 ESTADO_DIAGNOSTICO_PENDIENTE = "pendiente"  # Identifica diagnósticos reservados para una fase posterior.
 
 
-CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los códigos reconocidos por TecNet Finder.
-    "LEX-001": {  # Registra el primer diagnóstico léxico heredado de la base de LyA I.
+CATALOGO_DIAGNOSTICOS = {
+    "LEX-001": {
         "categoria": "Léxico",
         "nombre": "Identificador fuera de lugar",
         "descripcion": "Apareció un identificador en una posición no permitida.",
@@ -180,10 +179,10 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
     "SEM-006": {
         "categoria": "Semántico",
         "nombre": "Redes base traslapadas",
-        "descripcion": "Dos instrucciones usan redes base que se cruzan entre sí.",
-        "solucion": "Cambia la IP base o la máscara para que las redes no se traslapen.",
+        "descripcion": "Una red base válida se cruza con otra red base declarada anteriormente.",
+        "solucion": "Cambia la IP base o la máscara de la red posterior para que sus rangos IPv4 no se traslapen.",
         "severidad": "error",
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,
         "etapa": "U1",
     },
     "ADV-001": {
@@ -225,10 +224,10 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
     "ADV-005": {
         "categoria": "Advertencia",
         "nombre": "Red base sobredimensionada",
-        "descripcion": "La red base tiene mucha más capacidad de la que realmente se utiliza.",
-        "solucion": "Considera usar una máscara base más pequeña si deseas optimizar mejor el espacio de direcciones.",
+        "descripcion": "La red base dispone de al menos dieciséis veces la capacidad realmente requerida por las solicitudes VLSM.",
+        "solucion": "Considera utilizar una máscara base más específica para aprovechar mejor el espacio de direcciones disponible.",
         "severidad": "advertencia",
-        "estado": ESTADO_DIAGNOSTICO_PENDIENTE,
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,
         "etapa": "U1",
     },
     "ADV-006": {
@@ -270,8 +269,8 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza la información general de todos los có
 }
 
 
-@dataclass(frozen=True)  # Impide modificar accidentalmente un diagnóstico después de haber sido creado.
-class Diagnostico:  # Representa un error o advertencia detectado por TecNet Finder.
+@dataclass(frozen=True)
+class Diagnostico:
     codigo: str
     categoria: str
     severidad: str
@@ -283,43 +282,51 @@ class Diagnostico:  # Representa un error o advertencia detectado por TecNet Fin
     solucion: str = ""
 
 
-def obtener_informacion_diagnostico(codigo: str) -> dict:  # Obtiene la ficha registrada para un código y utiliza GEN-001 como respaldo.
-    return CATALOGO_DIAGNOSTICOS.get(codigo, CATALOGO_DIAGNOSTICOS["GEN-001"])  # Devuelve la ficha concreta o el diagnóstico general cuando el código no existe.
+def obtener_informacion_diagnostico(codigo: str) -> dict:
+    return CATALOGO_DIAGNOSTICOS.get(codigo, CATALOGO_DIAGNOSTICOS["GEN-001"])
 
 
-def obtener_catalogo_diagnosticos() -> list[tuple[str, dict]]:  # Devuelve el catálogo completo conservando el orden declarado.
-    return list(CATALOGO_DIAGNOSTICOS.items())  # Convierte el diccionario en pares código-información para facilitar su consumo en la interfaz.
+def obtener_catalogo_diagnosticos() -> list[tuple[str, dict]]:
+    return list(CATALOGO_DIAGNOSTICOS.items())
 
 
-def codigo_diagnostico_disponible(codigo: str) -> bool:  # Indica si un código ya pertenece al comportamiento evaluable de la versión actual.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca exclusivamente la ficha solicitada sin aplicar el respaldo general.
-    return bool(informacion and informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE)  # Devuelve verdadero únicamente cuando el código existe y está marcado como disponible.
+def codigo_diagnostico_disponible(codigo: str) -> bool:
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)
+    return bool(informacion and informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE)
 
 
-def codigo_diagnostico_es_error(codigo: str) -> bool:  # Indica si el catálogo clasifica el código recibido como error.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Recupera exclusivamente la ficha registrada para el código.
-    return bool(informacion and informacion["severidad"] == "error")  # Devuelve verdadero únicamente para diagnósticos existentes con severidad de error.
+def codigo_diagnostico_es_error(codigo: str) -> bool:
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)
+    return bool(informacion and informacion["severidad"] == "error")
 
 
-def obtener_codigos_diagnosticos_disponibles() -> list[str]:  # Reúne todos los códigos que la versión actual puede producir.
-    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE]  # Filtra el catálogo utilizando su estado centralizado.
+def obtener_codigos_diagnosticos_disponibles() -> list[str]:
+    return [
+        codigo
+        for codigo, informacion in CATALOGO_DIAGNOSTICOS.items()
+        if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE
+    ]
 
 
-def obtener_codigos_diagnosticos_pendientes() -> list[str]:  # Reúne los códigos reservados para fases posteriores.
-    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_PENDIENTE]  # Filtra únicamente las fichas todavía pendientes.
+def obtener_codigos_diagnosticos_pendientes() -> list[str]:
+    return [
+        codigo
+        for codigo, informacion in CATALOGO_DIAGNOSTICOS.items()
+        if informacion["estado"] == ESTADO_DIAGNOSTICO_PENDIENTE
+    ]
 
 
-def texto_estado_diagnostico(codigo: str) -> str:  # Convierte el estado interno de un diagnóstico en una etiqueta legible para la interfaz.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca la ficha concreta solicitada.
+def texto_estado_diagnostico(codigo: str) -> str:
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)
 
-    if informacion is None:  # Comprueba si el código no forma parte del catálogo.
-        return "No registrado"  # Informa claramente que no existe una ficha asociada.
+    if informacion is None:
+        return "No registrado"
 
-    if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE:  # Comprueba si el diagnóstico se encuentra habilitado actualmente.
-        return "Disponible"  # Devuelve la etiqueta utilizada por la tabla Catálogo.
+    if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE:
+        return "Disponible"
 
-    etapa = informacion.get("etapa", "").strip()  # Recupera la unidad o etapa prevista cuando el diagnóstico todavía está pendiente.
-    return f"Pendiente {etapa}" if etapa else "Pendiente"  # Incluye la unidad futura cuando esa información se encuentra disponible.
+    etapa = informacion.get("etapa", "").strip()
+    return f"Pendiente {etapa}" if etapa else "Pendiente"
 
 
 def crear_diagnostico(
@@ -330,9 +337,9 @@ def crear_diagnostico(
     longitud: int = 1,
     fragmento: str = "",
     severidad: str | None = None,
-) -> Diagnostico:  # Construye un diagnóstico estructurado utilizando el catálogo como fuente central.
-    informacion = obtener_informacion_diagnostico(codigo)  # Recupera categoría, solución y severidad predeterminada.
-    severidad_final = severidad or informacion["severidad"]  # Utiliza una severidad explícita o conserva la definida por la ficha oficial.
+) -> Diagnostico:
+    informacion = obtener_informacion_diagnostico(codigo)
+    severidad_final = severidad or informacion["severidad"]
 
     return Diagnostico(
         codigo=codigo,
@@ -344,4 +351,4 @@ def crear_diagnostico(
         longitud=max(longitud, 1),
         fragmento=fragmento,
         solucion=informacion["solucion"],
-    )  # Devuelve el diagnóstico completo listo para Motor e interfaz.
+    )
