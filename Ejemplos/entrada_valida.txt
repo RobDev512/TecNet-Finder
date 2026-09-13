@@ -57,6 +57,6 @@ Salida esperada: caso válido con advertencia. Código esperado: ADV-007. Debe g
 
 # CASO V12: Entrada válida con varias advertencias juntas
 
-IP 10.20.0.0 MASK /8 HOSTS 10,10 NAME Red
+IP 10.0.0.0 MASK /8 HOSTS 10,10 NAME Red
 IP 192.168.90.0 MASK /24 HOSTS 50
 Salida esperada: caso válido con varias advertencias. Códigos esperados: ADV-004, ADV-005, ADV-006, ADV-007. Debe procesar los bloques válidos y mostrar advertencias por hosts repetidos, red sobredimensionada, nombre genérico y falta de nombre de red.

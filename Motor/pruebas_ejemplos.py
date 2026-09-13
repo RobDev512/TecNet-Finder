@@ -15,7 +15,7 @@
 # sintáctico, semántico, advertencias y cálculo VLSM.
 # ============================================================
 
-import re  # Importa expresiones regulares para extraer códigos de diagnóstico desde las salidas esperadas.
+import re  # Importa expresiones regulares para extraer únicamente las declaraciones formales de códigos esperados.
 from dataclasses import dataclass, field  # Importa herramientas para representar resultados y resúmenes estructurados.
 
 from Motor.diagnosticos import codigo_diagnostico_disponible, codigo_diagnostico_es_error, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes  # Importa el estado centralizado de los diagnósticos.
@@ -32,7 +32,7 @@ ESTADO_FALLIDO = "fallido"  # Representa un ejemplo que no produjo el comportami
 class ResultadoPruebaEjemplo:  # Guarda toda la información obtenida al ejecutar un ejemplo individual.
     ejemplo: EjemploCodigo  # Conserva el ejemplo original que produjo este resultado.
     estado: str  # Indica si la prueba terminó correctamente, quedó pendiente o falló.
-    codigos_esperados: list[str] = field(default_factory=list)  # Guarda todos los códigos mencionados en la salida esperada.
+    codigos_esperados: list[str] = field(default_factory=list)  # Guarda únicamente los códigos declarados formalmente como esperados.
     codigos_evaluables: list[str] = field(default_factory=list)  # Guarda únicamente códigos disponibles actualmente.
     codigos_pendientes: list[str] = field(default_factory=list)  # Guarda expectativas pertenecientes a características todavía no implementadas.
     codigos_obtenidos: list[str] = field(default_factory=list)  # Guarda todos los códigos realmente producidos por el flujo actual.
@@ -97,14 +97,35 @@ def _elementos_unicos(elementos: list[str]) -> list[str]:  # Elimina valores rep
     return resultado  # Devuelve la colección sin duplicados y con su orden original.
 
 
-def extraer_codigos_esperados(texto_esperado: str) -> list[str]:  # Extrae los códigos escritos dentro de la descripción de salida esperada.
+def extraer_codigos_esperados(texto_esperado: str) -> list[str]:  # Extrae únicamente los códigos declarados formalmente después de Código esperado o Códigos esperados.
     if not texto_esperado:  # Comprueba si el ejemplo no posee una descripción de salida.
         return []  # Evita realizar búsquedas sobre contenido vacío.
 
-    patron = r"\b(?:LEX|SIN|SEM|ADV|GEN)-\d{3}\b"  # Reconoce las familias utilizadas por TecNet Finder.
-    coincidencias = re.findall(patron, texto_esperado)  # Localiza todos los códigos mencionados en el texto.
+    patron_declaracion = r"\bC[oó]digos?\s+esperados?\s*:\s*([^.\n]*)"  # Captura únicamente el contenido situado después de la etiqueta formal y antes del siguiente punto o salto de línea.
+    declaraciones = re.findall(
+        patron_declaracion,
+        texto_esperado,
+        flags=re.IGNORECASE,
+    )  # Recupera todas las declaraciones explícitas de códigos esperados que existan dentro del texto.
 
-    return _elementos_unicos(coincidencias)  # Elimina códigos repetidos sin perder el orden de aparición.
+    if not declaraciones:  # Comprueba si la descripción no contiene ninguna declaración formal de diagnósticos.
+        return []  # Evita interpretar códigos mencionados solamente dentro de explicaciones posteriores.
+
+    patron_codigo = r"\b(?:LEX|SIN|SEM|ADV|GEN)-\d{3}\b"  # Reconoce las familias oficiales de diagnósticos utilizadas por TecNet Finder.
+    coincidencias: list[str] = []  # Reúne los códigos encontrados dentro de cada declaración formal.
+
+    for declaracion in declaraciones:  # Recorre únicamente los fragmentos identificados como expectativas.
+        codigos_declaracion = re.findall(
+            patron_codigo,
+            declaracion,
+            flags=re.IGNORECASE,
+        )  # Extrae solamente códigos ubicados dentro de la declaración actual.
+        coincidencias.extend(
+            codigo.upper()
+            for codigo in codigos_declaracion
+        )  # Normaliza cada identificador para conservar el formato oficial en mayúsculas.
+
+    return _elementos_unicos(coincidencias)  # Elimina códigos repetidos sin incorporar menciones explicativas ajenas a la expectativa.
 
 
 class EjecutorPruebasEjemplos:  # Ejecuta los ejemplos mediante el flujo real sin depender de componentes gráficos.
@@ -117,7 +138,7 @@ class EjecutorPruebasEjemplos:  # Ejecuta los ejemplos mediante el flujo real si
         return ResumenPruebasEjemplos(resultados=resultados)  # Devuelve un resumen con todos los casos procesados.
 
     def _ejecutar_ejemplo(self, ejemplo: EjemploCodigo) -> ResultadoPruebaEjemplo:  # Ejecuta y evalúa un único ejemplo utilizando el estado actual del catálogo.
-        codigos_esperados = extraer_codigos_esperados(ejemplo.salida_esperada)  # Recupera los diagnósticos declarados dentro de la salida esperada.
+        codigos_esperados = extraer_codigos_esperados(ejemplo.salida_esperada)  # Recupera exclusivamente los diagnósticos declarados como expectativas.
         codigos_evaluables = [
             codigo
             for codigo in codigos_esperados
@@ -355,7 +376,7 @@ def generar_reporte_pruebas(
         lineas.append(
             f"   Códigos esperados: "
             f"{_texto_codigos(resultado.codigos_esperados, 'no especificados')}"
-        )  # Muestra todos los códigos mencionados originalmente en la expectativa.
+        )  # Muestra todos los códigos declarados formalmente como expectativas.
         lineas.append(
             f"   Códigos evaluables ahora: "
             f"{_texto_codigos(resultado.codigos_evaluables)}"

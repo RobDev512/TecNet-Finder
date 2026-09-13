@@ -68,7 +68,7 @@ Salida esperada: caso inválido. Código esperado: SIN-002. Debe generar error s
 # CASO I14: Error semántico por máscara fuera de rango
 
 IP 192.168.1.0 MASK /31 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Códigos esperados: SEM-001, SEM-004, SEM-005. Debe generar error semántico porque la máscara está fuera del rango permitido /8 a /30 y la subred solicitada no cabe correctamente.
+Salida esperada: caso inválido. Código esperado: SEM-001. Debe generar error semántico porque la máscara /31 está fuera del rango permitido /8 a /30. Como la máscara no supera SEM-001, no se ejecutan sobre este bloque las comprobaciones de capacidad que dependen de un prefijo válido.
 
 # CASO I15: Error semántico porque la IP no es dirección de red
 
@@ -83,12 +83,12 @@ Salida esperada: caso inválido. Código esperado: SEM-003. Debe generar error s
 # CASO I17: Error semántico por cantidad de hosts demasiado grande para la red base
 
 IP 192.168.1.0 MASK /30 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Códigos esperados: SEM-004, SEM-005. Debe generar error semántico porque una subred de 50 hosts no cabe dentro de una red /30 y el total requerido excede la capacidad de la red base.
+Salida esperada: caso inválido. Códigos esperados: SEM-004, SEM-005. Debe generar SEM-005 porque una solicitud de 50 hosts requiere un bloque mayor que toda la red /30, y SEM-004 porque la capacidad total requerida también excede la capacidad disponible.
 
 # CASO I18: Error semántico porque el total de subredes no cabe
 
 IP 192.168.1.0 MASK /24 HOSTS 100,100,100 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SEM-004. Debe generar error semántico porque la suma de bloques requeridos excede la capacidad disponible en 192.168.1.0/24.
+Salida esperada: caso inválido. Código esperado: SEM-004. Debe generar error semántico porque cada solicitud puede caber individualmente, pero los tres bloques VLSM requieren en total 384 direcciones y una red /24 solamente dispone de 256.
 
 # CASO I19: Error semántico por redes base traslapadas
 
@@ -100,4 +100,4 @@ Salida esperada: caso inválido con procesamiento parcial. Código esperado: SEM
 
 IP 192.168.1.5 MASK /31 HOSTS 0 NAME Red @
 IP 10.0.0.0 MAS /8 HOSTS 100,,200 NAME
-Salida esperada: caso inválido con varios diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-002, SEM-003. Debe generar errores léxicos, sintácticos y semánticos. Sirve para probar modo pánico, tabla de errores, códigos clickeables y procesamiento parcial.
+Salida esperada: caso inválido con varios diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Debe generar errores léxicos, sintácticos y semánticos. La primera instrucción produce SEM-001 por la máscara /31 y SEM-003 por HOSTS 0. SEM-002 no se evalúa en esa instrucción porque la relación entre IP y red depende primero de una máscara semánticamente válida.

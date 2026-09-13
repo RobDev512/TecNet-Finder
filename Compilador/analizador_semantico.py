@@ -16,7 +16,8 @@
 # Separa los bloques válidos de aquellos que contienen errores
 # y genera diagnósticos con la ubicación exacta del problema.
 #
-# Actualmente implementa las reglas SEM-001, SEM-002 y SEM-003.
+# Actualmente implementa SEM-001, SEM-002, SEM-003,
+# SEM-004 y SEM-005.
 # ============================================================
 
 from dataclasses import dataclass  # Importa el decorador utilizado para representar de forma clara las ubicaciones de un bloque.
@@ -26,16 +27,17 @@ from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Importa el mode
 from Motor.modelos import BloqueRed, ResultadoSemantico, Token  # Importa los modelos requeridos por la fase semántica.
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True)  # Impide modificar accidentalmente la correspondencia entre un bloque y sus tokens originales.
 class UbicacionBloqueSemantico:  # Conserva los tokens originales asociados con un bloque aceptado por el parser.
     token_ip: Token  # Guarda el token que contiene la dirección IPv4 escrita por el usuario.
     token_mascara: Token  # Guarda el token que contiene la máscara CIDR del bloque.
+    token_hosts: Token  # Guarda la palabra reservada HOSTS para ubicar diagnósticos relacionados con la lista completa.
     tokens_hosts: tuple[Token, ...]  # Guarda en orden los tokens correspondientes con cada cantidad de HOSTS.
     token_nombre: Token | None = None  # Guarda el identificador escrito después de NAME cuando existe.
 
 
 class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya superaron las fases anteriores.
-    def __init__(self, bloques: list[BloqueRed], tokens: list[Token]):  # Recibe los bloques sintácticos y los tokens originales necesarios para ubicar errores.
+    def __init__(self, bloques: list[BloqueRed], tokens: list[Token]):  # Recibe bloques sintácticos y tokens originales para ubicar los errores.
         self._bloques = list(bloques)  # Conserva una copia de los bloques para evitar modificar directamente el resultado sintáctico.
         self._tokens = list(tokens)  # Conserva una copia de los tokens para relacionar cada regla semántica con el código fuente.
 
@@ -47,22 +49,30 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
             ubicacion = self._localizar_ubicacion_bloque(bloque)  # Recupera los tokens exactos asociados con el bloque actual.
             diagnosticos_bloque: list[Diagnostico] = []  # Conserva solamente los errores semánticos correspondientes con la instrucción actual.
 
-            diagnosticos_mascara = self._validar_mascara(bloque, ubicacion)  # Ejecuta SEM-001 antes de realizar comprobaciones que dependan del prefijo.
+            diagnosticos_mascara = self._validar_mascara(bloque, ubicacion)  # Ejecuta SEM-001 antes de las reglas que dependen del prefijo.
             diagnosticos_bloque.extend(diagnosticos_mascara)  # Agrega los posibles errores relacionados con el rango de la máscara.
 
-            if not diagnosticos_mascara:
+            if not diagnosticos_mascara:  # Permite usar la máscara únicamente cuando su prefijo ya fue validado.
                 diagnosticos_bloque.extend(
                     self._validar_direccion_red(bloque, ubicacion)
-                )  # Ejecuta SEM-002 únicamente cuando la máscara puede utilizarse correctamente para interpretar la red.
+                )  # Ejecuta SEM-002 comprobando que la IP represente realmente el inicio de la red.
 
-            diagnosticos_bloque.extend(
-                self._validar_hosts_positivos(bloque, ubicacion)
-            )  # Ejecuta SEM-003 independientemente de la IP y la máscara porque cada cantidad HOSTS posee significado propio.
+            diagnosticos_hosts = self._validar_hosts_positivos(bloque, ubicacion)  # Ejecuta SEM-003 antes de realizar cálculos de capacidad.
+            diagnosticos_bloque.extend(diagnosticos_hosts)  # Agrega cada cantidad no positiva encontrada dentro de HOSTS.
+
+            if not diagnosticos_mascara and not diagnosticos_hosts:  # Ejecuta capacidad únicamente con prefijo válido y cantidades positivas.
+                diagnosticos_bloque.extend(
+                    self._validar_capacidad_individual(bloque, ubicacion)
+                )  # Ejecuta primero SEM-005 para comprobar cada solicitud individual.
+
+                diagnosticos_bloque.extend(
+                    self._validar_capacidad_total(bloque, ubicacion)
+                )  # Ejecuta después SEM-004 para comprobar la suma real de bloques VLSM.
 
             diagnosticos.extend(diagnosticos_bloque)  # Incorpora al resultado general todos los errores encontrados dentro del bloque actual.
 
-            if not diagnosticos_bloque:
-                bloques_validos.append(bloque)  # Conserva únicamente los bloques que superaron todas las reglas semánticas implementadas.
+            if not diagnosticos_bloque:  # Comprueba si la instrucción superó todas las reglas implementadas.
+                bloques_validos.append(bloque)  # Conserva únicamente los bloques que pueden continuar hacia VLSM.
 
         return ResultadoSemantico(
             bloques_validos=bloques_validos,
@@ -73,7 +83,7 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         prefijo = int(bloque.mascara_subred[1:])  # Convierte únicamente los dígitos situados después de la diagonal.
         diagnosticos: list[Diagnostico] = []  # Prepara la colección de errores producidos por esta regla.
 
-        if 8 <= prefijo <= 30:
+        if 8 <= prefijo <= 30:  # Comprueba que el prefijo esté dentro del dominio permitido por TecNet Finder.
             return diagnosticos  # Finaliza sin errores cuando el prefijo pertenece al rango permitido.
 
         token_mascara = ubicacion.token_mascara if ubicacion is not None else None  # Recupera la posición exacta de la máscara cuando fue posible localizar el bloque.
@@ -103,8 +113,8 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         )  # Obtiene la red real asociada con la IP y la máscara sin rechazar automáticamente una dirección de host.
         direccion_red_correcta = str(red.network_address)  # Recupera la dirección que realmente identifica el comienzo del bloque IPv4.
 
-        if bloque.direccion_ip == direccion_red_correcta:
-            return diagnosticos  # Finaliza sin errores cuando la IP escrita ya representa la dirección de red.
+        if bloque.direccion_ip == direccion_red_correcta:  # Comprueba si la IP proporcionada ya coincide con la dirección de red.
+            return diagnosticos  # Finaliza sin errores cuando la IP escrita representa correctamente la red.
 
         token_ip = ubicacion.token_ip if ubicacion is not None else None  # Recupera la ubicación exacta de la dirección escrita por el usuario.
 
@@ -130,12 +140,12 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
         diagnosticos: list[Diagnostico] = []  # Prepara la colección donde se almacenará cada cantidad no positiva.
 
         for indice_host, cantidad_hosts in enumerate(bloque.cantidades_hosts):  # Conserva el índice original para relacionar cada cantidad con su token exacto.
-            if cantidad_hosts > 0:
+            if cantidad_hosts > 0:  # Comprueba si la solicitud posee al menos un host utilizable.
                 continue  # Ignora cualquier solicitud positiva porque cumple la regla semántica.
 
             token_host = None  # Considera inicialmente que no se dispone de una posición exacta para la cantidad actual.
 
-            if ubicacion is not None and indice_host < len(ubicacion.tokens_hosts):
+            if ubicacion is not None and indice_host < len(ubicacion.tokens_hosts):  # Comprueba que exista un token asociado con la cantidad actual.
                 token_host = ubicacion.tokens_hosts[indice_host]  # Recupera el NUMBER correspondiente con la posición original dentro de HOSTS.
 
             diagnosticos.append(
@@ -155,79 +165,152 @@ class AnalizadorSemantico:  # Comprueba el significado de los bloques que ya sup
 
         return diagnosticos  # Devuelve todos los errores encontrados dentro de la lista HOSTS.
 
+    def _validar_capacidad_individual(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-005 sobre cada solicitud individual de hosts.
+        diagnosticos: list[Diagnostico] = []  # Reúne las solicitudes individuales que excedan la capacidad de la red base.
+        prefijo = int(bloque.mascara_subred[1:])  # Recupera el prefijo previamente validado por SEM-001.
+        capacidad_red = 1 << (32 - prefijo)  # Calcula la cantidad total de direcciones contenidas por la red base.
+
+        for indice_host, cantidad_hosts in enumerate(bloque.cantidades_hosts):  # Evalúa individualmente cada requerimiento HOSTS.
+            tamano_bloque = self._calcular_tamano_bloque_vlsm(cantidad_hosts)  # Obtiene el bloque potencia de dos realmente requerido por VLSM.
+
+            if tamano_bloque <= capacidad_red:  # Comprueba si la solicitud individual todavía cabe dentro de la red completa.
+                continue  # Evita generar SEM-005 cuando la red base puede contener ese requerimiento por sí solo.
+
+            token_host = None  # Considera inicialmente que la cantidad no posee una ubicación exacta disponible.
+
+            if ubicacion is not None and indice_host < len(ubicacion.tokens_hosts):  # Comprueba que el NUMBER original haya sido localizado.
+                token_host = ubicacion.tokens_hosts[indice_host]  # Recupera el token exacto asociado con la solicitud demasiado grande.
+
+            diagnosticos.append(
+                crear_diagnostico(
+                    codigo="SEM-005",
+                    mensaje=(
+                        f"La solicitud de {cantidad_hosts} hosts requiere un bloque VLSM "
+                        f"de {tamano_bloque} direcciones, pero la red "
+                        f"{bloque.direccion_ip}{bloque.mascara_subred} dispone solamente "
+                        f"de {capacidad_red} direcciones."
+                    ),
+                    linea=token_host.linea if token_host is not None else bloque.linea_origen,
+                    columna=token_host.columna if token_host is not None else None,
+                    longitud=len(token_host.valor) if token_host is not None else len(str(cantidad_hosts)),
+                    fragmento=token_host.valor if token_host is not None else str(cantidad_hosts),
+                )
+            )  # Registra SEM-005 exactamente sobre la cantidad HOSTS que excede por sí sola la capacidad disponible.
+
+        return diagnosticos  # Devuelve un diagnóstico independiente para cada solicitud individual demasiado grande.
+
+    def _validar_capacidad_total(self, bloque: BloqueRed, ubicacion: UbicacionBloqueSemantico | None) -> list[Diagnostico]:  # Comprueba SEM-004 usando la capacidad real requerida por todos los bloques VLSM.
+        diagnosticos: list[Diagnostico] = []  # Prepara la colección utilizada por la validación de capacidad global.
+        prefijo = int(bloque.mascara_subred[1:])  # Recupera el prefijo que ya superó SEM-001.
+        capacidad_red = 1 << (32 - prefijo)  # Calcula el total de direcciones disponibles dentro de la red base.
+        capacidad_requerida = sum(
+            self._calcular_tamano_bloque_vlsm(cantidad_hosts)
+            for cantidad_hosts in bloque.cantidades_hosts
+        )  # Suma los tamaños potencia de dos que VLSM necesita realmente para todas las solicitudes.
+
+        if capacidad_requerida <= capacidad_red:  # Comprueba si la combinación completa cabe dentro de la red base.
+            return diagnosticos  # Finaliza sin SEM-004 cuando la capacidad disponible es suficiente.
+
+        token_hosts = ubicacion.token_hosts if ubicacion is not None else None  # Recupera la palabra HOSTS para relacionar el diagnóstico con la lista completa.
+
+        diagnosticos.append(
+            crear_diagnostico(
+                codigo="SEM-004",
+                mensaje=(
+                    f"Las subredes solicitadas requieren en conjunto "
+                    f"{capacidad_requerida} direcciones mediante VLSM, pero la red "
+                    f"{bloque.direccion_ip}{bloque.mascara_subred} dispone solamente "
+                    f"de {capacidad_red} direcciones."
+                ),
+                linea=token_hosts.linea if token_hosts is not None else bloque.linea_origen,
+                columna=token_hosts.columna if token_hosts is not None else None,
+                longitud=len(token_hosts.valor) if token_hosts is not None else len("HOSTS"),
+                fragmento=token_hosts.valor if token_hosts is not None else "HOSTS",
+            )
+        )  # Registra SEM-004 sobre la sección HOSTS porque el error depende de la combinación completa de solicitudes.
+
+        return diagnosticos  # Devuelve el exceso global detectado para impedir que el bloque continúe hacia VLSM.
+
+    def _calcular_tamano_bloque_vlsm(self, cantidad_hosts: int) -> int:  # Calcula la potencia de dos mínima capaz de contener hosts, red y broadcast.
+        direcciones_necesarias = cantidad_hosts + 2  # Agrega las direcciones reservadas para identificar la red y el broadcast.
+        exponente = (direcciones_necesarias - 1).bit_length()  # Obtiene sin flotantes el exponente de la siguiente potencia de dos.
+        return 1 << exponente  # Devuelve el tamaño real que ocupará la subred dentro del espacio IPv4.
+
     def _localizar_ubicacion_bloque(self, bloque: BloqueRed) -> UbicacionBloqueSemantico | None:  # Relaciona un bloque sintáctico con los tokens exactos que lo originaron.
         for indice_inicio, token_inicio in enumerate(self._tokens):  # Examina cada token que podría representar el comienzo de una instrucción.
-            if token_inicio.tipo != "IP" or token_inicio.linea != bloque.linea_origen:
+            if token_inicio.tipo != "IP" or token_inicio.linea != bloque.linea_origen:  # Comprueba que el token pueda iniciar exactamente el bloque buscado.
                 continue  # Descarta cualquier token que no pueda iniciar el bloque recibido.
 
             posicion = indice_inicio + 1  # Avanza desde la palabra reservada IP hacia la dirección IPv4.
 
-            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "IP_ADDRESS":
+            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "IP_ADDRESS":  # Comprueba que exista una dirección completa después de IP.
                 continue  # Descarta una secuencia que no contenga la dirección esperada después de IP.
 
             token_ip = self._tokens[posicion]  # Conserva el token de la dirección para utilizar su ubicación posteriormente.
 
-            if token_ip.valor != bloque.direccion_ip:
+            if token_ip.valor != bloque.direccion_ip:  # Comprueba que la dirección encontrada corresponda con el bloque actual.
                 continue  # Descarta una instrucción cuya dirección no coincida con el bloque buscado.
 
             posicion += 1  # Avanza desde la dirección IPv4 hacia la palabra reservada MASK.
 
-            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "MASK":
+            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "MASK":  # Comprueba la siguiente parte obligatoria de la instrucción.
                 continue  # Descarta una secuencia que no corresponde con la estructura de un bloque válido.
 
             posicion += 1  # Avanza desde MASK hacia el token que contiene la máscara CIDR.
 
-            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "SUBNET_MASK":
-                continue  # Descarta una secuencia donde no exista la máscara esperada.
+            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "SUBNET_MASK":  # Comprueba que exista la máscara esperada.
+                continue  # Descarta una secuencia donde no exista la máscara reconocida por el parser.
 
             token_mascara = self._tokens[posicion]  # Conserva la máscara junto con su línea y columna originales.
 
-            if token_mascara.valor != bloque.mascara_subred:
+            if token_mascara.valor != bloque.mascara_subred:  # Comprueba que la máscara corresponda con el bloque buscado.
                 continue  # Descarta otra instrucción que utilice una máscara diferente.
 
             posicion += 1  # Avanza desde la máscara hacia la palabra reservada HOSTS.
 
-            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "HOSTS":
+            if posicion >= len(self._tokens) or self._tokens[posicion].tipo != "HOSTS":  # Comprueba que exista la sección obligatoria de cantidades.
                 continue  # Descarta una secuencia que no posea la sección HOSTS esperada.
 
+            token_hosts = self._tokens[posicion]  # Conserva también la palabra HOSTS para diagnósticos relacionados con toda la lista.
             posicion += 1  # Coloca el recorrido sobre la primera cantidad escrita después de HOSTS.
             tokens_hosts: list[Token] = []  # Reúne los NUMBER que pertenecen exclusivamente a la lista de hosts actual.
 
             while posicion < len(self._tokens):  # Recorre la lista de cantidades hasta encontrar NAME u otro elemento.
                 token_actual = self._tokens[posicion]  # Obtiene el token ubicado actualmente dentro de la lista.
 
-                if token_actual.tipo == "NUMBER":
+                if token_actual.tipo == "NUMBER":  # Comprueba si el token representa una solicitud individual de hosts.
                     tokens_hosts.append(token_actual)  # Conserva cada cantidad con su ubicación exacta dentro del código fuente.
                     posicion += 1  # Avanza hacia una posible coma o hacia el siguiente elemento.
                     continue  # Continúa recorriendo la lista HOSTS.
 
-                if token_actual.tipo == "COMMA":
-                    posicion += 1  # Omite la coma porque solamente funciona como separador entre cantidades.
+                if token_actual.tipo == "COMMA":  # Comprueba si el elemento solamente separa dos cantidades.
+                    posicion += 1  # Omite la coma porque no representa una solicitud por sí misma.
                     continue  # Continúa buscando el siguiente NUMBER de la lista.
 
                 break  # Finaliza la lectura de HOSTS cuando aparece NAME u otro comienzo de instrucción.
 
             cantidades_encontradas = [int(token.valor) for token in tokens_hosts]  # Convierte los NUMBER encontrados para compararlos con el resultado sintáctico.
 
-            if cantidades_encontradas != bloque.cantidades_hosts:
+            if cantidades_encontradas != bloque.cantidades_hosts:  # Comprueba que la lista localizada sea exactamente la del bloque buscado.
                 continue  # Descarta una instrucción parecida cuya lista HOSTS no coincide exactamente.
 
             token_nombre = None  # Considera inicialmente que la instrucción no utilizó la sección opcional NAME.
             nombre_encontrado = None  # Conserva el valor textual del nombre cuando aparece en la instrucción.
 
-            if posicion < len(self._tokens) and self._tokens[posicion].tipo == "NAME":
+            if posicion < len(self._tokens) and self._tokens[posicion].tipo == "NAME":  # Comprueba si la instrucción posee el componente opcional NAME.
                 posicion += 1  # Avanza desde la palabra reservada NAME hacia su identificador.
 
-                if posicion < len(self._tokens) and self._tokens[posicion].tipo == "IDENTIFIER":
+                if posicion < len(self._tokens) and self._tokens[posicion].tipo == "IDENTIFIER":  # Comprueba que exista un nombre reconocido.
                     token_nombre = self._tokens[posicion]  # Conserva el token del nombre para futuras reglas semánticas.
                     nombre_encontrado = token_nombre.valor  # Obtiene el texto utilizado para distinguir instrucciones similares.
 
-            if nombre_encontrado != bloque.nombre:
+            if nombre_encontrado != bloque.nombre:  # Comprueba que el nombre localizado corresponda con el resultado sintáctico.
                 continue  # Descarta otro bloque que coincida en red y hosts pero utilice un nombre diferente.
 
             return UbicacionBloqueSemantico(
                 token_ip=token_ip,
                 token_mascara=token_mascara,
+                token_hosts=token_hosts,
                 tokens_hosts=tuple(tokens_hosts),
                 token_nombre=token_nombre,
             )  # Devuelve todos los tokens relevantes del bloque cuya correspondencia fue comprobada.
