@@ -1,103 +1,131 @@
 # CASO I1: Error léxico por palabra reservada mal escrita
 
 IP 192.168.1.0 MAS /24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Códigos esperados: LEX-001, SIN-002. Debe generar error léxico porque MAS es un identificador fuera de lugar y error sintáctico porque después de la IP no aparece MASK.
+Salida esperada: caso inválido. Códigos esperados: LEX-001, SIN-002. Debe generar LEX-001 porque MAS aparece como identificador fuera de lugar y SIN-002 porque después de la dirección IP no se reconoció la palabra reservada MASK.
 
 # CASO I2: Error léxico por símbolo no reconocido
 
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina @
-Salida esperada: caso inválido. Código esperado: LEX-002. Debe generar error léxico por el símbolo @, ya que no pertenece al lenguaje definido.
+Salida esperada: caso inválido. Código esperado: LEX-002. Debe detectar el símbolo @ como un elemento que no pertenece al lenguaje definido.
 
 # CASO I3: Error léxico por identificador fuera de lugar
 
 IP 192.168.1.0 MASK /24 HOSTS 50 Oficina
-Salida esperada: caso inválido. Código esperado: LEX-001. Debe generar error léxico porque Oficina aparece como identificador sin estar después de NAME.
+Salida esperada: caso inválido. Código esperado: LEX-001. Debe generar un error léxico porque Oficina aparece como identificador sin estar precedido por NAME.
 
 # CASO I4: Error sintáctico por IP incompleta
 
 IP 192.168.1. MASK /24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-001. Debe generar error sintáctico porque después de IP se esperaba una dirección IP completa.
+Salida esperada: caso inválido. Código esperado: SIN-001. Debe generar un error sintáctico porque después de IP se esperaba una dirección IPv4 completa.
 
 # CASO I5: Error sintáctico por falta de MASK
 
 IP 192.168.1.0 /24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-002. Debe generar error sintáctico porque después de la dirección IP se esperaba la palabra reservada MASK.
+Salida esperada: caso inválido. Código esperado: SIN-002. Debe generar un error sintáctico porque después de la dirección IP se esperaba la palabra reservada MASK.
 
 # CASO I6: Error sintáctico por máscara sin diagonal
 
 IP 192.168.1.0 MASK 24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-003. Debe generar error sintáctico porque después de MASK se esperaba una máscara CIDR con diagonal, por ejemplo /24.
+Salida esperada: caso inválido. Código esperado: SIN-003. Debe generar un error sintáctico porque después de MASK se esperaba una máscara CIDR con diagonal, por ejemplo /24.
 
 # CASO I7: Error sintáctico por falta de cantidad de hosts
 
 IP 192.168.1.0 MASK /24 HOSTS NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-004. Debe generar error sintáctico porque después de HOSTS se esperaba al menos un NUMBER.
+Salida esperada: caso inválido. Código esperado: SIN-004. Debe generar un error sintáctico porque después de HOSTS se esperaba al menos una cantidad numérica.
 
 # CASO I8: Error sintáctico por doble coma en lista de hosts
 
 IP 192.168.1.0 MASK /24 HOSTS 100,,200 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-005. Debe generar error sintáctico porque después de una coma se esperaba otro NUMBER.
+Salida esperada: caso inválido. Código esperado: SIN-005. Debe generar un error sintáctico porque después de una coma se esperaba otro NUMBER.
 
 # CASO I9: Error sintáctico por coma final sin otro host
 
 IP 192.168.1.0 MASK /24 HOSTS 100,
-Salida esperada: caso inválido. Código esperado: SIN-005. Debe generar error sintáctico porque después de la coma se esperaba otra cantidad de hosts.
+Salida esperada: caso inválido. Código esperado: SIN-005. Debe generar un error sintáctico porque la lista de HOSTS termina con una coma sin otra cantidad posterior.
 
 # CASO I10: Error sintáctico por NAME sin identificador
 
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME
-Salida esperada: caso inválido. Código esperado: SIN-006. Debe generar error sintáctico porque después de NAME se esperaba un IDENTIFIER con el nombre de la red.
+Salida esperada: caso inválido. Código esperado: SIN-006. Debe generar un error sintáctico porque después de NAME se esperaba un identificador.
 
 # CASO I11: Error sintáctico por NAME antes de iniciar otra instrucción
 
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME
-IP 10.0.0.0 MASK /8 HOSTS 100 NAME Central
-Salida esperada: caso inválido con procesamiento parcial. Código esperado: SIN-006. Debe generar error sintáctico porque la primera instrucción termina con NAME sin identificador antes de iniciar otra instrucción.
+IP 10.0.0.0 MASK /24 HOSTS 20 NAME Central
+Salida esperada: caso inválido con procesamiento parcial. Códigos esperados: SIN-006, ADV-001. Debe rechazar la primera instrucción por dejar NAME incompleto y conservar el segundo bloque válido para continuar el procesamiento.
 
 # CASO I12: Error sintáctico por instrucción duplicada exacta
 
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-007. Debe generar error sintáctico porque la segunda instrucción está duplicada exactamente.
+Salida esperada: caso inválido con procesamiento parcial. Códigos esperados: SIN-007, ADV-001. Debe conservar una sola copia válida, reportar la instrucción duplicada y advertir que continuará únicamente con los bloques aceptados.
 
-# CASO I13: Error sintáctico por orden incorrecto de tokens
+# CASO I13: Error sintáctico porque HOSTS aparece donde se esperaba MASK
 
 IP 192.168.1.0 HOSTS 50 MASK /24 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SIN-002. Debe generar error sintáctico porque después de la dirección IP se esperaba MASK, pero apareció HOSTS.
+Salida esperada: caso inválido. Código esperado: SIN-002. Debe generar un error sintáctico porque después de la dirección IP se esperaba MASK y apareció HOSTS.
 
 # CASO I14: Error semántico por máscara fuera de rango
 
 IP 192.168.1.0 MASK /31 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SEM-001. Debe generar error semántico porque la máscara /31 está fuera del rango permitido /8 a /30. Como la máscara no supera SEM-001, no se ejecutan sobre este bloque las comprobaciones de capacidad que dependen de un prefijo válido.
+Salida esperada: caso inválido. Código esperado: SEM-001. Debe generar un error semántico porque la máscara /31 se encuentra fuera del rango permitido de /8 a /30.
 
 # CASO I15: Error semántico porque la IP no es dirección de red
 
 IP 192.168.1.5 MASK /24 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SEM-002. Debe generar error semántico porque 192.168.1.5 no es dirección de red para /24. La red correcta sería 192.168.1.0.
+Salida esperada: caso inválido. Código esperado: SEM-002. Debe generar un error semántico porque 192.168.1.5 es una dirección de host para /24 y la dirección de red correspondiente es 192.168.1.0.
 
 # CASO I16: Error semántico por cantidad de hosts igual a cero
 
 IP 192.168.1.0 MASK /24 HOSTS 0 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SEM-003. Debe generar error semántico porque la cantidad de hosts debe ser mayor que cero.
+Salida esperada: caso inválido. Código esperado: SEM-003. Debe generar un error semántico porque cada cantidad solicitada en HOSTS debe ser mayor que cero.
 
-# CASO I17: Error semántico por cantidad de hosts demasiado grande para la red base
+# CASO I17: Error semántico por solicitud individual demasiado grande
 
 IP 192.168.1.0 MASK /30 HOSTS 50 NAME Oficina
-Salida esperada: caso inválido. Códigos esperados: SEM-004, SEM-005. Debe generar SEM-005 porque una solicitud de 50 hosts requiere un bloque mayor que toda la red /30, y SEM-004 porque la capacidad total requerida también excede la capacidad disponible.
+Salida esperada: caso inválido. Códigos esperados: SEM-004, SEM-005. Debe generar SEM-005 porque una solicitud de 50 hosts necesita un bloque mayor que toda la red /30 y SEM-004 porque la capacidad total requerida también excede la disponible.
 
 # CASO I18: Error semántico porque el total de subredes no cabe
 
 IP 192.168.1.0 MASK /24 HOSTS 100,100,100 NAME Oficina
-Salida esperada: caso inválido. Código esperado: SEM-004. Debe generar error semántico porque cada solicitud puede caber individualmente, pero los tres bloques VLSM requieren en total 384 direcciones y una red /24 solamente dispone de 256.
+Salida esperada: caso inválido. Código esperado: SEM-004. Cada solicitud puede formar individualmente una subred, pero los tres bloques VLSM requieren en conjunto más direcciones de las disponibles en una red /24.
 
 # CASO I19: Error semántico por redes base traslapadas
 
 IP 192.168.1.0 MASK /24 HOSTS 50 NAME Oficina
 IP 192.168.1.128 MASK /25 HOSTS 50 NAME Laboratorio
-Salida esperada: caso inválido con procesamiento parcial. Código esperado: SEM-006. Debe generar error semántico porque la red 192.168.1.128/25 se traslapa con la red base 192.168.1.0/24.
+Salida esperada: caso inválido con procesamiento parcial. Código esperado: SEM-006. La segunda red debe rechazarse porque su rango se encuentra dentro de la primera red base, mientras que la primera puede conservarse como bloque semánticamente válido.
 
 # CASO I20: Errores mixtos léxicos, sintácticos y semánticos
 
 IP 192.168.1.5 MASK /31 HOSTS 0 NAME Red @
 IP 10.0.0.0 MAS /8 HOSTS 100,,200 NAME
-Salida esperada: caso inválido con varios diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Debe generar errores léxicos, sintácticos y semánticos. La primera instrucción produce SEM-001 por la máscara /31 y SEM-003 por HOSTS 0. SEM-002 no se evalúa en esa instrucción porque la relación entre IP y red depende primero de una máscara semánticamente válida.
+Salida esperada: caso inválido con varios diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Debe producir diagnósticos de las tres fases. La primera instrucción contiene problemas semánticos y un símbolo desconocido, mientras que la segunda contiene una palabra no válida en lugar de MASK y una lista de hosts mal formada.
+
+# CASO I21: Error léxico por palabra reservada con mayúsculas incorrectas
+
+IP 192.168.1.0 mask /24 HOSTS 50 NAME Oficina
+Salida esperada: caso inválido. Códigos esperados: LEX-003, SIN-002. Debe generar LEX-003 porque mask debe escribirse exactamente como MASK y posteriormente SIN-002 porque el parser no recibe una palabra reservada MASK válida.
+
+# CASO I22: Error léxico por número unido directamente a texto
+
+IP 192.168.1.0 MASK /24 HOSTS 50ABC
+Salida esperada: caso inválido. Códigos esperados: LEX-004, SIN-004. Debe generar LEX-004 porque 50ABC mezcla un valor numérico con texto sin separación y SIN-004 porque la fase sintáctica termina sin recibir una cantidad HOSTS válida.
+
+# CASO I23: Error léxico por máscara CIDR unida directamente a texto
+
+IP 192.168.1.0 MASK /24HOSTS 50 NAME Oficina
+Salida esperada: caso inválido. Códigos esperados: LEX-004, SIN-003. Debe generar LEX-004 porque /24HOSTS une una máscara numérica con texto y SIN-003 porque el parser no recibe una máscara CIDR válida después de MASK.
+
+# CASO I24: Error sintáctico por comenzar con tokens fuera de orden y recuperación posterior
+
+MASK /24 HOSTS 50
+IP 10.0.0.0 MASK /24 HOSTS 20 NAME Segunda
+Salida esperada: caso inválido con procesamiento parcial. Códigos esperados: SIN-008, ADV-001. Debe generar SIN-008 porque la primera línea comienza fuera de la estructura esperada, recuperarse en la siguiente instrucción y procesar correctamente la red Segunda.
+
+# CASO I25: Errores de las tres fases con recuperación de un bloque válido
+
+IP 192.168.1.5 MASK /31 HOSTS 0 NAME Red @
+IP 10.0.0.0 MAS /24 HOSTS 50 NAME Incorrecta
+IP 172.16.0.0 MASK /24 HOSTS 20 NAME Correcta
+Salida esperada: caso inválido con procesamiento parcial y varios diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. Debe demostrar que TecNet Finder puede reportar errores léxicos, sintácticos y semánticos y aun así recuperar la tercera instrucción válida para continuar con su cálculo VLSM.

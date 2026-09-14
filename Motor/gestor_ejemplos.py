@@ -10,11 +10,15 @@
 # Mantiene la lectura de ejemplos separada de la interfaz para
 # que los casos puedan reutilizarse posteriormente en pruebas
 # automáticas sin depender de PySide6.
+#
+# También conserva instrucciones deliberadamente incorrectas
+# que comienzan con otras palabras reservadas para permitir
+# probar errores de orden y recuperación sintáctica.
 # ============================================================
 
-import re  # Importa expresiones regulares para reconocer las líneas que contienen instrucciones TecNet Finder.
-from dataclasses import dataclass  # Importa dataclass para representar cada ejemplo mediante una estructura sencilla.
-from pathlib import Path  # Importa Path para localizar los archivos de ejemplos desde la raíz del proyecto.
+import re  # Permite reconocer líneas que representan código del lenguaje incluso cuando están deliberadamente mal ordenadas.
+from dataclasses import dataclass  # Permite representar cada ejemplo mediante una estructura sencilla e inmutable.
+from pathlib import Path  # Permite localizar los archivos de ejemplos desde la raíz real del proyecto.
 
 
 @dataclass(frozen=True)
@@ -26,100 +30,104 @@ class EjemploCodigo:  # Representa un caso individual cargado desde los archivos
 
 
 def acortar_texto(texto: str, limite: int = 95) -> str:  # Construye una versión compacta adecuada para mostrar dentro de una tabla.
-    texto_limpio = str(texto).replace("\n", " | ").strip()  # Sustituye saltos de línea para mostrar varias instrucciones en una sola celda.
+    texto_limpio = str(texto).replace("\n", " | ").strip()  # Sustituye saltos de línea solamente en la representación visual.
 
-    if len(texto_limpio) <= limite:  # Comprueba si el contenido ya cabe completamente dentro del límite solicitado.
-        return texto_limpio  # Devuelve el texto original sin modificaciones innecesarias.
+    if len(texto_limpio) <= limite:
+        return texto_limpio  # Devuelve íntegro el contenido cuando ya cabe en el espacio disponible.
 
-    return texto_limpio[: limite - 3] + "..."  # Recorta únicamente la vista previa y conserva intacto el contenido real.
+    return texto_limpio[: limite - 3] + "..."  # Recorta únicamente la vista previa sin alterar el código verdadero.
 
 
 class GestorEjemplos:  # Coordina la carga de los archivos disponibles dentro de la carpeta Ejemplos.
-    def __init__(self, raiz_proyecto: Path | None = None):  # Permite utilizar la raíz real del proyecto o una ubicación alternativa durante pruebas.
-        self.raiz_proyecto = raiz_proyecto or Path(__file__).resolve().parent.parent  # Obtiene TecNet-Finder cuando no se proporciona otra ubicación.
-        self.carpeta_ejemplos = self.raiz_proyecto / "Ejemplos"  # Localiza la carpeta donde se conservan los casos heredados.
-        self.ruta_validos = self.carpeta_ejemplos / "entrada_valida.txt"  # Conserva la ubicación oficial de las entradas válidas.
-        self.ruta_invalidos = self.carpeta_ejemplos / "entradas_invalidas.txt"  # Conserva la ubicación oficial de las entradas inválidas.
+    def __init__(self, raiz_proyecto: Path | None = None):
+        self.raiz_proyecto = raiz_proyecto or Path(__file__).resolve().parent.parent  # Utiliza TecNet-Finder como raíz cuando no se proporciona una alternativa.
+        self.carpeta_ejemplos = self.raiz_proyecto / "Ejemplos"  # Localiza la carpeta que contiene los casos reutilizables.
+        self.ruta_validos = self.carpeta_ejemplos / "entrada_valida.txt"  # Conserva la ruta oficial de los ejemplos válidos.
+        self.ruta_invalidos = self.carpeta_ejemplos / "entradas_invalidas.txt"  # Conserva la ruta oficial de los ejemplos inválidos.
 
-    def cargar_ejemplos(self) -> tuple[list[EjemploCodigo], list[EjemploCodigo]]:  # Lee y transforma las dos categorías utilizadas por el selector.
-        texto_validos = self._leer_archivo(self.ruta_validos)  # Recupera el contenido completo del archivo de entradas válidas.
-        texto_invalidos = self._leer_archivo(self.ruta_invalidos)  # Recupera el contenido completo del archivo de entradas inválidas.
+    def cargar_ejemplos(self) -> tuple[list[EjemploCodigo], list[EjemploCodigo]]:
+        texto_validos = self._leer_archivo(self.ruta_validos)  # Recupera el contenido completo de los ejemplos válidos.
+        texto_invalidos = self._leer_archivo(self.ruta_invalidos)  # Recupera el contenido completo de los ejemplos inválidos.
+        ejemplos_validos = self.analizar_texto(texto_validos, "Válida")  # Convierte cada caso válido en una estructura reutilizable.
+        ejemplos_invalidos = self.analizar_texto(texto_invalidos, "Inválida")  # Convierte cada caso inválido en una estructura reutilizable.
 
-        ejemplos_validos = self.analizar_texto(texto_validos, "Válida")  # Convierte el primer archivo en casos estructurados.
-        ejemplos_invalidos = self.analizar_texto(texto_invalidos, "Inválida")  # Convierte el segundo archivo en casos estructurados.
+        return ejemplos_validos, ejemplos_invalidos  # Devuelve ambas colecciones manteniendo su separación original.
 
-        return ejemplos_validos, ejemplos_invalidos  # Devuelve ambas colecciones manteniendo sus categorías separadas.
+    def _leer_archivo(self, ruta: Path) -> str:
+        if not ruta.exists():
+            return ""  # Permite que el programa siga funcionando aunque algún archivo de ejemplos no esté disponible.
 
-    def _leer_archivo(self, ruta: Path) -> str:  # Recupera un archivo de ejemplos sin producir errores cuando el recurso no existe.
-        if not ruta.exists():  # Comprueba que el archivo realmente se encuentre disponible.
-            return ""  # Permite que la interfaz informe posteriormente que no existen casos.
+        return ruta.read_text(encoding="utf-8")  # Lee los ejemplos conservando correctamente los caracteres utilizados en español.
 
-        return ruta.read_text(encoding="utf-8")  # Lee el contenido conservando correctamente los caracteres del español.
+    def _es_linea_codigo(self, contenido: str) -> bool:
+        patron_inicio = r"^(?:IP(?=\s|\d|$)|MASK(?=\s|/|$)|HOSTS(?=\s|\d|,|$)|NAME(?=\s|$))"  # Reconoce posibles inicios del lenguaje aunque el orden sea intencionalmente incorrecto.
 
-    def analizar_texto(self, texto: str, tipo: str) -> list[EjemploCodigo]:  # Extrae casos individuales siguiendo la estructura utilizada por los archivos originales.
-        ejemplos: list[EjemploCodigo] = []  # Conserva los registros creados en el mismo orden del archivo.
-        titulo_actual = ""  # Guarda temporalmente el título relacionado con las siguientes instrucciones.
-        comandos_actuales: list[str] = []  # Acumula una o varias instrucciones pertenecientes al mismo caso.
-        salida_actual = ""  # Conserva temporalmente la salida esperada asociada con el caso.
+        return re.match(patron_inicio, contenido) is not None  # Permite conservar casos como MASK... para comprobar SIN-008 en vez de descartarlos antes del compilador.
 
-        def finalizar_actual() -> None:  # Convierte el contenido temporal en un ejemplo antes de comenzar el siguiente caso.
-            nonlocal titulo_actual, comandos_actuales, salida_actual  # Permite actualizar las variables utilizadas por el analizador exterior.
+    def analizar_texto(self, texto: str, tipo: str) -> list[EjemploCodigo]:
+        ejemplos: list[EjemploCodigo] = []  # Conserva todos los casos encontrados respetando el mismo orden del archivo.
+        titulo_actual = ""  # Guarda temporalmente el título perteneciente al caso que se está construyendo.
+        comandos_actuales: list[str] = []  # Acumula todas las líneas de código pertenecientes al mismo ejemplo.
+        salida_actual = ""  # Conserva temporalmente la descripción del resultado esperado.
 
-            if comandos_actuales:  # Comprueba que realmente exista alguna instrucción que deba conservarse.
-                titulo = titulo_actual or f"{tipo} #{len(ejemplos) + 1}"  # Genera un nombre sencillo solamente cuando el archivo no proporcionó título.
-                comando = "\n".join(comando.strip() for comando in comandos_actuales if comando.strip())  # Une las instrucciones pertenecientes al mismo caso.
+        def finalizar_actual() -> None:
+            nonlocal titulo_actual, comandos_actuales, salida_actual  # Permite cerrar y limpiar el caso construido por la función exterior.
 
-                ejemplos.append(  # Agrega el registro completamente estructurado a la colección final.
+            if comandos_actuales:
+                titulo = titulo_actual or f"{tipo} #{len(ejemplos) + 1}"  # Genera un título auxiliar únicamente cuando el archivo no proporcionó uno.
+                comando = "\n".join(comando.strip() for comando in comandos_actuales if comando.strip())  # Conserva juntas las instrucciones pertenecientes al mismo caso.
+
+                ejemplos.append(
                     EjemploCodigo(
                         tipo=tipo,
                         titulo=titulo,
                         comando=comando,
                         salida_esperada=salida_actual.strip(),
                     )
-                )
+                )  # Registra el ejemplo completo para la interfaz y las pruebas.
 
-            titulo_actual = ""  # Limpia el título temporal para el siguiente caso.
-            comandos_actuales = []  # Vacía las instrucciones ya almacenadas.
-            salida_actual = ""  # Descarta la salida esperada del ejemplo finalizado.
+            titulo_actual = ""  # Limpia el título para impedir que se reutilice accidentalmente en el siguiente caso.
+            comandos_actuales = []  # Vacía las instrucciones que ya fueron almacenadas.
+            salida_actual = ""  # Limpia también la descripción asociada con el caso finalizado.
 
-        for linea in texto.splitlines():  # Recorre el archivo conservando el orden original de todas sus líneas.
-            contenido = linea.strip()  # Elimina únicamente espacios exteriores para facilitar la clasificación.
+        for linea in texto.splitlines():
+            contenido = linea.strip()  # Elimina espacios exteriores sin modificar el código significativo de cada ejemplo.
 
-            if not contenido:  # Comprueba si la línea no contiene información útil.
-                continue  # Ignora separaciones visuales existentes dentro del archivo.
+            if not contenido:
+                continue  # Ignora las líneas vacías utilizadas solamente para separar visualmente los casos.
 
-            contenido_minusculas = contenido.lower()  # Crea una variante normalizada utilizada únicamente para comparaciones.
+            contenido_minusculas = contenido.lower()  # Crea una copia normalizada únicamente para reconocer encabezados y descripciones.
 
-            if contenido.startswith("#"):  # Detecta los títulos escritos como comentarios.
-                finalizar_actual()  # Conserva cualquier caso anterior antes de comenzar el nuevo.
-                titulo_actual = contenido.lstrip("#").strip()  # Elimina solamente el marcador de comentario.
-                continue  # Evita interpretar también el título como una instrucción.
+            if contenido.startswith("#"):
+                finalizar_actual()  # Finaliza cualquier ejemplo anterior antes de comenzar un título nuevo.
+                titulo_actual = contenido.lstrip("#").strip()  # Conserva el título sin el marcador utilizado como comentario.
+                continue
 
-            if contenido_minusculas.startswith("caso"):  # Permite también títulos que no utilicen el símbolo de comentario.
-                finalizar_actual()  # Finaliza el registro anterior antes de cambiar de caso.
-                titulo_actual = contenido  # Conserva el texto completo como título.
-                continue  # Continúa directamente con la siguiente línea.
+            if contenido_minusculas.startswith("caso"):
+                finalizar_actual()  # Mantiene compatibilidad con archivos donde los títulos no utilizan #.
+                titulo_actual = contenido  # Conserva el encabezado completo como nombre del nuevo ejemplo.
+                continue
 
-            if contenido_minusculas.startswith(("salida esperada", "resultado esperado")):  # Detecta la descripción asociada con el resultado esperado.
-                salida_actual = contenido  # Conserva íntegramente la salida escrita en el archivo.
-                finalizar_actual()  # Cierra el caso porque la salida esperada marca su final.
-                continue  # Continúa buscando el siguiente ejemplo.
+            if contenido_minusculas.startswith(("salida esperada", "resultado esperado")):
+                salida_actual = contenido  # Conserva íntegra la expectativa porque también es utilizada por las pruebas automáticas.
+                finalizar_actual()  # Cierra el ejemplo porque esta línea marca el final de su definición.
+                continue
 
-            if contenido_minusculas.startswith(("entrada válida", "entrada valida", "entrada inválida", "entrada invalida")):  # Detecta encabezados generales compatibles con archivos anteriores.
-                if not titulo_actual:  # Comprueba que no exista ya un título específico para el caso.
-                    titulo_actual = contenido  # Utiliza provisionalmente el encabezado como nombre.
+            if contenido_minusculas.startswith(("entrada válida", "entrada valida", "entrada inválida", "entrada invalida")):
+                if not titulo_actual:
+                    titulo_actual = contenido  # Utiliza el encabezado general como título solamente cuando todavía no existe otro más específico.
 
-                continue  # Evita interpretar el encabezado como código.
+                continue
 
-            if re.match(r"^IP(?=\s|\d|$)", contenido):  # Comprueba que la línea comience como una instrucción real del DSL.
-                if "<" in contenido or ">" in contenido:  # Detecta ejemplos genéricos que contienen marcadores y no código ejecutable.
-                    continue  # Omite las plantillas utilizadas solamente como explicación.
+            if self._es_linea_codigo(contenido):
+                if "<" in contenido or ">" in contenido:
+                    continue  # Descarta plantillas explicativas que contienen marcadores y no representan código ejecutable real.
 
-                if not titulo_actual and comandos_actuales:  # Detecta archivos antiguos donde cada línea sin título representa un caso independiente.
-                    finalizar_actual()  # Conserva la instrucción anterior antes de comenzar otra.
+                if not titulo_actual and comandos_actuales:
+                    finalizar_actual()  # Mantiene compatibilidad con archivos antiguos donde cada línea independiente representaba un ejemplo.
 
-                comandos_actuales.append(contenido)  # Agrega la instrucción al caso actualmente activo.
+                comandos_actuales.append(contenido)  # Conserva instrucciones correctas y líneas deliberadamente mal ordenadas para que lleguen al compilador.
 
-        finalizar_actual()  # Conserva cualquier ejemplo pendiente después de recorrer la última línea.
+        finalizar_actual()  # Guarda cualquier ejemplo pendiente al terminar de recorrer el archivo.
 
-        return ejemplos  # Devuelve todos los registros encontrados en el archivo.
+        return ejemplos  # Devuelve la colección completa preparada para la interfaz y las pruebas automáticas.
