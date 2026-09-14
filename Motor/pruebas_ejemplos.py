@@ -5,426 +5,261 @@
 #
 # Descripción:
 # Este archivo ejecuta automáticamente los ejemplos almacenados
-# por TecNet Finder utilizando únicamente las características
-# que están disponibles actualmente en el proyecto.
+# por TecNet Finder utilizando el mismo FlujoCompilacion que usa
+# normalmente la aplicación.
 #
-# El estado de cada diagnóstico se consulta directamente desde
-# el catálogo central para evitar listas duplicadas.
+# Recupera los códigos declarados como esperados dentro de los
+# archivos de ejemplos, consulta cuáles están disponibles en el
+# catálogo actual y compara esas expectativas con los
+# diagnósticos realmente producidos.
 #
-# Actualmente las pruebas consideran análisis léxico,
-# sintáctico, semántico, advertencias y cálculo VLSM.
+# Actualmente comprueba análisis léxico, sintáctico, semántico,
+# advertencias y cálculo VLSM sin depender de la interfaz gráfica.
 # ============================================================
 
-import re  # Importa expresiones regulares para extraer únicamente las declaraciones formales de códigos esperados.
-from dataclasses import dataclass, field  # Importa herramientas para representar resultados y resúmenes estructurados.
+import re  # Permite extraer únicamente las declaraciones formales de códigos esperados escritas dentro de los ejemplos.
+from dataclasses import dataclass, field  # Permite representar de forma organizada los resultados individuales y sus resúmenes.
 
-from Motor.diagnosticos import codigo_diagnostico_disponible, codigo_diagnostico_es_error, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes  # Importa el estado centralizado de los diagnósticos.
-from Motor.flujo_compilacion import FlujoCompilacion  # Importa el coordinador real utilizado por TecNet Finder para analizar cada ejemplo.
-from Motor.gestor_ejemplos import EjemploCodigo  # Importa la estructura utilizada para representar cada caso de prueba.
+from Motor.diagnosticos import codigo_diagnostico_disponible, codigo_diagnostico_es_error, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes  # Proporciona el estado centralizado de todos los códigos registrados.
+from Motor.flujo_compilacion import FlujoCompilacion  # Ejecuta cada ejemplo mediante exactamente el mismo flujo utilizado por TecNet Finder.
+from Motor.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura con la que se representan los casos cargados desde los archivos TXT.
 
 
 ESTADO_CORRECTO = "correcto"  # Representa un ejemplo cuya parte actualmente evaluable se comportó como se esperaba.
-ESTADO_PENDIENTE = "pendiente"  # Representa un ejemplo cuya invalidez depende completamente de una característica todavía no implementada.
-ESTADO_FALLIDO = "fallido"  # Representa un ejemplo que no produjo el comportamiento esperado en las características disponibles.
+ESTADO_PENDIENTE = "pendiente"  # Representa un ejemplo cuya invalidez depende completamente de una característica todavía futura.
+ESTADO_FALLIDO = "fallido"  # Representa un ejemplo que contradijo alguna expectativa correspondiente con el comportamiento actual.
 
 
-@dataclass
-class ResultadoPruebaEjemplo:  # Guarda toda la información obtenida al ejecutar un ejemplo individual.
-    ejemplo: EjemploCodigo  # Conserva el ejemplo original que produjo este resultado.
-    estado: str  # Indica si la prueba terminó correctamente, quedó pendiente o falló.
-    codigos_esperados: list[str] = field(default_factory=list)  # Guarda únicamente los códigos declarados formalmente como esperados.
-    codigos_evaluables: list[str] = field(default_factory=list)  # Guarda únicamente códigos disponibles actualmente.
-    codigos_pendientes: list[str] = field(default_factory=list)  # Guarda expectativas pertenecientes a características todavía no implementadas.
-    codigos_obtenidos: list[str] = field(default_factory=list)  # Guarda todos los códigos realmente producidos por el flujo actual.
-    codigos_error: list[str] = field(default_factory=list)  # Guarda únicamente los diagnósticos obtenidos con severidad de error.
-    codigos_advertencia: list[str] = field(default_factory=list)  # Guarda únicamente los diagnósticos obtenidos como advertencia.
-    codigos_faltantes: list[str] = field(default_factory=list)  # Guarda expectativas evaluables que no aparecieron durante la ejecución.
-    motivos: list[str] = field(default_factory=list)  # Explica por qué una prueba fue considerada fallida.
-    tokens_reconocidos: int = 0  # Guarda cuántos tokens produjo el análisis léxico.
-    bloques_validos: int = 0  # Guarda cuántos bloques superaron todas las fases formales actualmente disponibles.
-    subredes_generadas: int = 0  # Guarda cuántas subredes VLSM produjo la entrada.
-    error_interno: str | None = None  # Conserva una excepción inesperada sin cerrar el conjunto completo de pruebas.
+@dataclass  # Organiza todos los datos obtenidos al ejecutar un ejemplo individual.
+class ResultadoPruebaEjemplo:  # Representa el resultado detallado de una sola prueba procedente de los archivos de ejemplos.
+    ejemplo: EjemploCodigo  # Conserva el caso original utilizado como entrada de la prueba.
+    estado: str  # Indica si el resultado terminó correcto, pendiente o fallido.
+    codigos_esperados: list[str] = field(default_factory=list)  # Conserva exclusivamente los códigos declarados formalmente dentro del ejemplo.
+    codigos_evaluables: list[str] = field(default_factory=list)  # Conserva expectativas que ya pertenecen al comportamiento implementado.
+    codigos_pendientes: list[str] = field(default_factory=list)  # Conserva expectativas reservadas para características todavía no disponibles.
+    codigos_obtenidos: list[str] = field(default_factory=list)  # Conserva todos los códigos distintos que realmente produjo el flujo.
+    codigos_error: list[str] = field(default_factory=list)  # Conserva únicamente los diagnósticos obtenidos cuya severidad es error.
+    codigos_advertencia: list[str] = field(default_factory=list)  # Conserva únicamente las recomendaciones no bloqueantes obtenidas.
+    codigos_faltantes: list[str] = field(default_factory=list)  # Conserva expectativas actuales que deberían haber aparecido pero no se produjeron.
+    motivos: list[str] = field(default_factory=list)  # Explica las contradicciones que provocaron que una prueba fuera considerada fallida.
+    tokens_reconocidos: int = 0  # Conserva la cantidad de tokens válidos que produjo el lexer.
+    bloques_validos: int = 0  # Conserva la cantidad de bloques que superaron las fases formales disponibles.
+    subredes_generadas: int = 0  # Conserva la cantidad total de subredes VLSM obtenidas.
+    error_interno: str | None = None  # Conserva una excepción inesperada sin interrumpir la ejecución de todos los ejemplos.
 
-    @property
-    def tiene_expectativas_pendientes(self) -> bool:  # Indica si el ejemplo menciona al menos una característica futura.
-        return bool(self.codigos_pendientes)  # Devuelve verdadero cuando existe al menos un código todavía pendiente.
+    @property  # Expone como atributo calculado si el caso depende también de trabajo futuro.
+    def tiene_expectativas_pendientes(self) -> bool:  # Indica si existe al menos un código esperado que todavía no está disponible.
+        return bool(self.codigos_pendientes)  # Devuelve verdadero cuando la colección de expectativas pendientes contiene elementos.
 
 
-@dataclass
-class ResumenPruebasEjemplos:  # Agrupa todos los resultados obtenidos durante una ejecución automática.
-    resultados: list[ResultadoPruebaEjemplo] = field(default_factory=list)  # Conserva cada caso individual en el mismo orden en que fue probado.
+@dataclass  # Reúne los resultados individuales producidos durante una ejecución completa.
+class ResumenPruebasEjemplos:  # Proporciona totales y clasificaciones generales de todos los ejemplos probados.
+    resultados: list[ResultadoPruebaEjemplo] = field(default_factory=list)  # Conserva cada resultado en el mismo orden en que fueron recibidos los ejemplos.
 
-    @property
-    def total(self) -> int:  # Devuelve la cantidad completa de ejemplos ejecutados.
+    @property  # Permite consultar directamente la cantidad total sin almacenarla por separado.
+    def total(self) -> int:  # Devuelve cuántos ejemplos fueron ejecutados.
         return len(self.resultados)  # Cuenta directamente todos los resultados almacenados.
 
-    @property
-    def correctos(self) -> int:  # Cuenta las pruebas cuya parte actual se comportó correctamente.
-        return sum(
-            resultado.estado == ESTADO_CORRECTO
-            for resultado in self.resultados
-        )  # Cuenta únicamente resultados clasificados como correctos.
+    @property  # Calcula automáticamente la cantidad de pruebas aprobadas.
+    def correctos(self) -> int:  # Devuelve cuántos casos cumplieron las expectativas actualmente comprobables.
+        return sum(resultado.estado == ESTADO_CORRECTO for resultado in self.resultados)  # Cuenta solamente resultados clasificados como correctos.
 
-    @property
-    def pendientes(self) -> int:  # Cuenta los ejemplos completamente aplazados hasta una fase futura.
-        return sum(
-            resultado.estado == ESTADO_PENDIENTE
-            for resultado in self.resultados
-        )  # Cuenta únicamente resultados pendientes.
+    @property  # Calcula automáticamente la cantidad de casos completamente aplazados.
+    def pendientes(self) -> int:  # Devuelve cuántos ejemplos dependen exclusivamente de características futuras.
+        return sum(resultado.estado == ESTADO_PENDIENTE for resultado in self.resultados)  # Cuenta solamente resultados clasificados como pendientes.
 
-    @property
-    def fallidos(self) -> int:  # Cuenta los casos que presentaron una diferencia real respecto al comportamiento esperado actual.
-        return sum(
-            resultado.estado == ESTADO_FALLIDO
-            for resultado in self.resultados
-        )  # Cuenta únicamente resultados fallidos.
+    @property  # Calcula automáticamente la cantidad de casos con contradicciones reales.
+    def fallidos(self) -> int:  # Devuelve cuántos ejemplos fallaron frente al comportamiento disponible.
+        return sum(resultado.estado == ESTADO_FALLIDO for resultado in self.resultados)  # Cuenta solamente resultados clasificados como fallidos.
 
-    @property
-    def con_expectativas_pendientes(self) -> int:  # Cuenta todos los casos que contienen al menos una expectativa futura.
-        return sum(
-            resultado.tiene_expectativas_pendientes
-            for resultado in self.resultados
-        )  # Incluye casos correctos que además esperan alguna característica posterior.
+    @property  # Cuenta casos que pueden estar correctos actualmente pero todavía incluyen alguna expectativa futura.
+    def con_expectativas_pendientes(self) -> int:  # Devuelve cuántos resultados mencionan al menos un diagnóstico todavía pendiente.
+        return sum(resultado.tiene_expectativas_pendientes for resultado in self.resultados)  # Incluye tanto pendientes completos como casos parcialmente comprobables.
 
 
-def _elementos_unicos(elementos: list[str]) -> list[str]:  # Elimina valores repetidos sin modificar el orden original.
-    resultado: list[str] = []  # Conserva los elementos que ya fueron agregados a la colección final.
+def _elementos_unicos(elementos: list[str]) -> list[str]:  # Elimina valores repetidos manteniendo intacto el orden de su primera aparición.
+    resultado: list[str] = []  # Prepara la colección final que almacenará únicamente elementos distintos.
 
-    for elemento in elementos:  # Recorre todos los valores respetando el orden recibido.
-        if elemento not in resultado:  # Comprueba que el valor todavía no haya sido conservado.
-            resultado.append(elemento)  # Agrega únicamente la primera aparición de cada elemento.
+    for elemento in elementos:  # Recorre todos los valores exactamente en el orden recibido.
+        if elemento not in resultado:  # Comprueba si esta aparición todavía no fue conservada.
+            resultado.append(elemento)  # Agrega solamente la primera aparición de cada valor.
 
-    return resultado  # Devuelve la colección sin duplicados y con su orden original.
-
-
-def extraer_codigos_esperados(texto_esperado: str) -> list[str]:  # Extrae únicamente los códigos declarados formalmente después de Código esperado o Códigos esperados.
-    if not texto_esperado:  # Comprueba si el ejemplo no posee una descripción de salida.
-        return []  # Evita realizar búsquedas sobre contenido vacío.
-
-    patron_declaracion = r"\bC[oó]digos?\s+esperados?\s*:\s*([^.\n]*)"  # Captura únicamente el contenido situado después de la etiqueta formal y antes del siguiente punto o salto de línea.
-    declaraciones = re.findall(
-        patron_declaracion,
-        texto_esperado,
-        flags=re.IGNORECASE,
-    )  # Recupera todas las declaraciones explícitas de códigos esperados que existan dentro del texto.
-
-    if not declaraciones:  # Comprueba si la descripción no contiene ninguna declaración formal de diagnósticos.
-        return []  # Evita interpretar códigos mencionados solamente dentro de explicaciones posteriores.
-
-    patron_codigo = r"\b(?:LEX|SIN|SEM|ADV|GEN)-\d{3}\b"  # Reconoce las familias oficiales de diagnósticos utilizadas por TecNet Finder.
-    coincidencias: list[str] = []  # Reúne los códigos encontrados dentro de cada declaración formal.
-
-    for declaracion in declaraciones:  # Recorre únicamente los fragmentos identificados como expectativas.
-        codigos_declaracion = re.findall(
-            patron_codigo,
-            declaracion,
-            flags=re.IGNORECASE,
-        )  # Extrae solamente códigos ubicados dentro de la declaración actual.
-        coincidencias.extend(
-            codigo.upper()
-            for codigo in codigos_declaracion
-        )  # Normaliza cada identificador para conservar el formato oficial en mayúsculas.
-
-    return _elementos_unicos(coincidencias)  # Elimina códigos repetidos sin incorporar menciones explicativas ajenas a la expectativa.
+    return resultado  # Devuelve la colección sin duplicados y sin reorganizar sus elementos.
 
 
-class EjecutorPruebasEjemplos:  # Ejecuta los ejemplos mediante el flujo real sin depender de componentes gráficos.
-    def ejecutar(self, ejemplos: list[EjemploCodigo]) -> ResumenPruebasEjemplos:  # Ejecuta todos los casos recibidos y construye un resumen conjunto.
-        resultados: list[ResultadoPruebaEjemplo] = []  # Prepara la colección donde se conservará cada resultado individual.
+def extraer_codigos_esperados(texto_esperado: str) -> list[str]:  # Extrae códigos únicamente desde una declaración formal Código esperado o Códigos esperados.
+    if not texto_esperado:  # Comprueba si el ejemplo carece completamente de descripción de salida.
+        return []  # Evita realizar expresiones regulares innecesarias sobre contenido vacío.
 
-        for ejemplo in ejemplos:  # Recorre los ejemplos en el mismo orden utilizado por el selector.
-            resultados.append(self._ejecutar_ejemplo(ejemplo))  # Ejecuta el caso y conserva su resultado estructurado.
+    patron_declaracion = r"\bC[oó]digos?\s+esperados?\s*:\s*([^.\n]*)"  # Captura únicamente el contenido escrito después de la etiqueta formal hasta el siguiente punto o salto.
+    declaraciones = re.findall(patron_declaracion, texto_esperado, flags=re.IGNORECASE)  # Recupera todas las declaraciones explícitas de expectativas existentes en el texto.
 
-        return ResumenPruebasEjemplos(resultados=resultados)  # Devuelve un resumen con todos los casos procesados.
+    if not declaraciones:  # Comprueba si ningún fragmento utiliza la forma oficial de declarar códigos esperados.
+        return []  # Evita considerar códigos mencionados solamente dentro de explicaciones informales.
 
-    def _ejecutar_ejemplo(self, ejemplo: EjemploCodigo) -> ResultadoPruebaEjemplo:  # Ejecuta y evalúa un único ejemplo utilizando el estado actual del catálogo.
-        codigos_esperados = extraer_codigos_esperados(ejemplo.salida_esperada)  # Recupera exclusivamente los diagnósticos declarados como expectativas.
-        codigos_evaluables = [
-            codigo
-            for codigo in codigos_esperados
-            if codigo_diagnostico_disponible(codigo)
-        ]  # Conserva únicamente expectativas cuya implementación ya está disponible.
-        codigos_pendientes = [
-            codigo
-            for codigo in codigos_esperados
-            if not codigo_diagnostico_disponible(codigo)
-        ]  # Separa las expectativas reservadas para reglas todavía no implementadas.
+    patron_codigo = r"\b(?:LEX|SIN|SEM|ADV|GEN)-\d{3}\b"  # Reconoce exclusivamente las familias oficiales de diagnósticos de TecNet Finder.
+    coincidencias: list[str] = []  # Reunirá los códigos encontrados dentro de cada declaración formal.
 
-        try:
-            flujo = FlujoCompilacion()  # Crea el coordinador real utilizado normalmente por TecNet Finder.
-            resultado_compilacion = flujo.analizar(ejemplo.comando)  # Ejecuta el código del ejemplo por todas las fases actualmente conectadas.
-        except Exception as error:
+    for declaracion in declaraciones:  # Recorre exclusivamente los fragmentos que fueron identificados como expectativas.
+        codigos_declaracion = re.findall(patron_codigo, declaracion, flags=re.IGNORECASE)  # Obtiene todos los identificadores oficiales presentes en la declaración actual.
+        coincidencias.extend(codigo.upper() for codigo in codigos_declaracion)  # Normaliza los códigos para conservar siempre su representación oficial en mayúsculas.
+
+    return _elementos_unicos(coincidencias)  # Elimina duplicados manteniendo solamente las expectativas formalmente declaradas.
+
+
+class EjecutorPruebasEjemplos:  # Ejecuta casos cargados desde los archivos TXT mediante el flujo real del compilador.
+    def ejecutar(self, ejemplos: list[EjemploCodigo]) -> ResumenPruebasEjemplos:  # Ejecuta todos los ejemplos recibidos y construye un resumen conjunto.
+        resultados: list[ResultadoPruebaEjemplo] = []  # Prepara la colección donde se almacenará cada resultado individual.
+
+        for ejemplo in ejemplos:  # Recorre los casos respetando exactamente el orden proporcionado por GestorEjemplos.
+            resultados.append(self._ejecutar_ejemplo(ejemplo))  # Ejecuta el ejemplo y conserva toda la información producida durante su evaluación.
+
+        return ResumenPruebasEjemplos(resultados=resultados)  # Agrupa todos los resultados para facilitar estadísticas y reportes posteriores.
+
+    def _ejecutar_ejemplo(self, ejemplo: EjemploCodigo) -> ResultadoPruebaEjemplo:  # Ejecuta un caso y compara su comportamiento real con las expectativas declaradas.
+        codigos_esperados = extraer_codigos_esperados(ejemplo.salida_esperada)  # Recupera solamente diagnósticos declarados explícitamente como expectativas.
+        codigos_evaluables = [codigo for codigo in codigos_esperados if codigo_diagnostico_disponible(codigo)]  # Separa expectativas cuya implementación ya forma parte de la versión actual.
+        codigos_pendientes = [codigo for codigo in codigos_esperados if not codigo_diagnostico_disponible(codigo)]  # Conserva por separado expectativas asociadas con características futuras.
+
+        try:  # Protege el conjunto completo de pruebas ante una excepción inesperada producida por un único ejemplo.
+            flujo = FlujoCompilacion()  # Crea un coordinador completamente nuevo para evitar compartir estados entre ejemplos.
+            resultado_compilacion = flujo.analizar(ejemplo.comando)  # Ejecuta la entrada mediante las mismas fases que utiliza normalmente la aplicación.
+        except Exception as error:  # Convierte cualquier excepción inesperada en un resultado fallido controlado.
             return ResultadoPruebaEjemplo(
-                ejemplo=ejemplo,
-                estado=ESTADO_FALLIDO,
-                codigos_esperados=codigos_esperados,
-                codigos_evaluables=codigos_evaluables,
-                codigos_pendientes=codigos_pendientes,
-                motivos=[f"Se produjo un error interno durante la prueba: {error}."],
-                error_interno=str(error),
-            )  # Convierte una excepción inesperada en un resultado fallido sin detener las demás pruebas.
+                ejemplo=ejemplo,  # Conserva qué caso produjo la excepción.
+                estado=ESTADO_FALLIDO,  # Clasifica inmediatamente la ejecución como fallida.
+                codigos_esperados=codigos_esperados,  # Conserva las expectativas declaradas para facilitar el diagnóstico.
+                codigos_evaluables=codigos_evaluables,  # Conserva cuáles de esas expectativas ya podían comprobarse.
+                codigos_pendientes=codigos_pendientes,  # Conserva también cualquier expectativa futura.
+                motivos=[f"Se produjo un error interno durante la prueba: {error}."],  # Explica explícitamente la excepción que impidió completar el caso.
+                error_interno=str(error),  # Guarda el texto original del error para poder mostrarlo o depurarlo posteriormente.
+            )  # Devuelve el fallo sin detener la ejecución de los demás ejemplos.
 
-        diagnosticos = resultado_compilacion.diagnosticos  # Recupera conjuntamente los diagnósticos generados por las fases disponibles.
-        codigos_obtenidos = _elementos_unicos(
-            [diagnostico.codigo for diagnostico in diagnosticos]
-        )  # Conserva una única aparición de cada código realmente producido.
-        codigos_error = _elementos_unicos(
-            [
-                diagnostico.codigo
-                for diagnostico in diagnosticos
-                if diagnostico.severidad == "error"
-            ]
-        )  # Separa únicamente los diagnósticos bloqueantes obtenidos.
-        codigos_advertencia = _elementos_unicos(
-            [
-                diagnostico.codigo
-                for diagnostico in diagnosticos
-                if diagnostico.severidad in ("warning", "advertencia")
-            ]
-        )  # Separa los diagnósticos no bloqueantes producidos por el flujo.
-        codigos_obtenidos_evaluables = [
-            codigo
-            for codigo in codigos_obtenidos
-            if codigo_diagnostico_disponible(codigo)
-        ]  # Ignora cualquier código que todavía no deba formar parte de la evaluación actual.
-        codigos_error_evaluables = [
-            codigo
-            for codigo in codigos_error
-            if codigo_diagnostico_disponible(codigo)
-        ]  # Conserva exclusivamente errores pertenecientes a características disponibles.
-        codigos_faltantes = [
-            codigo
-            for codigo in codigos_evaluables
-            if codigo not in codigos_obtenidos_evaluables
-        ]  # Detecta expectativas actuales que no fueron producidas por el flujo.
+        diagnosticos = resultado_compilacion.diagnosticos  # Recupera en una sola colección errores y advertencias procedentes de todo el flujo.
+        codigos_obtenidos = _elementos_unicos([diagnostico.codigo for diagnostico in diagnosticos])  # Conserva una sola aparición de cada código realmente producido.
+        codigos_error = _elementos_unicos([diagnostico.codigo for diagnostico in diagnosticos if diagnostico.severidad == "error"])  # Separa exclusivamente diagnósticos bloqueantes.
+        codigos_advertencia = _elementos_unicos([diagnostico.codigo for diagnostico in diagnosticos if diagnostico.severidad in ("warning", "advertencia")])  # Separa exclusivamente recomendaciones no bloqueantes.
+        codigos_obtenidos_evaluables = [codigo for codigo in codigos_obtenidos if codigo_diagnostico_disponible(codigo)]  # Limita la comparación a códigos que pertenecen al comportamiento actual.
+        codigos_error_evaluables = [codigo for codigo in codigos_error if codigo_diagnostico_disponible(codigo)]  # Conserva únicamente errores pertenecientes a características ya disponibles.
+        codigos_faltantes = [codigo for codigo in codigos_evaluables if codigo not in codigos_obtenidos_evaluables]  # Detecta expectativas actuales que deberían haberse producido pero no aparecieron.
+        motivos: list[str] = []  # Reunirá todas las contradicciones que provoquen que el caso sea considerado fallido.
 
-        motivos: list[str] = []  # Reúne las razones concretas que convertirían el ejemplo en una prueba fallida.
+        if ejemplo.tipo == "Válida":  # Aplica las reglas correspondientes con ejemplos declarados formalmente correctos.
+            if codigos_error_evaluables:  # Comprueba que el caso no haya producido ningún error perteneciente a las fases disponibles.
+                motivos.append("El caso está declarado como válido, pero produjo errores actuales: " + ", ".join(codigos_error_evaluables) + ".")  # Explica exactamente qué errores contradicen la declaración de validez.
 
-        if ejemplo.tipo == "Válida":  # Aplica las comprobaciones correspondientes con ejemplos declarados correctos.
-            if codigos_error_evaluables:  # Comprueba que una entrada válida no haya producido errores actuales.
-                motivos.append(
-                    "El caso está declarado como válido, pero produjo errores actuales: "
-                    + ", ".join(codigos_error_evaluables)
-                    + "."
-                )  # Explica exactamente cuáles errores contradicen la declaración del ejemplo.
+            if not resultado_compilacion.bloques_validos:  # Comprueba que al menos una instrucción haya superado todas las fases formales disponibles.
+                motivos.append("El caso está declarado como válido, pero no produjo bloques válidos después de las fases actuales.")  # Detecta entradas declaradas válidas que realmente fueron descartadas.
 
-            if not resultado_compilacion.bloques_validos:  # Comprueba que al menos un bloque haya superado las fases formales disponibles.
-                motivos.append(
-                    "El caso está declarado como válido, pero no produjo "
-                    "bloques válidos después de las fases actuales."
-                )  # Informa que la instrucción fue descartada antes de alcanzar normalmente VLSM.
+            if resultado_compilacion.bloques_validos and not resultado_compilacion.subredes_vlsm:  # Comprueba que un bloque formalmente válido también haya producido el resultado de red esperado.
+                motivos.append("El caso produjo bloques válidos, pero no generó ninguna subred VLSM.")  # Señala una contradicción entre la aceptación formal y la salida concreta.
 
-            if (
-                resultado_compilacion.bloques_validos
-                and not resultado_compilacion.subredes_vlsm
-            ):
-                motivos.append(
-                    "El caso produjo bloques válidos, pero no generó ninguna subred VLSM."
-                )  # Detecta una entrada formalmente aceptada que no logró producir resultados de red.
+        elif ejemplo.tipo == "Inválida":  # Aplica las reglas correspondientes con ejemplos diseñados deliberadamente para producir errores.
+            errores_esperados_evaluables = [codigo for codigo in codigos_evaluables if codigo_diagnostico_es_error(codigo)]  # Identifica cuáles expectativas actuales corresponden específicamente con errores bloqueantes.
 
-        elif ejemplo.tipo == "Inválida":  # Aplica las comprobaciones correspondientes con casos que deben generar algún error.
-            errores_esperados_evaluables = [
-                codigo
-                for codigo in codigos_evaluables
-                if codigo_diagnostico_es_error(codigo)
-            ]  # Identifica cuáles expectativas actuales corresponden específicamente con errores.
+            if errores_esperados_evaluables and not codigos_error_evaluables:  # Comprueba si se esperaba al menos un error actual pero el flujo no produjo ninguno.
+                motivos.append("El caso debería producir un error en las fases actuales, pero no se obtuvo ninguno.")  # Registra la ausencia de comportamiento que ya debería ser comprobable.
+            elif not codigos_evaluables and codigos_pendientes and codigos_error_evaluables:  # Detecta casos reservados para el futuro que inesperadamente ya fallan por alguna regla actual.
+                motivos.append("El caso está reservado para una característica futura, pero produjo errores actuales inesperados: " + ", ".join(codigos_error_evaluables) + ".")  # Impide clasificar como pendiente una entrada que ya posee problemas actuales.
+            elif not codigos_evaluables and not codigos_pendientes and not codigos_error_evaluables:  # Detecta un ejemplo declarado inválido que no define expectativas ni produce errores actuales.
+                motivos.append("El caso está declarado como inválido, pero no produjo ningún error en las fases actuales.")  # Señala que la declaración del ejemplo no coincide con el flujo disponible.
 
-            if errores_esperados_evaluables and not codigos_error_evaluables:  # Comprueba si debía existir un error actual pero no apareció ninguno.
-                motivos.append(
-                    "El caso debería producir un error en las fases actuales, "
-                    "pero no se obtuvo ninguno."
-                )  # Registra la ausencia de un error que ya debería ser comprobable.
+        if codigos_faltantes:  # Comprueba finalmente que todos los códigos actualmente evaluables hayan sido producidos.
+            motivos.append("No aparecieron los códigos evaluables esperados: " + ", ".join(codigos_faltantes) + ".")  # Enumera exactamente cuáles expectativas no se cumplieron.
 
-            elif (
-                not codigos_evaluables
-                and codigos_pendientes
-                and codigos_error_evaluables
-            ):
-                motivos.append(
-                    "El caso está reservado para una característica futura, pero produjo "
-                    "errores actuales inesperados: "
-                    + ", ".join(codigos_error_evaluables)
-                    + "."
-                )  # Evita considerar pendiente una entrada que ya falla por otra regla disponible.
-
-            elif (
-                not codigos_evaluables
-                and not codigos_pendientes
-                and not codigos_error_evaluables
-            ):
-                motivos.append(
-                    "El caso está declarado como inválido, pero no produjo "
-                    "ningún error en las fases actuales."
-                )  # Señala casos inválidos que no especifican una expectativa futura ni generan errores actuales.
-
-        if codigos_faltantes:  # Comprueba finalmente que todos los códigos disponibles esperados hayan aparecido.
-            motivos.append(
-                "No aparecieron los códigos evaluables esperados: "
-                + ", ".join(codigos_faltantes)
-                + "."
-            )  # Describe exactamente cuáles diagnósticos esperados estuvieron ausentes.
-
-        if motivos:  # Da prioridad a cualquier contradicción encontrada durante la evaluación.
-            estado = ESTADO_FALLIDO  # Clasifica el ejemplo como fallido cuando existe al menos un motivo.
-        elif (
-            ejemplo.tipo == "Inválida"
-            and not codigos_evaluables
-            and codigos_pendientes
-        ):
-            estado = ESTADO_PENDIENTE  # Mantiene pendiente un caso cuya invalidez depende exclusivamente de reglas futuras.
-        else:
-            estado = ESTADO_CORRECTO  # Considera correcto cualquier caso cuya parte actualmente comprobable se comportó como se esperaba.
+        if motivos:  # Da prioridad absoluta a cualquier contradicción encontrada durante la evaluación.
+            estado = ESTADO_FALLIDO  # Clasifica el ejemplo como fallido cuando existe al menos un motivo concreto.
+        elif ejemplo.tipo == "Inválida" and not codigos_evaluables and codigos_pendientes:  # Comprueba si la invalidez depende exclusivamente de códigos todavía futuros.
+            estado = ESTADO_PENDIENTE  # Mantiene aplazado el caso hasta que su característica correspondiente se implemente.
+        else:  # Atiende cualquier caso cuya parte actualmente comprobable se comportó de acuerdo con lo esperado.
+            estado = ESTADO_CORRECTO  # Clasifica como correcto tanto un válido real como un inválido que produjo sus errores esperados.
 
         return ResultadoPruebaEjemplo(
-            ejemplo=ejemplo,
-            estado=estado,
-            codigos_esperados=codigos_esperados,
-            codigos_evaluables=codigos_evaluables,
-            codigos_pendientes=codigos_pendientes,
-            codigos_obtenidos=codigos_obtenidos,
-            codigos_error=codigos_error,
-            codigos_advertencia=codigos_advertencia,
-            codigos_faltantes=codigos_faltantes,
-            motivos=motivos,
-            tokens_reconocidos=len(resultado_compilacion.resultado_lexico.tokens),
-            bloques_validos=len(resultado_compilacion.bloques_validos),
-            subredes_generadas=len(resultado_compilacion.subredes_vlsm),
-        )  # Conserva toda la información necesaria para el reporte y para las pruebas automatizadas.
+            ejemplo=ejemplo,  # Conserva la definición original del caso evaluado.
+            estado=estado,  # Guarda la clasificación final obtenida después de todas las comprobaciones.
+            codigos_esperados=codigos_esperados,  # Conserva todos los códigos declarados formalmente.
+            codigos_evaluables=codigos_evaluables,  # Conserva las expectativas que pertenecen al comportamiento actual.
+            codigos_pendientes=codigos_pendientes,  # Conserva las expectativas todavía futuras.
+            codigos_obtenidos=codigos_obtenidos,  # Conserva todos los códigos diferentes producidos realmente.
+            codigos_error=codigos_error,  # Conserva los errores obtenidos por separado.
+            codigos_advertencia=codigos_advertencia,  # Conserva las advertencias obtenidas por separado.
+            codigos_faltantes=codigos_faltantes,  # Conserva expectativas actuales que estuvieron ausentes.
+            motivos=motivos,  # Conserva todas las explicaciones relacionadas con posibles fallos.
+            tokens_reconocidos=len(resultado_compilacion.resultado_lexico.tokens),  # Registra cuántos tokens válidos produjo el lexer.
+            bloques_validos=len(resultado_compilacion.bloques_validos),  # Registra cuántos bloques superaron las fases formales.
+            subredes_generadas=len(resultado_compilacion.subredes_vlsm),  # Registra cuántas subredes concretas produjo finalmente el flujo.
+        )  # Entrega toda la información necesaria para reportes y pruebas automáticas.
 
 
-def _texto_codigos(
-    codigos: list[str],  # Recibe la colección de códigos que debe mostrarse.
-    texto_vacio: str = "ninguno",  # Define el texto utilizado cuando no existe ningún elemento.
-) -> str:
-    return ", ".join(codigos) if codigos else texto_vacio  # Produce una representación compacta para las líneas del reporte.
+def _texto_codigos(codigos: list[str], texto_vacio: str = "ninguno") -> str:  # Convierte una colección de códigos en una representación compacta adecuada para el reporte.
+    return ", ".join(codigos) if codigos else texto_vacio  # Une los códigos encontrados o utiliza el texto alternativo cuando la colección está vacía.
 
 
-def _nombre_estado(estado: str) -> str:  # Convierte el estado interno en una etiqueta visible dentro del reporte.
-    if estado == ESTADO_CORRECTO:  # Comprueba si la ejecución satisfizo todas las expectativas actuales.
-        return "CORRECTO"  # Devuelve la etiqueta correspondiente con una prueba aprobada.
+def _nombre_estado(estado: str) -> str:  # Convierte la clasificación interna de una prueba en una etiqueta visible y destacable.
+    if estado == ESTADO_CORRECTO:  # Comprueba si todas las expectativas actuales fueron satisfechas.
+        return "CORRECTO"  # Utiliza la etiqueta correspondiente con una prueba aprobada.
 
-    if estado == ESTADO_PENDIENTE:  # Comprueba si el ejemplo depende solamente de una regla todavía futura.
-        return "PENDIENTE"  # Devuelve la etiqueta utilizada para casos aplazados.
+    if estado == ESTADO_PENDIENTE:  # Comprueba si el caso depende únicamente de alguna característica futura.
+        return "PENDIENTE"  # Utiliza una etiqueta distinta para evitar confundirlo con un fallo.
 
-    return "FALLIDO"  # Utiliza la etiqueta restante para cualquier prueba con contradicciones actuales.
+    return "FALLIDO"  # Considera la clasificación restante como una contradicción frente al comportamiento actual.
 
 
-def generar_reporte_pruebas(
-    resumen: ResumenPruebasEjemplos,  # Recibe los resultados que deben convertirse en un reporte legible.
-) -> str:
-    lineas: list[str] = []  # Prepara las líneas que compondrán el texto final.
-    codigos_disponibles = obtener_codigos_diagnosticos_disponibles()  # Consulta dinámicamente todos los diagnósticos implementados.
-    codigos_pendientes = obtener_codigos_diagnosticos_pendientes()  # Consulta dinámicamente las reglas todavía reservadas.
+def generar_reporte_pruebas(resumen: ResumenPruebasEjemplos) -> str:  # Convierte los resultados estructurados en un reporte textual completo y legible.
+    lineas: list[str] = []  # Prepara la colección que contendrá cada línea del reporte final.
+    codigos_disponibles = obtener_codigos_diagnosticos_disponibles()  # Consulta dinámicamente todos los códigos que pueden evaluarse en la versión actual.
+    codigos_pendientes = obtener_codigos_diagnosticos_pendientes()  # Consulta cualquier código reservado para etapas posteriores.
 
-    lineas.append("=== PRUEBAS AUTOMÁTICAS DE EJEMPLOS ===")  # Agrega el encabezado principal del reporte.
-    lineas.append("")  # Separa visualmente el encabezado del alcance actual.
-    lineas.append(
-        "Alcance actual: análisis léxico, análisis sintáctico, análisis semántico, "
-        "advertencias y cálculo VLSM."
-    )  # Refleja que U1 ya incorporó formalmente la fase semántica al flujo.
-    lineas.append(
-        "Diagnósticos evaluables según catálogo: "
-        + ", ".join(codigos_disponibles)
-        + "."
-    )  # Enumera únicamente los códigos disponibles en el estado actual del proyecto.
-    lineas.append(
-        "Diagnósticos pendientes según catálogo: "
-        + ", ".join(codigos_pendientes)
-        + "."
-    )  # Mantiene visibles las reglas previstas que todavía no se han implementado.
-    lineas.append("")  # Separa el catálogo del resumen numérico.
-    lineas.append(f"Total de casos probados: {resumen.total}")  # Informa la cantidad total de ejemplos ejecutados.
-    lineas.append(f"Casos correctos actualmente: {resumen.correctos}")  # Informa cuántos casos superaron las expectativas actuales.
-    lineas.append(f"Casos pendientes de fase futura: {resumen.pendientes}")  # Informa cuántos casos dependen completamente de trabajo posterior.
-    lineas.append(f"Casos fallidos: {resumen.fallidos}")  # Informa cuántos ejemplos contradijeron el comportamiento esperado.
-    lineas.append(
-        f"Casos con alguna expectativa pendiente: "
-        f"{resumen.con_expectativas_pendientes}"
-    )  # Incluye también ejemplos correctos que esperan advertencias u otras reglas futuras.
+    lineas.append("=== PRUEBAS AUTOMÁTICAS DE EJEMPLOS ===")  # Agrega un encabezado principal fácilmente identificable.
+    lineas.append("")  # Separa visualmente el encabezado del alcance de las pruebas.
+    lineas.append("Alcance actual: análisis léxico, análisis sintáctico, análisis semántico, advertencias y cálculo VLSM.")  # Describe exactamente qué partes del proyecto están siendo evaluadas.
+    lineas.append("Diagnósticos evaluables según catálogo: " + ", ".join(codigos_disponibles) + ".")  # Enumera dinámicamente todos los códigos considerados actuales.
+    lineas.append("Diagnósticos pendientes según catálogo: " + ", ".join(codigos_pendientes) + ".")  # Muestra cualquier regla registrada pero todavía aplazada.
+    lineas.append("")  # Separa la información del catálogo del resumen numérico.
+    lineas.append(f"Total de casos probados: {resumen.total}")  # Informa la cantidad completa de ejemplos ejecutados.
+    lineas.append(f"Casos correctos actualmente: {resumen.correctos}")  # Indica cuántas pruebas satisfecieron el comportamiento esperado.
+    lineas.append(f"Casos pendientes de fase futura: {resumen.pendientes}")  # Indica cuántos casos dependen completamente de características futuras.
+    lineas.append(f"Casos fallidos: {resumen.fallidos}")  # Indica cuántos ejemplos presentan contradicciones reales.
+    lineas.append(f"Casos con alguna expectativa pendiente: {resumen.con_expectativas_pendientes}")  # Cuenta también casos actuales correctos que incluyen alguna expectativa futura.
     lineas.append("")  # Separa el resumen numérico del resultado general.
 
-    if resumen.fallidos:  # Prioriza cualquier diferencia real detectada en las características disponibles.
-        lineas.append(
-            "Resultado general: EXISTEN PRUEBAS FALLIDAS "
-            "EN LAS CARACTERÍSTICAS ACTUALES."
-        )  # Informa claramente que existe al menos un comportamiento incorrecto.
-    elif resumen.pendientes:  # Comprueba si no hubo fallos pero todavía existen casos totalmente aplazados.
-        lineas.append(
-            "Resultado general: LAS PRUEBAS ACTUALES PASARON; "
-            "EXISTEN CASOS PENDIENTES."
-        )  # Diferencia un pendiente académico de un fallo real.
-    else:
-        lineas.append(
-            "Resultado general: TODAS LAS PRUEBAS EVALUABLES PASARON."
-        )  # Confirma que todas las expectativas actualmente comprobables tuvieron éxito.
+    if resumen.fallidos:  # Comprueba primero si existe al menos una contradicción real en las características disponibles.
+        lineas.append("Resultado general: EXISTEN PRUEBAS FALLIDAS EN LAS CARACTERÍSTICAS ACTUALES.")  # Informa claramente que alguna parte del comportamiento actual no coincide con lo esperado.
+    elif resumen.pendientes:  # Se ejecuta solamente cuando no existen fallos pero sí casos completamente aplazados.
+        lineas.append("Resultado general: LAS PRUEBAS ACTUALES PASARON; EXISTEN CASOS PENDIENTES.")  # Diferencia explícitamente un pendiente académico de un problema del programa.
+    else:  # Atiende el caso donde no existen ni fallos ni ejemplos completamente pendientes.
+        lineas.append("Resultado general: TODAS LAS PRUEBAS EVALUABLES PASARON.")  # Confirma que todas las expectativas actuales fueron satisfechas.
 
-    lineas.append("")  # Separa el resultado general del detalle de cada ejemplo.
-    lineas.append("-" * 72)  # Agrega una división visual antes del listado individual.
-    lineas.append("")  # Conserva espacio después de la división.
+    lineas.append("")  # Separa el resultado general del detalle individual.
+    lineas.append("-" * 72)  # Agrega una división visual antes del listado de ejemplos.
+    lineas.append("")  # Mantiene una separación después de la línea divisoria.
 
-    for indice, resultado in enumerate(
-        resumen.resultados,
-        start=1,
-    ):  # Recorre todos los casos conservando un número visible desde uno.
-        ejemplo = resultado.ejemplo  # Recupera los datos originales utilizados para identificar el caso.
+    for indice, resultado in enumerate(resumen.resultados, start=1):  # Recorre todos los resultados asignando una numeración visible desde uno.
+        ejemplo = resultado.ejemplo  # Recupera la información original utilizada para identificar el caso actual.
+        lineas.append(f"{indice}. [{_nombre_estado(resultado.estado)}] {ejemplo.titulo}")  # Muestra número, clasificación y título del ejemplo.
+        lineas.append(f"   Tipo declarado: {ejemplo.tipo}")  # Informa si el caso fue definido originalmente como válido o inválido.
+        lineas.append(f"   Códigos esperados: {_texto_codigos(resultado.codigos_esperados, 'no especificados')}")  # Muestra las expectativas declaradas dentro del archivo.
+        lineas.append(f"   Códigos evaluables ahora: {_texto_codigos(resultado.codigos_evaluables)}")  # Distingue qué expectativas ya pueden comprobarse.
+        lineas.append(f"   Expectativas pendientes: {_texto_codigos(resultado.codigos_pendientes)}")  # Muestra las reglas cuya implementación todavía no existe.
+        lineas.append(f"   Códigos obtenidos: {_texto_codigos(resultado.codigos_obtenidos)}")  # Enumera todos los diagnósticos producidos durante la ejecución real.
+        lineas.append(f"   Errores obtenidos: {_texto_codigos(resultado.codigos_error)}")  # Muestra exclusivamente diagnósticos bloqueantes.
+        lineas.append(f"   Advertencias obtenidas: {_texto_codigos(resultado.codigos_advertencia)}")  # Muestra exclusivamente recomendaciones no bloqueantes.
+        lineas.append(f"   Tokens reconocidos: {resultado.tokens_reconocidos}")  # Informa cuántos tokens válidos produjo el análisis léxico.
+        lineas.append(f"   Bloques semánticamente válidos: {resultado.bloques_validos}")  # Informa cuántas instrucciones superaron las fases formales actuales.
+        lineas.append(f"   Subredes VLSM generadas: {resultado.subredes_generadas}")  # Informa cuántos resultados concretos alcanzaron el cálculo VLSM.
 
-        lineas.append(
-            f"{indice}. [{_nombre_estado(resultado.estado)}] "
-            f"{ejemplo.titulo}"
-        )  # Muestra número, estado y título del ejemplo.
-        lineas.append(f"   Tipo declarado: {ejemplo.tipo}")  # Informa si el ejemplo fue definido como válido o inválido.
-        lineas.append(
-            f"   Códigos esperados: "
-            f"{_texto_codigos(resultado.codigos_esperados, 'no especificados')}"
-        )  # Muestra todos los códigos declarados formalmente como expectativas.
-        lineas.append(
-            f"   Códigos evaluables ahora: "
-            f"{_texto_codigos(resultado.codigos_evaluables)}"
-        )  # Distingue los diagnósticos que ya pueden comprobarse.
-        lineas.append(
-            f"   Expectativas pendientes: "
-            f"{_texto_codigos(resultado.codigos_pendientes)}"
-        )  # Muestra únicamente los códigos todavía reservados para etapas futuras.
-        lineas.append(
-            f"   Códigos obtenidos: "
-            f"{_texto_codigos(resultado.codigos_obtenidos)}"
-        )  # Enumera los diagnósticos realmente producidos durante la ejecución.
-        lineas.append(
-            f"   Errores obtenidos: "
-            f"{_texto_codigos(resultado.codigos_error)}"
-        )  # Muestra exclusivamente los diagnósticos bloqueantes.
-        lineas.append(
-            f"   Advertencias obtenidas: "
-            f"{_texto_codigos(resultado.codigos_advertencia)}"
-        )  # Muestra separadamente las recomendaciones no bloqueantes.
-        lineas.append(
-            f"   Tokens reconocidos: {resultado.tokens_reconocidos}"
-        )  # Informa cuántos tokens válidos produjo la primera fase.
-        lineas.append(
-            f"   Bloques semánticamente válidos: {resultado.bloques_validos}"
-        )  # Informa cuántos bloques superaron todas las fases formales disponibles hasta U1.
-        lineas.append(
-            f"   Subredes VLSM generadas: {resultado.subredes_generadas}"
-        )  # Informa cuántos resultados concretos alcanzaron el cálculo VLSM.
+        if resultado.motivos:  # Comprueba si la evaluación encontró alguna contradicción que necesite explicación.
+            lineas.append("   Motivo(s):")  # Introduce el apartado donde se detallarán las causas del fallo.
 
-        if resultado.motivos:  # Comprueba si el ejemplo fue marcado con alguna contradicción concreta.
-            lineas.append("   Motivo(s):")  # Introduce las explicaciones asociadas con el fallo.
+            for motivo in resultado.motivos:  # Recorre individualmente cada contradicción registrada.
+                lineas.append(f"   - {motivo}")  # Agrega cada explicación como una entrada independiente.
 
-            for motivo in resultado.motivos:  # Recorre individualmente las causas detectadas.
-                lineas.append(f"   - {motivo}")  # Agrega cada motivo como una entrada independiente.
+        elif resultado.estado == ESTADO_PENDIENTE:  # Comprueba si el caso completo está esperando alguna característica futura.
+            lineas.append("   Motivo: la condición que vuelve inválido este caso pertenece a una característica todavía no implementada.")  # Explica por qué un pendiente no representa un fallo actual.
 
-        elif resultado.estado == ESTADO_PENDIENTE:  # Explica los casos totalmente aplazados cuando no existe un fallo actual.
-            lineas.append(
-                "   Motivo: la condición que vuelve inválido este caso "
-                "pertenece a una característica todavía no implementada."
-            )  # Aclara por qué el resultado pendiente no debe interpretarse como error del programa.
+        elif resultado.codigos_pendientes:  # Detecta casos aprobados actualmente que además esperan alguna regla futura.
+            lineas.append("   Nota: la parte disponible pasó correctamente; las expectativas pendientes se comprobarán más adelante.")  # Aclara que la porción ya implementada sí obtuvo el comportamiento esperado.
 
-        elif resultado.codigos_pendientes:  # Detecta casos correctos que además contienen alguna expectativa futura.
-            lineas.append(
-                "   Nota: la parte disponible pasó correctamente; "
-                "las expectativas pendientes se comprobarán más adelante."
-            )  # Explica que el caso actual pasó aunque todavía queden reglas por incorporar.
+        lineas.append("")  # Separa visualmente el resultado actual del siguiente ejemplo.
 
-        lineas.append("")  # Separa visualmente un ejemplo del siguiente.
-
-    return "\n".join(lineas).rstrip() + "\n"  # Construye el reporte final con una sola línea de cierre.
+    return "\n".join(lineas).rstrip() + "\n"  # Construye el reporte completo garantizando únicamente un salto final convencional.

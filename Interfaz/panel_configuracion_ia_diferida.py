@@ -4,249 +4,128 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo adapta PanelConfiguracionIA para utilizar el sistema
+# Este archivo adapta PanelConfiguracionIA al sistema general
 # Aplicar / Aceptar / Cancelar de la ventana de Configuración.
 #
-# La clase original continúa encargándose de:
+# El panel original continúa administrando instalación,
+# desinstalación, Ollama, progreso y estados visuales.
 #
-# - La apariencia de Asistencia de IA.
-# - Instalación y desinstalación del componente.
-# - Barra de progreso.
-# - Inicio y cierre de Ollama.
-# - Actualización de los estados visuales.
+# Esta variante modifica únicamente las preferencias de
+# Autocompletado y Diagnósticos para que:
 #
-# Esta variante cambia únicamente el comportamiento de las casillas
-# de Autocompletado y Diagnósticos:
+# - Pulsar una casilla solamente prepare un cambio.
+# - Aplicar confirme y persista esos cambios.
+# - Cancelar restaure los valores ya guardados.
 #
-# - Pulsarlas solamente prepara cambios pendientes.
-# - Aplicar confirma esos cambios y sincroniza Ollama.
-# - Cancelar restaura las decisiones ya persistidas.
-#
-# Instalar y Desinstalar componente siguen siendo operaciones
-# inmediatas porque modifican archivos físicos y no pueden tratarse
-# como una preferencia reversible.
+# Instalar y Desinstalar continúan siendo operaciones inmediatas
+# porque modifican físicamente el componente de IA.
 # ============================================================
 
-from PySide6.QtCore import Signal, Slot  # Permite informar a Configuración sobre cambios pendientes y conservar el slot de finalización.
+from PySide6.QtCore import Signal, Slot  # Proporciona la señal de cambios pendientes y conserva el slot utilizado al finalizar operaciones.
 
-from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Reutiliza íntegramente la implementación estable del panel de IA.
+from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Reutiliza toda la implementación estable encargada del componente de inteligencia artificial.
 
 
-class PanelConfiguracionIADiferida(PanelConfiguracionIA):  # Añade confirmación diferida sin duplicar la administración completa del componente.
-    configuracion_modificada = Signal()  # Informa que alguna preferencia pendiente cambió y debe reevaluarse el botón Aplicar.
+class PanelConfiguracionIADiferida(PanelConfiguracionIA):  # Añade preferencias diferidas sin duplicar la administración completa del panel original.
+    configuracion_modificada = Signal()  # Informa a Configuración que debe volver a evaluar si existen cambios pendientes.
 
-    def _cambiar_funcion(
-        self,
-        funcion: str,
-        activar: bool,
-    ) -> None:
-        if funcion == "autocompletado":
-            self.autocompletado_solicitado = bool(
-                activar
-            )  # Conserva temporalmente la nueva decisión del ghost text.
-        else:
-            self.diagnosticos_solicitados = bool(
-                activar
-            )  # Conserva temporalmente la nueva decisión sobre soluciones con IA.
+    def _cambiar_funcion(self, funcion: str, activar: bool) -> None:  # Cambia solamente el valor temporal solicitado por el usuario.
+        if funcion == "autocompletado":  # Comprueba si la modificación corresponde con las sugerencias de código.
+            self.autocompletado_solicitado = bool(activar)  # Conserva temporalmente la decisión sin escribir todavía la preferencia.
+        else:  # Atiende la segunda función configurable del asistente.
+            self.diagnosticos_solicitados = bool(activar)  # Conserva temporalmente la decisión relacionada con soluciones mejoradas.
 
-        self._actualizar_estado()  # Mantiene las casillas y etiquetas correctamente representadas.
+        self._actualizar_estado()  # Representa inmediatamente las selecciones pendientes dentro de las casillas y etiquetas.
+        self.configuracion_modificada.emit()  # Solicita recalcular el estado del botón Aplicar sin confirmar todavía ningún cambio.
 
-        self.configuracion_modificada.emit()  # Solicita actualizar el registro de cambios sin aplicar todavía ninguna preferencia.
+    def _alguna_funcion_solicitada(self) -> bool:  # Indica si las preferencias realmente aplicadas requieren mantener activo el servicio.
+        return self.preferencias_ia.autocompletado_activado() or self.preferencias_ia.diagnosticos_ia_activados()  # Consulta únicamente valores persistidos y no selecciones todavía pendientes.
 
-    def _alguna_funcion_solicitada(self) -> bool:
-        return (
-            self.preferencias_ia.autocompletado_activado()
-            or self.preferencias_ia.diagnosticos_ia_activados()
-        )  # Para el estado real de ejecución utiliza únicamente las preferencias ya confirmadas.
+    def _emitir_funciones_efectivas(self) -> None:  # Comunica qué funciones pueden utilizar realmente la IA en este momento.
+        instalado = self.componente_ia.instalado()  # Comprueba que runtime y modelo continúen físicamente disponibles.
+        disponible = instalado and self.asistencia_disponible  # Exige simultáneamente instalación válida y servicio local disponible.
+        autocompletado_aplicado = self.preferencias_ia.autocompletado_activado()  # Recupera la decisión persistida correspondiente con ghost text.
+        diagnosticos_aplicados = self.preferencias_ia.diagnosticos_ia_activados()  # Recupera independientemente la decisión persistida para diagnósticos.
+        self.autocompletado_cambiado.emit(disponible and autocompletado_aplicado)  # Habilita autocompletado únicamente cuando preferencia y servicio son efectivos.
+        self.diagnosticos_ia_cambiados.emit(disponible and diagnosticos_aplicados)  # Hace la misma comprobación para las soluciones mejoradas.
 
-    def _emitir_funciones_efectivas(self) -> None:
-        instalado = self.componente_ia.instalado()  # Comprueba que todavía exista una instalación completa.
+    def obtener_cambios_pendientes(self) -> list[str]:  # Construye el resumen utilizado por la ventana general de Configuración.
+        cambios = []  # Reunirá solamente preferencias cuyo valor temporal difiere del persistido.
 
-        disponible = (
-            instalado and self.asistencia_disponible
-        )  # Exige archivos y servicio antes de habilitar consumidores.
+        if self.autocompletado_solicitado != self.preferencias_ia.autocompletado_activado():  # Comprueba si la primera casilla fue modificada sin aplicar.
+            cambios.append("Autocompletado con IA")  # Registra un nombre comprensible que podrá mostrarse en el resumen de cambios.
 
-        autocompletado_aplicado = (
-            self.preferencias_ia.autocompletado_activado()
-        )  # Recupera la decisión ya confirmada, no la selección pendiente.
+        if self.diagnosticos_solicitados != self.preferencias_ia.diagnosticos_ia_activados():  # Comprueba independientemente la segunda preferencia.
+            cambios.append("Mejora de soluciones de diagnósticos con IA")  # Registra la modificación pendiente correspondiente con diagnósticos.
 
-        diagnosticos_aplicados = (
-            self.preferencias_ia.diagnosticos_ia_activados()
-        )  # Recupera independientemente la segunda preferencia aplicada.
+        return cambios  # Entrega exclusivamente los valores que todavía requieren Aplicar o Aceptar.
 
-        self.autocompletado_cambiado.emit(
-            disponible and autocompletado_aplicado
-        )  # Habilita ghost text únicamente cuando preferencia y servicio son efectivos.
+    def aplicar_cambios_pendientes(self) -> tuple[list[str], list[str]]:  # Persiste las selecciones temporales y sincroniza posteriormente Ollama.
+        cambios_aplicados = []  # Conserva los nombres de preferencias que pudieron guardarse correctamente.
+        errores = []  # Conserva explicaciones para cualquier preferencia que no pudo persistirse.
+        autocompletado_anterior = self.preferencias_ia.autocompletado_activado()  # Recupera el valor real existente antes de comenzar la escritura.
+        diagnosticos_anteriores = self.preferencias_ia.diagnosticos_ia_activados()  # Recupera independientemente la segunda preferencia persistida.
 
-        self.diagnosticos_ia_cambiados.emit(
-            disponible and diagnosticos_aplicados
-        )  # Hace lo mismo con la mejora de soluciones.
+        if self.autocompletado_solicitado != autocompletado_anterior:  # Evita escribir el archivo cuando la primera preferencia realmente no cambió.
+            guardado = self.preferencias_ia.establecer_autocompletado_activado(self.autocompletado_solicitado)  # Intenta persistir la nueva decisión del usuario.
 
-    def obtener_cambios_pendientes(self) -> list[str]:
-        cambios = []  # Acumula únicamente preferencias cuyo valor pendiente difiere del persistido.
+            if guardado:  # Comprueba que la escritura haya terminado correctamente.
+                cambios_aplicados.append("Autocompletado con IA")  # Registra la preferencia dentro del resumen de cambios exitosos.
+            else:  # Atiende un posible problema de escritura en el almacenamiento persistente.
+                errores.append("No fue posible guardar Autocompletado con IA.")  # Conserva un mensaje que podrá presentar Configuración.
 
-        if (
-            self.autocompletado_solicitado
-            != self.preferencias_ia.autocompletado_activado()
-        ):
-            cambios.append(
-                "Autocompletado con IA"
-            )  # Registra la primera función cuando todavía no ha sido confirmada.
+        if self.diagnosticos_solicitados != diagnosticos_anteriores:  # Comprueba de forma independiente la segunda selección.
+            guardado = self.preferencias_ia.establecer_diagnosticos_ia_activados(self.diagnosticos_solicitados)  # Intenta persistir la nueva decisión relacionada con diagnósticos.
 
-        if (
-            self.diagnosticos_solicitados
-            != self.preferencias_ia.diagnosticos_ia_activados()
-        ):
-            cambios.append(
-                "Mejora de soluciones de diagnósticos con IA"
-            )  # Registra independientemente la segunda función.
+            if guardado:  # Comprueba que la segunda preferencia haya podido escribirse.
+                cambios_aplicados.append("Mejora de soluciones de diagnósticos con IA")  # Registra la modificación aplicada correctamente.
+            else:  # Atiende un fallo de persistencia sin afectar la otra preferencia.
+                errores.append("No fue posible guardar la mejora de soluciones de diagnósticos con IA.")  # Informa cuál opción no pudo conservarse.
 
-        return cambios  # Entrega a VentanaConfiguracion el registro actual.
+        self._sincronizar_servicio_con_preferencias_aplicadas()  # Inicia o detiene Ollama según las preferencias que realmente quedaron persistidas.
+        self._actualizar_estado()  # Actualiza visualmente las casillas después del intento de aplicación.
+        self.configuracion_modificada.emit()  # Solicita recalcular si todavía quedó alguna diferencia pendiente.
+        return cambios_aplicados, errores  # Permite a Configuración construir su resumen general de aplicación.
 
-    def aplicar_cambios_pendientes(
-        self,
-    ) -> tuple[list[str], list[str]]:
-        cambios_aplicados = []  # Conserva los nombres confirmados correctamente.
-        errores = []  # Conserva cualquier preferencia que no pudo persistirse.
+    def descartar_cambios_pendientes(self) -> None:  # Recupera las preferencias reales cuando el usuario pulsa Cancelar.
+        self.autocompletado_solicitado = self.preferencias_ia.autocompletado_activado()  # Restaura la selección temporal del autocompletado.
+        self.diagnosticos_solicitados = self.preferencias_ia.diagnosticos_ia_activados()  # Restaura también la selección temporal de diagnósticos.
+        self._actualizar_estado()  # Retira visualmente cualquier cambio que nunca llegó a aplicarse.
+        self.configuracion_modificada.emit()  # Informa que debe recalcularse el registro de modificaciones pendientes.
 
-        autocompletado_anterior = (
-            self.preferencias_ia.autocompletado_activado()
-        )  # Recupera el estado real antes de escribir cambios.
+    def _sincronizar_servicio_con_preferencias_aplicadas(self) -> None:  # Ajusta el estado real de Ollama después de confirmar las preferencias.
+        instalado = self.componente_ia.instalado()  # Comprueba primero si existe un componente físicamente utilizable.
+        autocompletado_aplicado = self.preferencias_ia.autocompletado_activado()  # Recupera el valor definitivo de la primera función.
+        diagnosticos_aplicados = self.preferencias_ia.diagnosticos_ia_activados()  # Recupera el valor definitivo de la segunda función.
+        alguna_funcion_aplicada = autocompletado_aplicado or diagnosticos_aplicados  # Determina si alguna característica necesita mantener disponible el modelo local.
 
-        diagnosticos_anteriores = (
-            self.preferencias_ia.diagnosticos_ia_activados()
-        )  # Recupera de forma independiente la segunda preferencia real.
+        if not instalado:  # Atiende el caso donde las preferencias existen pero el componente físico no está disponible.
+            self.asistencia_disponible = False  # Mantiene el estado interno consistente con la ausencia del componente.
+            self.servicio_cambiado.emit(False)  # Informa a otros componentes que no existe un servicio utilizable.
+            self.autocompletado_cambiado.emit(False)  # Impide cualquier solicitud posterior de ghost text.
+            self.diagnosticos_ia_cambiados.emit(False)  # Mantiene solamente las soluciones oficiales del compilador.
+            self._actualizar_estado()  # Representa la indisponibilidad dentro de los controles del panel.
+            return  # Finaliza porque ninguna preferencia puede activar IA sin una instalación existente.
 
-        if self.autocompletado_solicitado != autocompletado_anterior:
-            guardado = (
-                self.preferencias_ia.establecer_autocompletado_activado(
-                    self.autocompletado_solicitado
-                )
-            )  # Persiste solamente la primera función cuando realmente cambió.
+        if alguna_funcion_aplicada:  # Comprueba si al menos una preferencia persistida necesita utilizar Ollama.
+            if self.asistencia_disponible:  # Comprueba si el servicio requerido ya se encuentra ejecutándose.
+                self._emitir_funciones_efectivas()  # Reutiliza la instancia activa y comunica qué consumidores deben quedar habilitados.
+                self._actualizar_estado()  # Refleja que servicio y preferencias ya están sincronizados.
+                return  # Evita iniciar una segunda operación innecesaria.
 
-            if guardado:
-                cambios_aplicados.append(
-                    "Autocompletado con IA"
-                )
-            else:
-                errores.append(
-                    "No fue posible guardar Autocompletado con IA."
-                )
+            self._iniciar_operacion("activar")  # Inicia Ollama únicamente después de aplicar una preferencia que realmente lo necesita.
+            return  # Deja que el mecanismo asíncrono finalice posteriormente la actualización del panel.
 
-        if self.diagnosticos_solicitados != diagnosticos_anteriores:
-            guardado = (
-                self.preferencias_ia.establecer_diagnosticos_ia_activados(
-                    self.diagnosticos_solicitados
-                )
-            )  # Persiste únicamente la segunda función cuando su estado difiere.
+        self.autocompletado_cambiado.emit(False)  # Deshabilita inmediatamente el consumidor de autocompletado cuando ninguna función quedó activa.
+        self.diagnosticos_ia_cambiados.emit(False)  # Deshabilita también la capa opcional de explicaciones de diagnósticos.
 
-            if guardado:
-                cambios_aplicados.append(
-                    "Mejora de soluciones de diagnósticos con IA"
-                )
-            else:
-                errores.append(
-                    "No fue posible guardar la mejora de soluciones de diagnósticos con IA."
-                )
+        if self.asistencia_disponible:  # Comprueba si Ollama permanece activo aunque ninguna preferencia aplicada lo necesite.
+            self._iniciar_operacion("desactivar")  # Solicita detener el servicio únicamente después de haber aplicado la desactivación.
+            return  # Espera que la operación asíncrona actualice posteriormente el estado restante.
 
-        self._sincronizar_servicio_con_preferencias_aplicadas()  # Ajusta el estado real de Ollama después de confirmar las preferencias.
+        self._actualizar_estado()  # Representa directamente el estado inactivo cuando el servicio ya se encontraba detenido.
 
-        self._actualizar_estado()  # Representa inmediatamente los valores que permanecen pendientes o aplicados.
-
-        self.configuracion_modificada.emit()  # Solicita recalcular Aplicar después del intento.
-
-        return cambios_aplicados, errores  # Permite construir el resumen general de Configuración.
-
-    def descartar_cambios_pendientes(self) -> None:
-        self.autocompletado_solicitado = (
-            self.preferencias_ia.autocompletado_activado()
-        )  # Recupera la primera preferencia confirmada.
-
-        self.diagnosticos_solicitados = (
-            self.preferencias_ia.diagnosticos_ia_activados()
-        )  # Recupera también la segunda preferencia persistida.
-
-        self._actualizar_estado()  # Retira visualmente cualquier selección que no hubiera sido aplicada.
-
-        self.configuracion_modificada.emit()  # Informa que el registro pendiente debe quedar vacío.
-
-    def _sincronizar_servicio_con_preferencias_aplicadas(self) -> None:
-        instalado = self.componente_ia.instalado()  # Comprueba primero si existe un runtime utilizable.
-
-        autocompletado_aplicado = (
-            self.preferencias_ia.autocompletado_activado()
-        )  # Recupera el estado definitivo de la primera función.
-
-        diagnosticos_aplicados = (
-            self.preferencias_ia.diagnosticos_ia_activados()
-        )  # Recupera el estado definitivo de la segunda función.
-
-        alguna_funcion_aplicada = (
-            autocompletado_aplicado
-            or diagnosticos_aplicados
-        )  # Decide si Ollama debe mantenerse disponible.
-
-        if not instalado:
-            self.asistencia_disponible = False  # Mantiene un estado realista cuando el componente no existe.
-
-            self.servicio_cambiado.emit(
-                False
-            )  # Informa al controlador que no existe servicio utilizable.
-
-            self.autocompletado_cambiado.emit(
-                False
-            )  # Impide cualquier solicitud de ghost text.
-
-            self.diagnosticos_ia_cambiados.emit(
-                False
-            )  # Mantiene únicamente las soluciones oficiales.
-
-            self._actualizar_estado()
-
-            return
-
-        if alguna_funcion_aplicada:
-            if self.asistencia_disponible:
-                self._emitir_funciones_efectivas()  # Aprovecha la instancia que ya se encuentra ejecutándose.
-
-                self._actualizar_estado()
-
-                return
-
-            self._iniciar_operacion(
-                "activar"
-            )  # Inicia Ollama únicamente después de confirmar una función que lo necesita.
-
-            return
-
-        self.autocompletado_cambiado.emit(
-            False
-        )  # Detiene inmediatamente cualquier consumidor del ghost text.
-
-        self.diagnosticos_ia_cambiados.emit(
-            False
-        )  # Restaura inmediatamente las soluciones oficiales.
-
-        if self.asistencia_disponible:
-            self._iniciar_operacion(
-                "desactivar"
-            )  # Cierra Ollama solamente después de confirmar que ninguna función lo utiliza.
-
-            return
-
-        self._actualizar_estado()  # Representa el estado inactivo cuando el servicio ya estaba detenido.
-
-    @Slot(str, bool, str)
-    def _finalizar_operacion(
-        self,
-        operacion: str,
-        resultado: bool,
-        mensaje: str,
-    ) -> None:
-        super()._finalizar_operacion(
-            operacion,
-            resultado,
-            mensaje,
-        )  # Conserva íntegramente instalación, desinstalación y administración del panel original.
-
-        self.configuracion_modificada.emit()  # Actualiza Aplicar por si una acción inmediata modificó preferencias de IA.
+    @Slot(str, bool, str)  # Declara la firma Qt utilizada para recibir la finalización de las operaciones asíncronas.
+    def _finalizar_operacion(self, operacion: str, resultado: bool, mensaje: str) -> None:  # Extiende el cierre normal de operaciones realizado por PanelConfiguracionIA.
+        super()._finalizar_operacion(operacion, resultado, mensaje)  # Conserva íntegramente instalación, desinstalación, activación y actualización visual del panel original.
+        self.configuracion_modificada.emit()  # Recalcula Aplicar porque una operación inmediata puede haber modificado también preferencias relacionadas.

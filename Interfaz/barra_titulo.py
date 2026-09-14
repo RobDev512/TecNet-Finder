@@ -14,8 +14,8 @@
 # La ventana principal incluye un botón de Media pantalla que
 # abre un selector visual inspirado en Snap de Windows. Desde
 # este selector el usuario puede colocar TecNet Finder en la
-# mitad izquierda, en la mitad derecha o regresar al modo de
-# ventana maximizada.
+# mitad izquierda, en la mitad derecha o regresar al modo
+# de ventana maximizada.
 #
 # Los controles utilizan iconos PNG propios y mantienen el
 # comportamiento visual general utilizado por TecNet Finder.
@@ -23,188 +23,168 @@
 
 from pathlib import Path  # Permite localizar los recursos gráficos mediante rutas relativas al proyecto.
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal  # Importa posiciones, tamaños, estados, banderas y señales utilizadas por la barra.
-from PySide6.QtGui import QIcon  # Permite representar los iconos utilizados por los botones.
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Importa los componentes necesarios para construir la barra y el selector visual.
+from PySide6.QtCore import QPoint, QSize, Qt, Signal  # Proporciona posiciones, tamaños, estados y señales utilizadas por la barra.
+from PySide6.QtGui import QIcon  # Permite cargar los iconos utilizados por los controles.
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes necesarios para barra y selector.
 
 
-class BotonIconoEstado(QPushButton):  # Define un botón capaz de cambiar su icono según el estado visual.
-    def __init__(self, padre=None):
-        super().__init__(padre)  # Inicializa el comportamiento estándar proporcionado por QPushButton.
-        self.icono_normal = QIcon()  # Guarda el icono utilizado cuando el botón está en reposo.
-        self.icono_hover = QIcon()  # Guarda el icono utilizado cuando el puntero se encuentra encima.
-        self.icono_presionado = QIcon()  # Guarda el icono utilizado mientras el botón permanece presionado.
-        self.puntero_encima = False  # Indica si el mouse se encuentra actualmente sobre el botón.
-        self.esta_presionado = False  # Indica si el botón se encuentra actualmente presionado.
+class BotonIconoEstado(QPushButton):  # Representa un botón capaz de cambiar automáticamente su icono según la interacción.
+    def __init__(self, padre=None):  # Inicializa los tres posibles estados gráficos del control.
+        super().__init__(padre)  # Inicializa el comportamiento estándar heredado desde QPushButton.
+        self.icono_normal = QIcon()  # Conserva el icono utilizado mientras no existe interacción.
+        self.icono_hover = QIcon()  # Conserva la variante utilizada cuando el cursor está encima.
+        self.icono_presionado = QIcon()  # Conserva la variante utilizada mientras permanece presionado.
+        self.puntero_encima = False  # Registra si actualmente el cursor se encuentra sobre el botón.
+        self.esta_presionado = False  # Registra si el botón está siendo presionado con el botón izquierdo.
 
-    def establecer_iconos(
-        self,
-        ruta_normal: Path,
-        ruta_hover: Path | None = None,
-        ruta_presionado: Path | None = None,
-    ) -> None:
-        self.icono_normal = self._cargar_icono(ruta_normal)  # Carga el icono utilizado en el estado normal.
-        self.icono_hover = self._cargar_icono(ruta_hover) if ruta_hover is not None else self.icono_normal  # Utiliza una variante hover cuando fue proporcionada.
-        self.icono_presionado = self._cargar_icono(ruta_presionado) if ruta_presionado is not None else self.icono_hover  # Utiliza una variante específica o reutiliza el icono hover.
-        self._actualizar_icono()  # Aplica inmediatamente el icono correspondiente con el estado actual.
+    def establecer_iconos(self, ruta_normal: Path, ruta_hover: Path | None = None, ruta_presionado: Path | None = None) -> None:  # Carga las variantes gráficas utilizadas por cada estado.
+        self.icono_normal = self._cargar_icono(ruta_normal)  # Carga el recurso correspondiente con el estado normal.
+        self.icono_hover = self._cargar_icono(ruta_hover) if ruta_hover is not None else self.icono_normal  # Utiliza una variante hover o reutiliza el icono normal.
+        self.icono_presionado = self._cargar_icono(ruta_presionado) if ruta_presionado is not None else self.icono_hover  # Utiliza una variante presionada o reutiliza hover.
+        self._actualizar_icono()  # Representa inmediatamente el icono correspondiente con el estado actual.
 
-    def _cargar_icono(self, ruta: Path) -> QIcon:
-        if ruta.exists():
-            return QIcon(str(ruta))  # Devuelve un icono construido a partir del archivo recibido.
+    def _cargar_icono(self, ruta: Path) -> QIcon:  # Convierte un recurso existente en QIcon sin provocar errores cuando falta.
+        if ruta.exists():  # Comprueba que el archivo solicitado realmente exista.
+            return QIcon(str(ruta))  # Devuelve el icono construido desde el recurso.
 
-        return QIcon()  # Mantiene funcional la interfaz incluso si algún recurso gráfico estuviera ausente.
+        return QIcon()  # Mantiene funcional el botón utilizando un icono vacío cuando el archivo falta.
 
-    def _actualizar_icono(self) -> None:
-        if self.esta_presionado:
-            self.setIcon(self.icono_presionado)  # Muestra la variante correspondiente con una pulsación activa.
-        elif self.puntero_encima:
-            self.setIcon(self.icono_hover)  # Muestra la variante utilizada mientras el puntero está encima.
-        else:
-            self.setIcon(self.icono_normal)  # Recupera el icono normal cuando no existe interacción.
+    def _actualizar_icono(self) -> None:  # Selecciona qué variante debe mostrarse según la interacción actual.
+        if self.esta_presionado:  # Da prioridad al estado presionado mientras exista una pulsación activa.
+            self.setIcon(self.icono_presionado)  # Muestra la variante correspondiente.
+        elif self.puntero_encima:  # Comprueba si el cursor está encima cuando el botón ya no está presionado.
+            self.setIcon(self.icono_hover)  # Muestra la variante de hover.
+        else:  # Atiende el estado convencional sin interacción.
+            self.setIcon(self.icono_normal)  # Recupera el recurso normal.
 
-    def enterEvent(self, evento) -> None:
-        self.puntero_encima = True  # Registra que el control comenzó a ser señalado.
-        self._actualizar_icono()  # Actualiza inmediatamente su apariencia.
-        super().enterEvent(evento)  # Conserva también el comportamiento estándar de Qt.
+    def enterEvent(self, evento) -> None:  # Actualiza el icono cuando el cursor entra al botón.
+        self.puntero_encima = True  # Registra la presencia del cursor.
+        self._actualizar_icono()  # Representa inmediatamente la variante hover.
+        super().enterEvent(evento)  # Conserva además el comportamiento convencional de Qt.
 
-    def leaveEvent(self, evento) -> None:
-        self.puntero_encima = False  # Registra que el mouse dejó de señalar el control.
-        self.esta_presionado = False  # Evita conservar visualmente un estado presionado fuera del botón.
-        self._actualizar_icono()  # Recupera la apariencia correspondiente.
-        super().leaveEvent(evento)  # Conserva el comportamiento estándar de Qt.
+    def leaveEvent(self, evento) -> None:  # Recupera el estado normal cuando el cursor abandona el botón.
+        self.puntero_encima = False  # Registra que el cursor ya no está encima.
+        self.esta_presionado = False  # Evita conservar visualmente una pulsación después de abandonar el control.
+        self._actualizar_icono()  # Recupera el icono correspondiente con el nuevo estado.
+        super().leaveEvent(evento)  # Conserva el procesamiento estándar del evento.
 
-    def mousePressEvent(self, evento) -> None:
-        if evento.button() == Qt.MouseButton.LeftButton:
-            self.esta_presionado = True  # Registra temporalmente que el botón está siendo presionado.
+    def mousePressEvent(self, evento) -> None:  # Representa visualmente una pulsación izquierda.
+        if evento.button() == Qt.MouseButton.LeftButton:  # Comprueba que se trate de la interacción principal.
+            self.esta_presionado = True  # Registra temporalmente el estado presionado.
             self._actualizar_icono()  # Muestra inmediatamente la variante correspondiente.
 
-        super().mousePressEvent(evento)  # Permite que QPushButton procese normalmente la pulsación.
+        super().mousePressEvent(evento)  # Permite que QPushButton continúe procesando normalmente la pulsación.
 
-    def mouseReleaseEvent(self, evento) -> None:
-        if evento.button() == Qt.MouseButton.LeftButton:
-            self.esta_presionado = False  # Libera el estado visual presionado.
-            self._actualizar_icono()  # Recupera hover o normal según la posición actual del puntero.
+    def mouseReleaseEvent(self, evento) -> None:  # Libera el estado visual después de soltar el botón izquierdo.
+        if evento.button() == Qt.MouseButton.LeftButton:  # Comprueba que la liberación corresponda con la interacción principal.
+            self.esta_presionado = False  # Elimina el estado presionado.
+            self._actualizar_icono()  # Recupera hover o normal según la posición actual.
 
-        super().mouseReleaseEvent(evento)  # Permite que QPushButton emita normalmente la señal clicked.
+        super().mouseReleaseEvent(evento)  # Permite que QPushButton emita normalmente clicked.
 
 
-class TarjetaMediaPantalla(QFrame):  # Representa una de las dos alternativas visuales del selector de Media pantalla.
-    lado_seleccionado = Signal(str)  # Comunica si el usuario eligió la mitad izquierda o derecha.
+class TarjetaMediaPantalla(QFrame):  # Representa visualmente una mitad disponible dentro del selector.
+    lado_seleccionado = Signal(str)  # Comunica si el usuario eligió izquierda o derecha.
 
-    def __init__(self, lado: str, titulo: str, padre=None):
-        super().__init__(padre)  # Inicializa el contenedor visual de la tarjeta.
-        self.lado = lado  # Conserva el lado que representa esta tarjeta.
-        self.activa = False  # Indica si esta tarjeta corresponde con la posición actualmente utilizada.
+    def __init__(self, lado: str, titulo: str, padre=None):  # Construye una tarjeta asociada con uno de los dos lados permitidos.
+        super().__init__(padre)  # Inicializa el QFrame utilizado como superficie interactiva.
+        self.lado = lado  # Conserva qué mitad representa la tarjeta.
+        self.activa = False  # Registra si actualmente corresponde con la geometría de TecNet Finder.
 
         self.setObjectName("TarjetaMediaPantalla")  # Permite aplicar estilos específicos a la tarjeta.
-        self.setFixedSize(142, 132)  # Mantiene dimensiones compactas semejantes con una opción de Snap de Windows.
-        self.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica visualmente que toda la tarjeta puede pulsarse.
-        self.setProperty("activa", False)  # Inicializa la propiedad utilizada para resaltar la opción activa.
+        self.setFixedSize(142, 132)  # Mantiene dimensiones compactas semejantes con una opción de Snap.
+        self.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que toda la superficie puede pulsarse.
+        self.setProperty("activa", False)  # Inicializa la propiedad utilizada por la hoja de estilos.
 
-        diseno_principal = QVBoxLayout(self)  # Organiza la previsualización y el nombre de la posición.
-        diseno_principal.setContentsMargins(9, 9, 9, 9)  # Mantiene espacio interior suficiente alrededor de la previsualización.
-        diseno_principal.setSpacing(8)  # Separa discretamente la ilustración del texto.
+        diseno_principal = QVBoxLayout(self)  # Organiza verticalmente la previsualización y el título.
+        diseno_principal.setContentsMargins(9, 9, 9, 9)  # Mantiene espacio interior uniforme.
+        diseno_principal.setSpacing(8)  # Separa discretamente ilustración y texto.
 
-        self.previsualizacion = QFrame(self)  # Crea el pequeño monitor esquemático utilizado para representar la división.
-        self.previsualizacion.setObjectName("PrevisualizacionMediaPantalla")  # Permite aplicar su fondo y borde independientemente.
+        self.previsualizacion = QFrame(self)  # Crea el pequeño monitor esquemático mostrado dentro de la tarjeta.
+        self.previsualizacion.setObjectName("PrevisualizacionMediaPantalla")  # Permite estilizar la previsualización independientemente.
         self.previsualizacion.setFixedHeight(82)  # Reserva la mayor parte de la tarjeta para la representación visual.
-        self.previsualizacion.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Hace que los clics sobre la previsualización lleguen a la tarjeta completa.
+        self.previsualizacion.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite que cualquier clic llegue hasta la tarjeta.
 
-        diseno_previsualizacion = QHBoxLayout(self.previsualizacion)  # Divide visualmente el pequeño monitor en dos mitades.
-        diseno_previsualizacion.setContentsMargins(7, 7, 7, 7)  # Mantiene un borde interno semejante con los layouts de Windows.
-        diseno_previsualizacion.setSpacing(5)  # Deja una separación estrecha entre ambas zonas.
+        diseno_previsualizacion = QHBoxLayout(self.previsualizacion)  # Divide el pequeño monitor en dos regiones horizontales.
+        diseno_previsualizacion.setContentsMargins(7, 7, 7, 7)  # Conserva un borde interno semejante con Snap.
+        diseno_previsualizacion.setSpacing(5)  # Mantiene una separación estrecha entre las dos mitades.
 
-        self.mitad_izquierda = QFrame(self.previsualizacion)  # Representa la mitad izquierda del monitor.
-        self.mitad_derecha = QFrame(self.previsualizacion)  # Representa la mitad derecha del monitor.
+        self.mitad_izquierda = QFrame(self.previsualizacion)  # Representa visualmente la mitad izquierda.
+        self.mitad_derecha = QFrame(self.previsualizacion)  # Representa visualmente la mitad derecha.
+        self.mitad_izquierda.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Mantiene clickeable la tarjeta completa.
+        self.mitad_derecha.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Mantiene clickeable la tarjeta completa.
 
-        self.mitad_izquierda.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite seleccionar la tarjeta aunque se pulse directamente sobre esta mitad.
-        self.mitad_derecha.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite seleccionar la tarjeta aunque se pulse directamente sobre esta mitad.
+        if self.lado == "izquierda":  # Comprueba qué mitad debe iluminar esta tarjeta.
+            self.mitad_izquierda.setObjectName("MitadMediaPantallaActiva")  # Destaca la región que ocuparía TecNet Finder.
+            self.mitad_derecha.setObjectName("MitadMediaPantallaInactiva")  # Mantiene neutra la región disponible para otra aplicación.
+        else:  # Atiende la alternativa correspondiente con la mitad derecha.
+            self.mitad_izquierda.setObjectName("MitadMediaPantallaInactiva")  # Mantiene neutra la primera mitad.
+            self.mitad_derecha.setObjectName("MitadMediaPantallaActiva")  # Destaca la región correspondiente con TecNet Finder.
 
-        if self.lado == "izquierda":
-            self.mitad_izquierda.setObjectName("MitadMediaPantallaActiva")  # Ilumina la mitad que TecNet Finder ocupará al elegir esta opción.
-            self.mitad_derecha.setObjectName("MitadMediaPantallaInactiva")  # Mantiene neutra la mitad reservada para otra aplicación.
-        else:
-            self.mitad_izquierda.setObjectName("MitadMediaPantallaInactiva")  # Mantiene neutra la mitad reservada para otra aplicación.
-            self.mitad_derecha.setObjectName("MitadMediaPantallaActiva")  # Ilumina la mitad que TecNet Finder ocupará al elegir esta opción.
+        diseno_previsualizacion.addWidget(self.mitad_izquierda, 1)  # Coloca la mitad izquierda utilizando exactamente la mitad del espacio.
+        diseno_previsualizacion.addWidget(self.mitad_derecha, 1)  # Coloca la mitad derecha utilizando el espacio restante.
 
-        diseno_previsualizacion.addWidget(self.mitad_izquierda, 1)  # Coloca la mitad izquierda ocupando exactamente la mitad del pequeño monitor.
-        diseno_previsualizacion.addWidget(self.mitad_derecha, 1)  # Coloca la mitad derecha ocupando exactamente la otra mitad.
+        self.etiqueta_titulo = QLabel(titulo, self)  # Presenta mediante texto qué lado representa la tarjeta.
+        self.etiqueta_titulo.setObjectName("TituloTarjetaMediaPantalla")  # Permite aplicar la apariencia específica del selector.
+        self.etiqueta_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra el título debajo de la previsualización.
+        self.etiqueta_titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite pulsar la tarjeta incluso directamente sobre el texto.
 
-        self.etiqueta_titulo = QLabel(titulo, self)  # Muestra el nombre textual de la alternativa.
-        self.etiqueta_titulo.setObjectName("TituloTarjetaMediaPantalla")  # Permite aplicar un estilo específico al texto.
-        self.etiqueta_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra el nombre debajo de la representación.
-        self.etiqueta_titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite seleccionar la tarjeta incluso al pulsar directamente sobre el texto.
+        diseno_principal.addWidget(self.previsualizacion)  # Coloca primero la representación visual.
+        diseno_principal.addWidget(self.etiqueta_titulo)  # Coloca debajo el nombre de la opción.
 
-        diseno_principal.addWidget(self.previsualizacion)  # Coloca primero la ilustración visual.
-        diseno_principal.addWidget(self.etiqueta_titulo)  # Coloca debajo el nombre del lado correspondiente.
-
-    def establecer_activa(self, activa: bool) -> None:
-        self.activa = activa  # Conserva el nuevo estado de selección de esta tarjeta.
-        self.setProperty("activa", activa)  # Expone el estado al sistema de estilos de Qt.
-        self.style().unpolish(self)  # Retira temporalmente el estilo anterior para reconocer la nueva propiedad.
-        self.style().polish(self)  # Aplica nuevamente el estilo correspondiente con el estado actualizado.
+    def establecer_activa(self, activa: bool) -> None:  # Sincroniza la apariencia con el lado que utiliza actualmente la ventana.
+        self.activa = activa  # Conserva internamente el nuevo estado.
+        self.setProperty("activa", activa)  # Expone el valor al sistema de estilos de Qt.
+        self.style().unpolish(self)  # Retira temporalmente la apariencia calculada anteriormente.
+        self.style().polish(self)  # Aplica nuevamente la hoja de estilos reconociendo la propiedad actualizada.
         self.update()  # Solicita el redibujado inmediato de la tarjeta.
 
-    def mousePressEvent(self, evento) -> None:
-        if evento.button() == Qt.MouseButton.LeftButton:
-            self.lado_seleccionado.emit(self.lado)  # Comunica inmediatamente qué mitad fue elegida.
+    def mousePressEvent(self, evento) -> None:  # Comunica la selección al pulsar cualquier punto de la tarjeta.
+        if evento.button() == Qt.MouseButton.LeftButton:  # Atiende únicamente la interacción principal.
+            self.lado_seleccionado.emit(self.lado)  # Emite exactamente el lado asociado con esta tarjeta.
 
-        super().mousePressEvent(evento)  # Conserva el procesamiento normal de eventos de QFrame.
+        super().mousePressEvent(evento)  # Conserva el procesamiento convencional de QFrame.
 
 
-class SelectorMediaPantalla(QFrame):  # Define el popup visual que ofrece izquierda, derecha y maximizado.
-    lado_seleccionado = Signal(str)  # Comunica a la barra qué mitad debe solicitar a la ventana principal.
-    maximizar_solicitado = Signal()  # Comunica que el usuario desea regresar al modo de ventana maximizada.
+class SelectorMediaPantalla(QFrame):  # Representa el popup utilizado para elegir izquierda, derecha o maximizado.
+    lado_seleccionado = Signal(str)  # Comunica qué mitad debe utilizar la ventana principal.
+    maximizar_solicitado = Signal()  # Comunica que se desea abandonar Media pantalla y volver a maximizado.
 
-    def __init__(self):
-        super().__init__(None)  # Crea un popup independiente que puede mostrarse encima de la ventana principal.
+    def __init__(self):  # Construye una única instancia reutilizable del selector.
+        super().__init__(None)  # Crea un popup independiente de los layouts de la ventana principal.
 
-        self.setObjectName("SelectorMediaPantalla")  # Permite aplicar el estilo exterior específico del selector.
-        self.setWindowFlags(
-            Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint
-        )  # Hace que el selector se cierre al pulsar fuera y evita añadir una barra de título propia.
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)  # Permite que el popup reciba correctamente los clics de selección.
-        self.setFixedSize(316, 204)  # Reserva espacio para las dos tarjetas y la acción inferior de maximizar.
+        self.setObjectName("SelectorMediaPantalla")  # Permite aplicar el estilo exterior específico del popup.
+        self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)  # Cierra automáticamente el selector al pulsar fuera y evita una barra adicional.
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)  # Permite que el popup reciba correctamente los clics.
+        self.setFixedSize(316, 204)  # Reserva espacio para las dos tarjetas y la acción inferior.
 
-        diseno_principal = QVBoxLayout(self)  # Organiza primero las tarjetas y debajo la acción de maximizado.
-        diseno_principal.setContentsMargins(10, 10, 10, 10)  # Mantiene un borde interior compacto alrededor de todo el selector.
-        diseno_principal.setSpacing(10)  # Separa visualmente las tarjetas del botón inferior.
+        diseno_principal = QVBoxLayout(self)  # Organiza las tarjetas y el botón de maximizado.
+        diseno_principal.setContentsMargins(10, 10, 10, 10)  # Conserva un borde interior uniforme.
+        diseno_principal.setSpacing(10)  # Separa las opciones de Media pantalla de la acción inferior.
 
-        contenedor_tarjetas = QWidget(self)  # Crea una fila independiente para mantener ambas alternativas lado a lado.
-        contenedor_tarjetas.setObjectName("ContenedorTarjetasMediaPantalla")  # Permite mantener transparente esta zona.
-        contenedor_tarjetas.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)  # Permite que las tarjetas continúen recibiendo interacción.
+        contenedor_tarjetas = QWidget(self)  # Crea una superficie independiente para mantener ambas tarjetas lado a lado.
+        contenedor_tarjetas.setObjectName("ContenedorTarjetasMediaPantalla")  # Permite conservar transparente la fila de opciones.
+        contenedor_tarjetas.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)  # Mantiene activas las interacciones de las tarjetas.
 
-        diseno_tarjetas = QHBoxLayout(contenedor_tarjetas)  # Organiza las dos opciones horizontalmente.
-        diseno_tarjetas.setContentsMargins(0, 0, 0, 0)  # Evita agregar márgenes duplicados dentro del popup.
-        diseno_tarjetas.setSpacing(10)  # Mantiene una separación uniforme entre ambas tarjetas.
+        diseno_tarjetas = QHBoxLayout(contenedor_tarjetas)  # Organiza horizontalmente ambas alternativas.
+        diseno_tarjetas.setContentsMargins(0, 0, 0, 0)  # Evita duplicar márgenes dentro del popup.
+        diseno_tarjetas.setSpacing(10)  # Mantiene una separación uniforme entre izquierda y derecha.
 
-        self.tarjeta_izquierda = TarjetaMediaPantalla(
-            lado="izquierda",
-            titulo="Izquierda",
-            padre=contenedor_tarjetas,
-        )  # Crea la alternativa que coloca TecNet Finder sobre la mitad izquierda.
+        self.tarjeta_izquierda = TarjetaMediaPantalla(lado="izquierda", titulo="Izquierda", padre=contenedor_tarjetas)  # Crea la alternativa correspondiente con la mitad izquierda.
+        self.tarjeta_derecha = TarjetaMediaPantalla(lado="derecha", titulo="Derecha", padre=contenedor_tarjetas)  # Crea la alternativa correspondiente con la mitad derecha.
+        self.tarjeta_izquierda.lado_seleccionado.connect(self._seleccionar_lado)  # Recibe la elección realizada sobre la primera tarjeta.
+        self.tarjeta_derecha.lado_seleccionado.connect(self._seleccionar_lado)  # Recibe la elección realizada sobre la segunda tarjeta.
+        diseno_tarjetas.addWidget(self.tarjeta_izquierda)  # Coloca la alternativa izquierda como primera opción.
+        diseno_tarjetas.addWidget(self.tarjeta_derecha)  # Coloca inmediatamente después la alternativa derecha.
 
-        self.tarjeta_derecha = TarjetaMediaPantalla(
-            lado="derecha",
-            titulo="Derecha",
-            padre=contenedor_tarjetas,
-        )  # Crea la alternativa que coloca TecNet Finder sobre la mitad derecha.
-
-        self.tarjeta_izquierda.lado_seleccionado.connect(self._seleccionar_lado)  # Atiende la elección de la primera tarjeta.
-        self.tarjeta_derecha.lado_seleccionado.connect(self._seleccionar_lado)  # Atiende la elección de la segunda tarjeta.
-
-        diseno_tarjetas.addWidget(self.tarjeta_izquierda)  # Coloca la vista de izquierda como primera opción.
-        diseno_tarjetas.addWidget(self.tarjeta_derecha)  # Coloca la vista de derecha inmediatamente después.
-
-        self.boton_maximizar = QPushButton("Maximizar ventana", self)  # Crea una acción explícita para abandonar Media pantalla.
-        self.boton_maximizar.setObjectName("BotonMaximizarDesdeSelector")  # Permite aplicar un estilo propio dentro del popup.
-        self.boton_maximizar.setFixedHeight(40)  # Mantiene una altura cómoda sin hacer crecer demasiado el selector.
-        self.boton_maximizar.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que el área inferior es completamente interactiva.
-        self.boton_maximizar.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita introducir una parada innecesaria durante navegación mediante Tab.
-        self.boton_maximizar.clicked.connect(self._solicitar_maximizado)  # Cierra el selector y comunica la acción hacia la ventana principal.
-
-        diseno_principal.addWidget(contenedor_tarjetas)  # Coloca primero las dos opciones de Media pantalla.
-        diseno_principal.addWidget(self.boton_maximizar)  # Coloca debajo la salida hacia el modo maximizado.
+        self.boton_maximizar = QPushButton("Maximizar ventana", self)  # Crea una acción explícita para salir del modo dividido.
+        self.boton_maximizar.setObjectName("BotonMaximizarDesdeSelector")  # Permite aplicar un estilo propio.
+        self.boton_maximizar.setFixedHeight(40)  # Mantiene una altura cómoda sin hacer crecer demasiado el popup.
+        self.boton_maximizar.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que toda la superficie es interactiva.
+        self.boton_maximizar.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita una parada adicional durante navegación mediante Tab.
+        self.boton_maximizar.clicked.connect(self._solicitar_maximizado)  # Cierra el selector y comunica la solicitud.
+        diseno_principal.addWidget(contenedor_tarjetas)  # Coloca primero las alternativas divididas.
+        diseno_principal.addWidget(self.boton_maximizar)  # Coloca debajo la acción de regreso al modo maximizado.
 
         self.setStyleSheet(
             """
@@ -280,243 +260,177 @@ class SelectorMediaPantalla(QFrame):  # Define el popup visual que ofrece izquie
                 border: 1px solid #cba6f7;
             }
             """
-        )  # Aplica una apariencia coherente con el tema oscuro utilizado por TecNet Finder.
+        )  # Conserva exactamente la apariencia oscura utilizada por TecNet Finder.
 
-    def _seleccionar_lado(self, lado: str) -> None:
-        self.hide()  # Oculta inmediatamente el popup después de elegir una posición.
-        self.lado_seleccionado.emit(lado)  # Comunica a la barra qué lado debe utilizar la ventana principal.
+    def _seleccionar_lado(self, lado: str) -> None:  # Cierra el popup y comunica la mitad seleccionada.
+        self.hide()  # Retira inmediatamente el selector después de la elección.
+        self.lado_seleccionado.emit(lado)  # Envía el lado hacia BarraTitulo.
 
-    def _solicitar_maximizado(self) -> None:
-        self.hide()  # Oculta el selector antes de modificar la geometría de la ventana principal.
-        self.maximizar_solicitado.emit()  # Comunica que TecNet Finder debe regresar al modo maximizado.
+    def _solicitar_maximizado(self) -> None:  # Cierra el popup y solicita recuperar la ventana maximizada.
+        self.hide()  # Oculta el selector antes de modificar la geometría.
+        self.maximizar_solicitado.emit()  # Comunica la acción hacia la barra.
 
-    def mostrar(
-        self,
-        boton_origen: QWidget,
-        lado_actual: str,
-        media_pantalla_activa: bool,
-    ) -> None:
-        self.tarjeta_izquierda.establecer_activa(
-            media_pantalla_activa and lado_actual == "izquierda"
-        )  # Resalta la tarjeta izquierda únicamente cuando representa el estado actual.
-        self.tarjeta_derecha.establecer_activa(
-            media_pantalla_activa and lado_actual == "derecha"
-        )  # Resalta la tarjeta derecha únicamente cuando representa el estado actual.
+    def mostrar(self, boton_origen: QWidget, lado_actual: str, media_pantalla_activa: bool) -> None:  # Posiciona el popup junto al botón y representa el estado actual.
+        self.tarjeta_izquierda.establecer_activa(media_pantalla_activa and lado_actual == "izquierda")  # Resalta izquierda únicamente cuando corresponde con el estado real.
+        self.tarjeta_derecha.establecer_activa(media_pantalla_activa and lado_actual == "derecha")  # Resalta derecha únicamente cuando corresponde con el estado real.
+        self.boton_maximizar.setEnabled(media_pantalla_activa)  # Permite maximizar solamente mientras Media pantalla realmente está activa.
 
-        self.boton_maximizar.setEnabled(
-            media_pantalla_activa
-        )  # Activa la salida a maximizado únicamente cuando TecNet Finder realmente está en Media pantalla.
+        posicion_boton = boton_origen.mapToGlobal(QPoint(0, boton_origen.height() + 6))  # Calcula inicialmente una posición justo debajo del control de origen.
+        pantalla = boton_origen.screen()  # Obtiene el monitor donde se encuentra actualmente la barra.
 
-        posicion_boton = boton_origen.mapToGlobal(
-            QPoint(0, boton_origen.height() + 6)
-        )  # Calcula una posición inicial ligeramente debajo del botón de Media pantalla.
+        if pantalla is None:  # Comprueba si Qt todavía no puede identificar el monitor.
+            self.move(posicion_boton)  # Utiliza la posición calculada sin realizar ajustes adicionales.
+            self.show()  # Muestra el selector en esa ubicación.
+            return  # Finaliza porque no existe geometría disponible para limitarlo.
 
-        pantalla = boton_origen.screen()  # Obtiene el monitor donde se encuentra actualmente la barra principal.
+        area = pantalla.availableGeometry()  # Obtiene el área utilizable excluyendo la barra de tareas.
+        posicion_x = posicion_boton.x() + boton_origen.width() - self.width()  # Alinea inicialmente el borde derecho con el botón.
+        posicion_y = posicion_boton.y()  # Mantiene inicialmente el selector debajo de la barra.
 
-        if pantalla is None:
-            self.move(posicion_boton)  # Utiliza directamente la posición inicial cuando Qt no conoce todavía el monitor.
-            self.show()  # Muestra el selector utilizando la posición calculada.
-            return
+        if posicion_x < area.left():  # Comprueba si el popup saldría por el borde izquierdo.
+            posicion_x = area.left() + 6  # Lo desplaza algunos píxeles hacia el interior del monitor.
 
-        area = pantalla.availableGeometry()  # Obtiene el área utilizable del monitor excluyendo la barra de tareas.
-        posicion_x = posicion_boton.x() + boton_origen.width() - self.width()  # Alinea inicialmente el borde derecho del popup con el borde derecho del botón.
-        posicion_y = posicion_boton.y()  # Coloca inicialmente el selector debajo de la barra.
+        if posicion_x + self.width() > area.right() + 1:  # Comprueba si el popup saldría por el borde derecho.
+            posicion_x = area.right() - self.width() + 1  # Corrige la posición para mantenerlo completamente visible.
 
-        if posicion_x < area.left():
-            posicion_x = area.left() + 6  # Impide que el selector salga por el borde izquierdo del monitor.
+        if posicion_y + self.height() > area.bottom() + 1:  # Comprueba si no existe suficiente espacio debajo de la barra.
+            posicion_y = boton_origen.mapToGlobal(QPoint(0, -self.height() - 6)).y()  # Coloca el selector encima del botón como alternativa.
 
-        if posicion_x + self.width() > area.right() + 1:
-            posicion_x = area.right() - self.width() + 1  # Impide que el selector salga por el borde derecho del monitor.
-
-        if posicion_y + self.height() > area.bottom() + 1:
-            posicion_y = boton_origen.mapToGlobal(
-                QPoint(0, -self.height() - 6)
-            ).y()  # Muestra el selector encima del botón cuando no existe espacio suficiente debajo.
-
-        self.move(posicion_x, posicion_y)  # Coloca finalmente el popup dentro del monitor actual.
-        self.show()  # Hace visible el selector con las tres alternativas.
-        self.raise_()  # Garantiza que el popup quede encima de la ventana principal.
+        self.move(posicion_x, posicion_y)  # Aplica finalmente una posición completamente visible dentro del monitor.
+        self.show()  # Hace visible el selector.
+        self.raise_()  # Mantiene el popup encima de la ventana principal.
 
 
 class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las ventanas de TecNet Finder.
-    def __init__(
-        self,
-        ventana,
-        ruta_icono: Path | None = None,
-        titulo: str = "TecNet Finder",
-        mostrar_configuracion: bool = True,
-        mostrar_minimizar: bool = True,
-        mostrar_media_pantalla: bool = False,
-        mostrar_pantalla_completa: bool = True,
-        mostrar_cerrar: bool = True,
-        permitir_arrastre: bool = False,
-    ):
+    def __init__(self, ventana, ruta_icono: Path | None = None, titulo: str = "TecNet Finder", mostrar_configuracion: bool = True, mostrar_minimizar: bool = True, mostrar_media_pantalla: bool = False, mostrar_pantalla_completa: bool = True, mostrar_cerrar: bool = True, permitir_arrastre: bool = False):  # Recibe qué controles debe mostrar según la ventana propietaria.
         super().__init__(ventana)  # Establece la ventana correspondiente como propietaria de la barra.
-        self.ventana = ventana  # Conserva la referencia utilizada por los controles y el movimiento de ventanas secundarias.
+        self.ventana = ventana  # Conserva acceso a las acciones de ventana.
         self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
-        self.permitir_arrastre = permitir_arrastre  # Determina si la barra puede utilizarse para mover una ventana secundaria.
+        self.permitir_arrastre = permitir_arrastre  # Determina si la barra puede utilizarse para mover diálogos secundarios.
 
-        self.boton_configuracion = None  # Permite omitir el acceso de Configuración en ventanas donde no corresponde.
-        self.boton_minimizar = None  # Permite omitir minimizar en diálogos secundarios.
+        self.boton_configuracion = None  # Permite omitir Configuración cuando no corresponde.
+        self.boton_minimizar = None  # Permite omitir minimizar en ventanas secundarias.
         self.boton_media_pantalla = None  # Permite mostrar el selector de Snap únicamente en la ventana principal.
-        self.selector_media_pantalla = None  # Conserva el popup visual utilizado para elegir izquierda, derecha o maximizado.
+        self.selector_media_pantalla = None  # Conserva una posible instancia del popup de selección.
         self.boton_pantalla_completa = None  # Permite omitir fullscreen en ventanas de tamaño fijo.
-        self.boton_cerrar = None  # Permite decidir si la ventana debe mostrar una acción de cierre.
-        self.media_pantalla_activa = False  # Conserva el estado actual para resaltarlo cuando se abra el selector.
-        self.lado_media_pantalla = "izquierda"  # Conserva el último lado conocido para representarlo dentro del selector.
+        self.boton_cerrar = None  # Permite omitir también la acción de cierre cuando fuera necesario.
+        self.media_pantalla_activa = False  # Registra si actualmente la ventana utiliza alguna mitad.
+        self.lado_media_pantalla = "izquierda"  # Conserva la última mitad conocida.
 
-        self.setObjectName("BarraTitulo")  # Permite aplicar estilos específicos desde estilos.py.
-        self.setFixedHeight(38)  # Mantiene exactamente la misma altura en todas las ventanas.
+        self.setObjectName("BarraTitulo")  # Permite aplicar los estilos generales preparados en estilos.py.
+        self.setFixedHeight(38)  # Mantiene la misma altura visual en todas las ventanas.
 
-        diseno = QHBoxLayout(self)  # Organiza horizontalmente logotipo, nombre y controles.
-        diseno.setContentsMargins(10, 0, 0, 0)  # Deja espacio antes del logotipo y elimina margen en los controles.
-        diseno.setSpacing(8)  # Define una separación pequeña entre logotipo y nombre.
+        diseno = QHBoxLayout(self)  # Organiza horizontalmente icono, título y controles.
+        diseno.setContentsMargins(10, 0, 0, 0)  # Mantiene espacio únicamente antes del logotipo.
+        diseno.setSpacing(8)  # Conserva una separación discreta entre icono y título.
 
-        self.etiqueta_icono = QLabel()  # Crea el espacio destinado al icono pequeño de la aplicación.
+        self.etiqueta_icono = QLabel()  # Crea la superficie destinada al logotipo pequeño.
         self.etiqueta_icono.setFixedSize(22, 22)  # Mantiene dimensiones apropiadas para la barra.
-        self.etiqueta_icono.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite iniciar el movimiento incluso sobre el logotipo.
+        self.etiqueta_icono.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite iniciar un arrastre incluso sobre el logotipo.
 
-        if ruta_icono is not None and ruta_icono.exists():
-            icono = QIcon(str(ruta_icono))  # Carga el icono general utilizando la ruta recibida.
-            self.etiqueta_icono.setPixmap(icono.pixmap(18, 18))  # Genera una versión pequeña apropiada para la barra.
+        if ruta_icono is not None and ruta_icono.exists():  # Comprueba que la ventana haya proporcionado un icono válido.
+            icono = QIcon(str(ruta_icono))  # Carga el recurso recibido.
+            self.etiqueta_icono.setPixmap(icono.pixmap(18, 18))  # Genera una versión pequeña adecuada para la barra.
 
-        diseno.addWidget(self.etiqueta_icono)  # Coloca el logotipo a la izquierda de la barra.
+        diseno.addWidget(self.etiqueta_icono)  # Coloca el logotipo a la izquierda.
 
-        self.etiqueta_titulo = QLabel(titulo)  # Muestra el nombre correspondiente con la ventana actual.
-        self.etiqueta_titulo.setObjectName("TituloBarra")  # Aplica el estilo correspondiente con el texto.
-        self.etiqueta_titulo.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)  # Mantiene el título correctamente alineado.
-        self.etiqueta_titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite iniciar el movimiento también sobre el título.
-        diseno.addWidget(self.etiqueta_titulo)  # Coloca el nombre inmediatamente después del logotipo.
-
+        self.etiqueta_titulo = QLabel(titulo)  # Crea el texto correspondiente con la ventana actual.
+        self.etiqueta_titulo.setObjectName("TituloBarra")  # Aplica la apariencia general del título.
+        self.etiqueta_titulo.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)  # Mantiene el texto centrado verticalmente.
+        self.etiqueta_titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite arrastrar también desde la zona del título.
+        diseno.addWidget(self.etiqueta_titulo)  # Coloca el título después del logotipo.
         diseno.addStretch()  # Empuja todos los controles hacia el extremo derecho.
 
-        if mostrar_configuracion:
-            self.boton_configuracion = self._crear_boton("BotonVentana", "Configuración")  # Crea el acceso directo a la configuración general.
-            self.boton_configuracion.setFixedSize(38, 38)  # Mantiene el acceso completamente cuadrado.
-            self.boton_configuracion.setIconSize(QSize(18, 18))  # Muestra claramente el engranaje sin dominar la barra.
-            self.boton_configuracion.setAccessibleName("Configuración")  # Conserva una descripción accesible del control.
-            self.boton_configuracion.establecer_iconos(
-                self.ruta_iconos / "Engrane.png",
-                self.ruta_iconos / "Engrane_Hover.png",
-                self.ruta_iconos / "Engrane_Hover.png",
-            )  # Utiliza las variantes normal y hover proporcionadas para Configuración.
+        if mostrar_configuracion:  # Comprueba si esta ventana necesita acceso directo a Configuración.
+            self.boton_configuracion = self._crear_boton("BotonVentana", "Configuración")  # Crea el botón especializado.
+            self.boton_configuracion.setFixedSize(38, 38)  # Mantiene el engrane completamente cuadrado.
+            self.boton_configuracion.setIconSize(QSize(18, 18))  # Muestra claramente el recurso sin dominar la barra.
+            self.boton_configuracion.setAccessibleName("Configuración")  # Conserva una descripción textual accesible.
+            self.boton_configuracion.establecer_iconos(self.ruta_iconos / "Engrane.png", self.ruta_iconos / "Engrane_Hover.png", self.ruta_iconos / "Engrane_Hover.png")  # Configura sus variantes normal y activa.
             diseno.addWidget(self.boton_configuracion)  # Coloca Configuración antes de los controles de ventana.
 
-        if mostrar_minimizar:
-            self.boton_minimizar = self._crear_boton("BotonVentana", "Minimizar")  # Crea el control utilizado para minimizar TecNet Finder.
-            self.boton_minimizar.establecer_iconos(
-                self.ruta_iconos / "Minimizar.png",
-                self.ruta_iconos / "Minimizar_hover.png",
-                self.ruta_iconos / "Minimizar_hover.png",
-            )  # Utiliza blanco normalmente y azul durante hover o pulsación.
-            self.boton_minimizar.clicked.connect(self.ventana.minimizar_animado)  # Ejecuta la transición propia de la ventana principal.
-            diseno.addWidget(self.boton_minimizar)  # Coloca minimizar cuando la ventana permite esta acción.
+        if mostrar_minimizar:  # Comprueba si la ventana puede enviarse a la barra de tareas.
+            self.boton_minimizar = self._crear_boton("BotonVentana", "Minimizar")  # Construye el control correspondiente.
+            self.boton_minimizar.establecer_iconos(self.ruta_iconos / "Minimizar.png", self.ruta_iconos / "Minimizar_hover.png", self.ruta_iconos / "Minimizar_hover.png")  # Configura las variantes gráficas.
+            self.boton_minimizar.clicked.connect(self.ventana.minimizar_animado)  # Ejecuta la transición implementada por VentanaPrincipal.
+            diseno.addWidget(self.boton_minimizar)  # Añade el control a la barra.
 
-        if mostrar_media_pantalla:
-            self.boton_media_pantalla = self._crear_boton("BotonVentana", "Elegir media pantalla")  # Crea el botón encargado exclusivamente de abrir el selector visual.
-            self.boton_media_pantalla.setAccessibleName("Elegir media pantalla")  # Conserva una descripción accesible del control.
-            self.boton_media_pantalla.establecer_iconos(
-                self.ruta_iconos / "Pantalla_Dividida.png",
-                self.ruta_iconos / "Pantalla_Dividida_hover.png",
-                self.ruta_iconos / "Pantalla_Dividida_hover.png",
-            )  # Utiliza exactamente los recursos preparados para la vista dividida.
-            self.boton_media_pantalla.clicked.connect(self._mostrar_selector_media_pantalla)  # Abre izquierda, derecha y maximizado en lugar de ejecutar Snap inmediatamente.
+        if mostrar_media_pantalla:  # Comprueba si esta barra pertenece a la ventana principal.
+            self.boton_media_pantalla = self._crear_boton("BotonVentana", "Elegir media pantalla")  # Crea el acceso al selector visual.
+            self.boton_media_pantalla.setAccessibleName("Elegir media pantalla")  # Proporciona una descripción para accesibilidad.
+            self.boton_media_pantalla.establecer_iconos(self.ruta_iconos / "Pantalla_Dividida.png", self.ruta_iconos / "Pantalla_Dividida_hover.png", self.ruta_iconos / "Pantalla_Dividida_hover.png")  # Configura las variantes propias de Media pantalla.
+            self.boton_media_pantalla.clicked.connect(self._mostrar_selector_media_pantalla)  # Abre el popup en lugar de aplicar inmediatamente una mitad.
             diseno.addWidget(self.boton_media_pantalla)  # Coloca el selector entre minimizar y fullscreen.
 
-            self.selector_media_pantalla = SelectorMediaPantalla()  # Construye una única instancia reutilizable del popup visual.
-            self.selector_media_pantalla.lado_seleccionado.connect(self._seleccionar_lado_media_pantalla)  # Envía la elección de mitad hacia la ventana principal.
-            self.selector_media_pantalla.maximizar_solicitado.connect(self._maximizar_desde_selector)  # Envía la opción inferior de regreso al modo maximizado.
+            self.selector_media_pantalla = SelectorMediaPantalla()  # Construye una única instancia reutilizable.
+            self.selector_media_pantalla.lado_seleccionado.connect(self._seleccionar_lado_media_pantalla)  # Envía la mitad elegida hacia la ventana principal.
+            self.selector_media_pantalla.maximizar_solicitado.connect(self._maximizar_desde_selector)  # Envía la acción de regreso al modo maximizado.
 
-        if mostrar_pantalla_completa:
-            self.boton_pantalla_completa = self._crear_boton("BotonPantallaCompleta", "Pantalla completa (F11)")  # Crea el control utilizado para fullscreen.
-            self.boton_pantalla_completa.establecer_iconos(
-                self.ruta_iconos / "Pantalla_completa.png",
-                self.ruta_iconos / "Pantalla_completa_hover.png",
-            )  # Configura las variantes iniciales del botón.
-            self.boton_pantalla_completa.clicked.connect(self.ventana.alternar_pantalla_completa)  # Alterna el modo fullscreen independientemente del selector de Snap.
-            diseno.addWidget(self.boton_pantalla_completa)  # Coloca fullscreen después del control de Media pantalla.
+        if mostrar_pantalla_completa:  # Comprueba si esta ventana admite fullscreen.
+            self.boton_pantalla_completa = self._crear_boton("BotonPantallaCompleta", "Pantalla completa (F11)")  # Crea el control correspondiente.
+            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Pantalla_completa.png", self.ruta_iconos / "Pantalla_completa_hover.png")  # Configura sus variantes iniciales.
+            self.boton_pantalla_completa.clicked.connect(self.ventana.alternar_pantalla_completa)  # Delega la transición en la ventana propietaria.
+            diseno.addWidget(self.boton_pantalla_completa)  # Añade fullscreen después del selector de mitad.
 
-        if mostrar_cerrar:
-            self.boton_cerrar = self._crear_boton("BotonCerrar", "Cerrar")  # Crea el control encargado de cerrar la ventana actual.
-            self.boton_cerrar.establecer_iconos(
-                self.ruta_iconos / "Cerrar.png",
-                self.ruta_iconos / "Cerrar_activo.png",
-                self.ruta_iconos / "Cerrar_activo.png",
-            )  # Utiliza las variantes ya definidas para el control de cierre.
-            self.boton_cerrar.clicked.connect(self.ventana.close)  # Solicita el cierre normal de la ventana propietaria.
+        if mostrar_cerrar:  # Comprueba si la ventana necesita una acción explícita de cierre.
+            self.boton_cerrar = self._crear_boton("BotonCerrar", "Cerrar")  # Crea el control correspondiente.
+            self.boton_cerrar.establecer_iconos(self.ruta_iconos / "Cerrar.png", self.ruta_iconos / "Cerrar_activo.png", self.ruta_iconos / "Cerrar_activo.png")  # Configura sus variantes visuales.
+            self.boton_cerrar.clicked.connect(self.ventana.close)  # Solicita el cierre convencional de la ventana propietaria.
             diseno.addWidget(self.boton_cerrar)  # Coloca cerrar en el extremo derecho.
 
-    def _crear_boton(self, nombre_objeto: str, ayuda: str) -> BotonIconoEstado:
-        boton = BotonIconoEstado(self)  # Crea un botón preparado para manejar variantes visuales.
-        boton.setObjectName(nombre_objeto)  # Permite aplicar el estilo correspondiente desde estilos.py.
-        boton.setFixedSize(46, 38)  # Utiliza dimensiones similares con los controles convencionales de Windows.
-        boton.setIconSize(QSize(16, 16))  # Mantiene los PNG en un tamaño apropiado para la barra.
-        boton.setToolTip(ayuda)  # Muestra una explicación breve al colocar el cursor encima.
-        boton.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita que los controles interfieran con la navegación mediante Tab.
-        return boton  # Devuelve el botón completamente configurado.
+    def _crear_boton(self, nombre_objeto: str, ayuda: str) -> BotonIconoEstado:  # Construye un control estándar de la barra con apariencia uniforme.
+        boton = BotonIconoEstado(self)  # Crea un botón preparado para variantes normal, hover y presionado.
+        boton.setObjectName(nombre_objeto)  # Permite aplicar la regla correspondiente desde estilos.py.
+        boton.setFixedSize(46, 38)  # Utiliza dimensiones semejantes con los controles convencionales de Windows.
+        boton.setIconSize(QSize(16, 16))  # Mantiene los PNG en un tamaño apropiado.
+        boton.setToolTip(ayuda)  # Explica brevemente su función al usuario.
+        boton.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita interferir con la navegación mediante Tab.
+        return boton  # Entrega el botón completamente configurado.
 
-    def _mostrar_selector_media_pantalla(self) -> None:
-        if self.selector_media_pantalla is None or self.boton_media_pantalla is None:
-            return  # Evita intentar abrir un selector inexistente en ventanas secundarias.
+    def _mostrar_selector_media_pantalla(self) -> None:  # Abre el popup reflejando la posición actual de TecNet Finder.
+        if self.selector_media_pantalla is None or self.boton_media_pantalla is None:  # Comprueba que esta barra realmente tenga la característica.
+            return  # Evita utilizar controles inexistentes en ventanas secundarias.
 
-        self.selector_media_pantalla.mostrar(
-            boton_origen=self.boton_media_pantalla,
-            lado_actual=self.lado_media_pantalla,
-            media_pantalla_activa=self.media_pantalla_activa,
-        )  # Muestra el popup debajo del botón y refleja dentro de él el estado real de la ventana.
+        self.selector_media_pantalla.mostrar(boton_origen=self.boton_media_pantalla, lado_actual=self.lado_media_pantalla, media_pantalla_activa=self.media_pantalla_activa)  # Sitúa el popup y representa la mitad activa.
 
-    def _seleccionar_lado_media_pantalla(self, lado: str) -> None:
-        if hasattr(self.ventana, "colocar_media_pantalla"):
-            self.ventana.colocar_media_pantalla(lado)  # Delega la ejecución real de Snap a la ventana principal.
+    def _seleccionar_lado_media_pantalla(self, lado: str) -> None:  # Delega la elección de lado sobre la ventana propietaria.
+        if hasattr(self.ventana, "colocar_media_pantalla"):  # Comprueba que la ventana posea la operación requerida.
+            self.ventana.colocar_media_pantalla(lado)  # Solicita realmente el Snap sobre el lado elegido.
 
-    def _maximizar_desde_selector(self) -> None:
-        if hasattr(self.ventana, "maximizar_ventana"):
-            self.ventana.maximizar_ventana()  # Delega a la ventana principal la salida ordenada desde Media pantalla.
+    def _maximizar_desde_selector(self) -> None:  # Delega la salida de Media pantalla hacia el modo principal.
+        if hasattr(self.ventana, "maximizar_ventana"):  # Comprueba que la ventana implemente la operación.
+            self.ventana.maximizar_ventana()  # Solicita recuperar el modo maximizado.
 
-    def actualizar_estado_media_pantalla(
-        self,
-        media_pantalla: bool,
-        lado: str = "izquierda",
-    ) -> None:
-        self.media_pantalla_activa = media_pantalla  # Conserva si actualmente se utiliza alguna de las dos mitades.
-        self.lado_media_pantalla = lado if lado in ("izquierda", "derecha") else "izquierda"  # Conserva únicamente posiciones reconocidas por el selector.
+    def actualizar_estado_media_pantalla(self, media_pantalla: bool, lado: str = "izquierda") -> None:  # Sincroniza el selector y tooltip con la geometría real de la ventana.
+        self.media_pantalla_activa = media_pantalla  # Conserva si actualmente existe una mitad activa.
+        self.lado_media_pantalla = lado if lado in ("izquierda", "derecha") else "izquierda"  # Acepta exclusivamente los dos lados reconocidos.
 
-        if self.boton_media_pantalla is None:
-            return  # Evita modificar un botón ausente en ventanas secundarias.
+        if self.boton_media_pantalla is None:  # Comprueba que esta barra realmente posea el selector.
+            return  # Finaliza en las ventanas secundarias.
 
-        if media_pantalla:
-            nombre_lado = "izquierda" if self.lado_media_pantalla == "izquierda" else "derecha"  # Convierte el estado interno en una descripción legible.
-            self.boton_media_pantalla.setToolTip(
-                f"Media pantalla actual: {nombre_lado}. Haz clic para cambiar de lado o maximizar."
-            )  # Explica que el selector permite cambiar de mitad o recuperar maximizado.
-        else:
-            self.boton_media_pantalla.setToolTip(
-                "Elegir media pantalla"
-            )  # Recupera el mensaje general mientras la ventana se encuentra maximizada.
+        if media_pantalla:  # Comprueba si debe mostrarse información específica del lado actual.
+            nombre_lado = "izquierda" if self.lado_media_pantalla == "izquierda" else "derecha"  # Convierte el estado interno en texto legible.
+            self.boton_media_pantalla.setToolTip(f"Media pantalla actual: {nombre_lado}. Haz clic para cambiar de lado o maximizar.")  # Explica las operaciones disponibles.
+        else:  # Atiende el modo convencional maximizado.
+            self.boton_media_pantalla.setToolTip("Elegir media pantalla")  # Recupera el mensaje general.
 
-    def actualizar_estado_pantalla_completa(self, pantalla_completa: bool) -> None:
-        if self.boton_pantalla_completa is None:
-            return  # Evita modificar un control que no existe en barras reducidas.
+    def actualizar_estado_pantalla_completa(self, pantalla_completa: bool) -> None:  # Cambia tooltip e iconos según entrada o salida de fullscreen.
+        if self.boton_pantalla_completa is None:  # Comprueba que esta barra incluya realmente el control.
+            return  # Finaliza en ventanas secundarias sin fullscreen.
 
-        if pantalla_completa:
+        if pantalla_completa:  # Representa la acción que permitirá abandonar fullscreen.
             self.boton_pantalla_completa.setToolTip("Salir de pantalla completa (F11)")  # Explica la función actual.
-            self.boton_pantalla_completa.establecer_iconos(
-                self.ruta_iconos / "Salir_pantalla_completa.png",
-                self.ruta_iconos / "Salir_pantalla_completa_hover.png",
-            )  # Sustituye expandir por los iconos utilizados para abandonar fullscreen.
-        else:
-            self.boton_pantalla_completa.setToolTip("Pantalla completa (F11)")  # Explica que el control permitirá entrar a fullscreen.
-            self.boton_pantalla_completa.establecer_iconos(
-                self.ruta_iconos / "Pantalla_completa.png",
-                self.ruta_iconos / "Pantalla_completa_hover.png",
-            )  # Recupera las variantes utilizadas para entrar a pantalla completa.
+            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Salir_pantalla_completa.png", self.ruta_iconos / "Salir_pantalla_completa_hover.png")  # Sustituye los iconos de entrada por los de salida.
+        else:  # Representa la acción disponible mientras la ventana no está en fullscreen.
+            self.boton_pantalla_completa.setToolTip("Pantalla completa (F11)")  # Explica que el control permitirá entrar al modo.
+            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Pantalla_completa.png", self.ruta_iconos / "Pantalla_completa_hover.png")  # Recupera las variantes convencionales.
 
-    def mousePressEvent(self, evento) -> None:
-        if self.permitir_arrastre and evento.button() == Qt.MouseButton.LeftButton:
-            manejador_ventana = self.ventana.windowHandle()  # Obtiene la ventana nativa creada por Qt para delegar el movimiento a Windows.
+    def mousePressEvent(self, evento) -> None:  # Permite mover ventanas secundarias mediante el mecanismo nativo del sistema.
+        if self.permitir_arrastre and evento.button() == Qt.MouseButton.LeftButton:  # Comprueba que el arrastre esté habilitado y se utilice el botón principal.
+            manejador_ventana = self.ventana.windowHandle()  # Obtiene la representación nativa administrada por Qt.
 
-            if manejador_ventana is not None and manejador_ventana.startSystemMove():
-                evento.accept()  # Deja que Windows complete el desplazamiento utilizando su mecanismo nativo de composición.
-                return
+            if manejador_ventana is not None and manejador_ventana.startSystemMove():  # Solicita al sistema iniciar el desplazamiento real.
+                evento.accept()  # Marca el evento como atendido por la operación nativa.
+                return  # Evita procesar adicionalmente la misma pulsación.
 
-        super().mousePressEvent(evento)  # Conserva el comportamiento normal cuando la barra no debe mover la ventana.
+        super().mousePressEvent(evento)  # Conserva el comportamiento normal cuando no corresponde iniciar un arrastre.

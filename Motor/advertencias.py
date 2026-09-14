@@ -8,288 +8,229 @@
 # con legibilidad, organización y uso de las instrucciones.
 #
 # Las advertencias no forman una fase formal del compilador ni
-# determinan si una instrucción es válida. Únicamente informan
-# situaciones que conviene revisar mientras el flujo continúa.
+# determinan por sí mismas si una instrucción es válida.
+# Solamente informan situaciones que conviene revisar mientras
+# el flujo continúa procesando los bloques aceptados.
 #
-# ADV-005 utiliza los bloques que ya superaron el análisis
-# semántico para advertir cuando la red base tiene al menos
-# dieciséis veces la capacidad realmente requerida por VLSM.
+# Actualmente se generan ADV-001 a ADV-008. ADV-005 utiliza
+# específicamente los bloques que ya superaron el análisis
+# semántico para comprobar el dimensionamiento de la red base.
 # ============================================================
 
-from collections import Counter  # Importa Counter para localizar cantidades de hosts repetidas.
-import re  # Importa expresiones regulares para detectar palabras reservadas escritas sin espacios.
+from collections import Counter  # Permite contar cantidades HOSTS repetidas dentro de una misma instrucción.
+import re  # Permite detectar palabras reservadas escritas directamente junto con el valor siguiente.
 
-from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Importa el modelo y la fábrica utilizada para producir advertencias estructuradas.
-from Motor.modelos import ResultadoLexico, ResultadoSemantico, ResultadoSintactico, Token  # Importa los resultados y tokens producidos por las fases actuales.
+from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para construir advertencias uniformes.
+from Motor.modelos import ResultadoLexico, ResultadoSemantico, ResultadoSintactico, Token  # Permite reutilizar los resultados y posiciones producidos por las fases formales.
 
 
-NOMBRES_GENERICOS = {  # Conserva los identificadores considerados demasiado generales para describir una red.
-    "red",
-    "prueba",
-    "test",
-    "network",
-    "temp",
-    "default",
+NOMBRES_GENERICOS = {  # Conserva los identificadores considerados demasiado generales para distinguir claramente una red.
+    "red",  # Detecta el nombre básico Red como poco descriptivo.
+    "prueba",  # Detecta nombres temporales relacionados con pruebas.
+    "test",  # Detecta también la variante común escrita en inglés.
+    "network",  # Considera demasiado general utilizar únicamente la palabra inglesa para red.
+    "temp",  # Detecta nombres que indican una identificación temporal.
+    "default",  # Detecta identificadores predeterminados que aportan poca información.
 }
 
-FACTOR_SOBREDIMENSIONAMIENTO = 16  # Considera sobredimensionada una red cuya capacidad sea al menos dieciséis veces mayor que el espacio VLSM requerido.
+FACTOR_SOBREDIMENSIONAMIENTO = 16  # Define que una red se considere claramente sobredimensionada desde dieciséis veces la capacidad realmente requerida.
 
 
-def _buscar_token(
-    tokens: list[Token],
-    linea: int,
-    tipo: str,
-    valor: str | None = None,
-) -> Token | None:  # Localiza un token para relacionar correctamente una advertencia con el código fuente.
-    for token in tokens:  # Recorre los tokens reconocidos conservando el orden original.
-        if token.linea != linea:
-            continue  # Ignora elementos ubicados en cualquier otra línea.
+def _buscar_token(tokens: list[Token], linea: int, tipo: str, valor: str | None = None) -> Token | None:  # Localiza un token concreto para relacionar una advertencia con el editor.
+    for token in tokens:  # Recorre todos los tokens respetando exactamente el orden en que fueron reconocidos.
+        if token.linea != linea:  # Comprueba si el token pertenece a una línea diferente de la solicitada.
+            continue  # Ignora el elemento porque no puede corresponder con la advertencia actual.
 
-        if token.tipo != tipo:
-            continue  # Ignora elementos pertenecientes a otras categorías léxicas.
+        if token.tipo != tipo:  # Comprueba si el token pertenece a otra categoría léxica.
+            continue  # Continúa buscando hasta encontrar el tipo requerido.
 
-        if valor is not None and token.valor != valor:
-            continue  # Ignora tokens del mismo tipo cuyo contenido sea diferente.
+        if valor is not None and token.valor != valor:  # Cuando se proporcionó contenido concreto, exige también que coincida exactamente.
+            continue  # Ignora tokens del mismo tipo cuyo valor pertenece a otro elemento.
 
-        return token  # Devuelve inmediatamente la primera coincidencia válida.
+        return token  # Devuelve inmediatamente la primera coincidencia válida encontrada.
 
-    return None  # Indica que no fue posible encontrar una posición concreta.
+    return None  # Informa que no pudo determinarse una ubicación concreta para la advertencia.
 
 
-def _ultimo_token_linea(tokens: list[Token], linea: int) -> Token | None:  # Obtiene el último token de una instrucción.
-    tokens_linea = [token for token in tokens if token.linea == linea]  # Reúne únicamente los tokens pertenecientes a la línea solicitada.
+def _ultimo_token_linea(tokens: list[Token], linea: int) -> Token | None:  # Obtiene el token situado más a la derecha dentro de una instrucción.
+    tokens_linea = [token for token in tokens if token.linea == linea]  # Reúne únicamente los tokens reconocidos en la línea solicitada.
 
-    if not tokens_linea:
-        return None  # Evita intentar obtener una posición inexistente.
+    if not tokens_linea:  # Comprueba si no existe ningún token disponible para esa línea.
+        return None  # Evita intentar calcular una posición inexistente.
 
-    return max(tokens_linea, key=lambda token: token.columna)  # Devuelve el token situado más a la derecha dentro de la instrucción.
-
-
-def _calcular_tamano_bloque_vlsm(cantidad_hosts: int) -> int:  # Calcula el bloque potencia de dos requerido para una solicitud.
-    direcciones_necesarias = cantidad_hosts + 2  # Agrega las direcciones reservadas para red y broadcast.
-    exponente = (direcciones_necesarias - 1).bit_length()  # Obtiene el exponente de la siguiente potencia de dos sin utilizar flotantes.
-    return 1 << exponente  # Devuelve la cantidad real de direcciones que ocupará la subred.
+    return max(tokens_linea, key=lambda token: token.columna)  # Selecciona el elemento cuya columna inicial se encuentra más a la derecha.
 
 
-def generar_advertencias(
-    codigo_fuente: str,
-    resultado_lexico: ResultadoLexico,
-    resultado_sintactico: ResultadoSintactico,
-    resultado_semantico: ResultadoSemantico,
-) -> list[Diagnostico]:  # Genera recomendaciones sin modificar la aceptación formal de los bloques.
-    advertencias: list[Diagnostico] = []  # Crea la colección donde se reunirán todas las recomendaciones detectadas.
-    tokens = resultado_lexico.tokens  # Reutiliza los tokens existentes para asociar cada advertencia con una posición exacta.
-    bloques = resultado_sintactico.bloques  # Conserva las advertencias de estilo sobre todos los bloques sintácticamente válidos.
-    bloques_semanticos = resultado_semantico.bloques_validos  # Reserva las advertencias de capacidad para bloques que superaron realmente la semántica.
+def _calcular_tamano_bloque_vlsm(cantidad_hosts: int) -> int:  # Calcula cuántas direcciones ocuparía una solicitud individual dentro de VLSM.
+    direcciones_necesarias = cantidad_hosts + 2  # Reserva adicionalmente las direcciones de red y broadcast.
+    exponente = (direcciones_necesarias - 1).bit_length()  # Obtiene el exponente de la siguiente potencia de dos sin utilizar operaciones flotantes.
+    return 1 << exponente  # Convierte el exponente en la cantidad real de direcciones que ocupará el bloque.
 
-    if (resultado_lexico.tiene_errores or resultado_sintactico.tiene_errores) and bloques:
+
+def generar_advertencias(codigo_fuente: str, resultado_lexico: ResultadoLexico, resultado_sintactico: ResultadoSintactico, resultado_semantico: ResultadoSemantico) -> list[Diagnostico]:  # Analiza situaciones recomendables sin alterar la aceptación formal de los bloques.
+    advertencias: list[Diagnostico] = []  # Prepara la colección donde se reunirán todas las recomendaciones encontradas.
+    tokens = resultado_lexico.tokens  # Reutiliza las posiciones léxicas para relacionar cada advertencia con el código fuente.
+    bloques = resultado_sintactico.bloques  # Utiliza los bloques sintácticamente válidos para advertencias relacionadas con estilo y escritura.
+    bloques_semanticos = resultado_semantico.bloques_validos  # Reserva comprobaciones de capacidad para redes que ya superaron realmente la semántica.
+
+    if (resultado_lexico.tiene_errores or resultado_sintactico.tiene_errores) and bloques:  # Comprueba si existen errores pero el parser logró conservar al menos un bloque utilizable.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-001",
-                mensaje="La entrada contiene errores, pero se procesarán únicamente los bloques válidos reconocidos.",
-                severidad="advertencia",
+                codigo="ADV-001",  # Identifica la situación como procesamiento parcial.
+                mensaje="La entrada contiene errores, pero se procesarán únicamente los bloques válidos reconocidos.",  # Explica que TecNet Finder continuará exclusivamente con las partes aceptadas.
+                severidad="advertencia",  # Garantiza que esta información no se interprete como otro error bloqueante.
             )
-        )  # Conserva temporalmente la advertencia histórica de procesamiento parcial.
+        )  # Agrega la advertencia histórica de recuperación parcial.
 
-    patron_pegado = re.compile(r"\b(?:IP(?=\d)|MASK(?=/)|HOSTS(?=\d))")  # Reconoce palabras reservadas válidas que aparecen unidas directamente con su valor siguiente.
+    patron_pegado = re.compile(r"\b(?:IP(?=\d)|MASK(?=/)|HOSTS(?=\d))")  # Reconoce palabras reservadas válidas escritas directamente junto con el valor posterior.
 
-    for numero_linea, texto_linea in enumerate(codigo_fuente.splitlines(), start=1):
-        coincidencia = patron_pegado.search(texto_linea)  # Busca la primera palabra reservada escrita sin separación.
+    for numero_linea, texto_linea in enumerate(codigo_fuente.splitlines(), start=1):  # Recorre cada línea conservando el número utilizado por el editor.
+        coincidencia = patron_pegado.search(texto_linea)  # Busca la primera palabra reservada que aparece sin un espacio posterior.
 
-        if coincidencia is None:
-            continue  # Evita producir ADV-002 cuando no existe ningún caso relevante.
+        if coincidencia is None:  # Comprueba si la línea actual no posee ninguna palabra reservada pegada.
+            continue  # Pasa directamente a la siguiente línea porque no debe producir ADV-002.
 
-        fragmento = coincidencia.group(0)  # Recupera exactamente la palabra reservada que apareció pegada.
-
+        fragmento = coincidencia.group(0)  # Recupera exactamente la palabra reservada que produjo la recomendación.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-002",
-                mensaje=(
-                    f"En la línea {numero_linea}, la palabra reservada '{fragmento}' "
-                    f"aparece pegada al valor siguiente. Es válido, pero se recomienda "
-                    f"usar espacios para mejorar la legibilidad."
-                ),
-                linea=numero_linea,
-                columna=coincidencia.start(),
-                longitud=len(fragmento),
-                fragmento=fragmento,
-                severidad="advertencia",
+                codigo="ADV-002",  # Clasifica el caso como palabra reservada pegada al valor.
+                mensaje=f"En la línea {numero_linea}, la palabra reservada '{fragmento}' aparece pegada al valor siguiente. Es válido, pero se recomienda usar espacios para mejorar la legibilidad.",  # Explica que la escritura es aceptada aunque no sea la recomendada.
+                linea=numero_linea,  # Relaciona la advertencia con la línea exacta del código fuente.
+                columna=coincidencia.start(),  # Utiliza la posición donde comienza la palabra reservada.
+                longitud=len(fragmento),  # Permite resaltar únicamente la palabra relacionada con la recomendación.
+                fragmento=fragmento,  # Conserva el texto exacto reconocido.
+                severidad="advertencia",  # Mantiene la instrucción completamente procesable.
             )
-        )  # Registra la recomendación sin invalidar la instrucción.
+        )  # Registra la recomendación sin alterar los tokens ni los bloques reconocidos.
 
-    nombres_vistos: dict[str, int] = {}  # Conserva la primera línea donde apareció cada identificador.
+    nombres_vistos: dict[str, int] = {}  # Relaciona cada nombre normalizado con la primera línea donde apareció.
 
-    for bloque in bloques:
-        if not bloque.nombre:
-            continue  # Reserva la ausencia de NAME para ADV-007.
+    for bloque in bloques:  # Recorre los bloques sintácticos para localizar nombres repetidos.
+        if not bloque.nombre:  # Comprueba si la instrucción omitió la sección opcional NAME.
+            continue  # Reserva esa situación para ADV-007 y evita utilizar None como nombre repetido.
 
-        nombre_normalizado = bloque.nombre.casefold()  # Normaliza diferencias de mayúsculas y minúsculas.
+        nombre_normalizado = bloque.nombre.casefold()  # Elimina diferencias entre mayúsculas y minúsculas durante la comparación.
 
-        if nombre_normalizado not in nombres_vistos:
-            nombres_vistos[nombre_normalizado] = bloque.linea_origen  # Conserva la primera aparición del nombre.
-            continue  # Evita advertir sobre la primera declaración.
+        if nombre_normalizado not in nombres_vistos:  # Comprueba si se trata de la primera aparición de este nombre.
+            nombres_vistos[nombre_normalizado] = bloque.linea_origen  # Guarda la línea original para poder mencionarla si vuelve a aparecer.
+            continue  # No genera advertencia porque la primera utilización de un nombre es completamente normal.
 
-        primera_linea = nombres_vistos[nombre_normalizado]  # Recupera la línea donde apareció originalmente el mismo nombre.
-        token_nombre = _buscar_token(tokens, bloque.linea_origen, "IDENTIFIER", bloque.nombre)  # Localiza exactamente el identificador repetido.
-
+        primera_linea = nombres_vistos[nombre_normalizado]  # Recupera dónde fue utilizado originalmente el identificador repetido.
+        token_nombre = _buscar_token(tokens, bloque.linea_origen, "IDENTIFIER", bloque.nombre)  # Localiza el token exacto del nombre repetido para navegación.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-003",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, el nombre de red "
-                    f"'{bloque.nombre}' está repetido. Ya se había utilizado en "
-                    f"la línea {primera_linea}. Es válido, pero puede causar confusión."
-                ),
-                linea=bloque.linea_origen,
-                columna=token_nombre.columna if token_nombre else 0,
-                longitud=len(bloque.nombre),
-                fragmento=bloque.nombre,
-                severidad="advertencia",
+                codigo="ADV-003",  # Identifica la repetición de un nombre entre bloques diferentes.
+                mensaje=f"En la línea {bloque.linea_origen}, el nombre de red '{bloque.nombre}' está repetido. Ya se había utilizado en la línea {primera_linea}. Es válido, pero puede causar confusión.",  # Informa ambas líneas relacionadas con la repetición.
+                linea=bloque.linea_origen,  # Ubica la advertencia sobre la aparición posterior del nombre.
+                columna=token_nombre.columna if token_nombre else 0,  # Utiliza la columna exacta o una posición segura si el token no pudo localizarse.
+                longitud=len(bloque.nombre),  # Resalta únicamente el identificador repetido.
+                fragmento=bloque.nombre,  # Conserva el nombre que provocó la advertencia.
+                severidad="advertencia",  # Mantiene ambos bloques como válidos.
             )
-        )  # Informa la repetición sin impedir el procesamiento.
+        )  # Agrega la recomendación sin modificar ninguna de las instrucciones.
 
-    for bloque in bloques:
-        contador = Counter(bloque.cantidades_hosts)  # Cuenta cuántas veces aparece cada cantidad dentro de la lista actual.
-        repetidos = sorted(
-            host
-            for host, cantidad in contador.items()
-            if cantidad > 1
-        )  # Reúne únicamente los valores que aparecen más de una vez.
+    for bloque in bloques:  # Recorre cada instrucción para comprobar cantidades HOSTS repetidas internamente.
+        contador = Counter(bloque.cantidades_hosts)  # Cuenta cuántas veces fue solicitada cada cantidad dentro de la misma lista.
+        repetidos = sorted(host for host, cantidad in contador.items() if cantidad > 1)  # Conserva ordenadamente solo las cantidades que aparecen dos o más veces.
 
-        if not repetidos:
-            continue  # Evita producir ADV-004 cuando todas las cantidades son diferentes.
+        if not repetidos:  # Comprueba si todas las cantidades del bloque son diferentes.
+            continue  # Omite ADV-004 porque no existe ninguna repetición que revisar.
 
-        primer_repetido = str(repetidos[0])  # Utiliza la primera cantidad repetida como referencia visual.
-        token_host = _buscar_token(tokens, bloque.linea_origen, "NUMBER", primer_repetido)  # Localiza la primera aparición del valor repetido.
-        texto_repetidos = ", ".join(str(host) for host in repetidos)  # Construye una representación legible de las cantidades duplicadas.
-
+        primer_repetido = str(repetidos[0])  # Utiliza la primera cantidad duplicada como referencia visual para la advertencia.
+        token_host = _buscar_token(tokens, bloque.linea_origen, "NUMBER", primer_repetido)  # Localiza la primera aparición del número dentro del código fuente.
+        texto_repetidos = ", ".join(str(host) for host in repetidos)  # Construye una lista legible con todas las cantidades repetidas.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-004",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, se detectaron cantidades "
-                    f"de hosts repetidas ({texto_repetidos}). Es válido, pero conviene "
-                    f"revisar si fueron escritas intencionalmente."
-                ),
-                linea=bloque.linea_origen,
-                columna=token_host.columna if token_host else 0,
-                longitud=len(primer_repetido),
-                fragmento=primer_repetido,
-                severidad="advertencia",
+                codigo="ADV-004",  # Identifica específicamente las cantidades HOSTS repetidas.
+                mensaje=f"En la línea {bloque.linea_origen}, se detectaron cantidades de hosts repetidas ({texto_repetidos}). Es válido, pero conviene revisar si fueron escritas intencionalmente.",  # Pide verificar que la repetición haya sido intencional.
+                linea=bloque.linea_origen,  # Relaciona la advertencia con la instrucción donde aparecen los duplicados.
+                columna=token_host.columna if token_host else 0,  # Navega hacia la primera cantidad repetida cuando puede localizarse.
+                longitud=len(primer_repetido),  # Resalta solamente la referencia utilizada por la advertencia.
+                fragmento=primer_repetido,  # Conserva la cantidad concreta utilizada para ubicar visualmente el problema.
+                severidad="advertencia",  # Permite generar todas las subredes solicitadas normalmente.
             )
-        )  # Mantiene la lista procesable y únicamente recomienda revisarla.
+        )  # Añade la recomendación sin eliminar ninguna cantidad de la lista.
 
-    for bloque in bloques_semanticos:  # Evalúa ADV-005 solamente sobre redes que ya poseen significado semántico correcto.
-        prefijo = int(bloque.mascara_subred[1:])  # Recupera el prefijo que ya superó SEM-001.
-        capacidad_red = 1 << (32 - prefijo)  # Calcula la cantidad total de direcciones disponibles en la red base.
-        capacidad_requerida = sum(
-            _calcular_tamano_bloque_vlsm(cantidad_hosts)
-            for cantidad_hosts in bloque.cantidades_hosts
-        )  # Calcula el espacio total que realmente ocuparán las solicitudes VLSM.
+    for bloque in bloques_semanticos:  # Evalúa sobredimensionamiento solamente sobre redes cuyo significado ya fue validado.
+        prefijo = int(bloque.mascara_subred[1:])  # Convierte la máscara CIDR previamente validada en un número utilizable.
+        capacidad_red = 1 << (32 - prefijo)  # Calcula la cantidad total de direcciones pertenecientes a la red base.
+        capacidad_requerida = sum(_calcular_tamano_bloque_vlsm(cantidad_hosts) for cantidad_hosts in bloque.cantidades_hosts)  # Suma el tamaño real de todos los bloques que ocuparían las solicitudes VLSM.
 
-        if capacidad_red < capacidad_requerida * FACTOR_SOBREDIMENSIONAMIENTO:
-            continue  # Evita advertir mientras la red base no llegue al umbral conservador definido.
+        if capacidad_red < capacidad_requerida * FACTOR_SOBREDIMENSIONAMIENTO:  # Comprueba si la diferencia todavía se encuentra por debajo del umbral conservador.
+            continue  # Evita advertir sobre redes que no llegan a dieciséis veces el espacio realmente requerido.
 
-        token_mascara = _buscar_token(
-            tokens,
-            bloque.linea_origen,
-            "SUBNET_MASK",
-            bloque.mascara_subred,
-        )  # Localiza la máscara porque es el elemento que determina el tamaño de la red base.
-
+        token_mascara = _buscar_token(tokens, bloque.linea_origen, "SUBNET_MASK", bloque.mascara_subred)  # Localiza la máscara porque es el elemento que determina directamente la capacidad de la red.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-005",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, la red "
-                    f"{bloque.direccion_ip}{bloque.mascara_subred} dispone de "
-                    f"{capacidad_red} direcciones, mientras que las solicitudes "
-                    f"VLSM requieren {capacidad_requerida}. La red base tiene al "
-                    f"menos {FACTOR_SOBREDIMENSIONAMIENTO} veces la capacidad necesaria."
-                ),
-                linea=token_mascara.linea if token_mascara else bloque.linea_origen,
-                columna=token_mascara.columna if token_mascara else 0,
-                longitud=len(token_mascara.valor) if token_mascara else len(bloque.mascara_subred),
-                fragmento=token_mascara.valor if token_mascara else bloque.mascara_subred,
-                severidad="advertencia",
+                codigo="ADV-005",  # Clasifica el caso como red base sobredimensionada.
+                mensaje=f"En la línea {bloque.linea_origen}, la red {bloque.direccion_ip}{bloque.mascara_subred} dispone de {capacidad_red} direcciones, mientras que las solicitudes VLSM requieren {capacidad_requerida}. La red base tiene al menos {FACTOR_SOBREDIMENSIONAMIENTO} veces la capacidad necesaria.",  # Presenta al usuario las capacidades comparadas.
+                linea=token_mascara.linea if token_mascara else bloque.linea_origen,  # Utiliza la línea exacta del token cuando se encuentra disponible.
+                columna=token_mascara.columna if token_mascara else 0,  # Señala específicamente la máscara responsable del tamaño de la red.
+                longitud=len(token_mascara.valor) if token_mascara else len(bloque.mascara_subred),  # Resalta la máscara completa incluso si debe utilizarse el dato del bloque como respaldo.
+                fragmento=token_mascara.valor if token_mascara else bloque.mascara_subred,  # Conserva la máscara que produjo el dimensionamiento advertido.
+                severidad="advertencia",  # Mantiene completamente válido el bloque porque la capacidad excesiva no impide utilizarlo.
             )
-        )  # Señala específicamente la máscara que vuelve excesivamente amplia la red base.
+        )  # Agrega la recomendación de optimización del espacio IPv4.
 
-    for bloque in bloques:
-        if not bloque.nombre:
-            continue  # Reserva la ausencia de NAME para ADV-007.
+    for bloque in bloques:  # Recorre los bloques para identificar nombres demasiado genéricos.
+        if not bloque.nombre:  # Comprueba si existe realmente un NAME que pueda evaluarse.
+            continue  # Reserva la ausencia de nombre para ADV-007.
 
-        nombre_normalizado = bloque.nombre.strip().casefold()  # Normaliza el identificador antes de compararlo con los nombres genéricos.
+        nombre_normalizado = bloque.nombre.strip().casefold()  # Elimina espacios exteriores y diferencias de capitalización antes de comparar.
 
-        if nombre_normalizado not in NOMBRES_GENERICOS:
-            continue  # Evita producir la recomendación cuando el nombre ya resulta descriptivo.
+        if nombre_normalizado not in NOMBRES_GENERICOS:  # Comprueba si el identificador aporta suficiente información para no pertenecer al catálogo genérico.
+            continue  # Evita producir ADV-006 para nombres que ya resultan descriptivos.
 
-        token_nombre = _buscar_token(tokens, bloque.linea_origen, "IDENTIFIER", bloque.nombre)  # Localiza el identificador concreto.
-
+        token_nombre = _buscar_token(tokens, bloque.linea_origen, "IDENTIFIER", bloque.nombre)  # Localiza el identificador exacto utilizado dentro del código.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-006",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, el nombre de red "
-                    f"'{bloque.nombre}' es demasiado genérico. Es válido, pero "
-                    f"puede causar confusión en los resultados."
-                ),
-                linea=bloque.linea_origen,
-                columna=token_nombre.columna if token_nombre else 0,
-                longitud=len(bloque.nombre),
-                fragmento=bloque.nombre,
-                severidad="advertencia",
+                codigo="ADV-006",  # Clasifica la recomendación como nombre de red genérico.
+                mensaje=f"En la línea {bloque.linea_origen}, el nombre de red '{bloque.nombre}' es demasiado genérico. Es válido, pero puede causar confusión en los resultados.",  # Explica que el nombre es aceptado aunque poco descriptivo.
+                linea=bloque.linea_origen,  # Relaciona la advertencia con la instrucción correspondiente.
+                columna=token_nombre.columna if token_nombre else 0,  # Navega directamente al identificador cuando el token puede localizarse.
+                longitud=len(bloque.nombre),  # Resalta todo el nombre utilizado.
+                fragmento=bloque.nombre,  # Conserva el identificador concreto evaluado.
+                severidad="advertencia",  # Mantiene la instrucción completamente válida.
             )
-        )  # Recomienda un nombre más descriptivo sin rechazar el bloque.
+        )  # Sugiere utilizar un identificador más descriptivo sin modificar el bloque.
 
-    for bloque in bloques:
-        if bloque.nombre:
-            continue  # Evita ADV-007 cuando la sección NAME fue especificada correctamente.
+    for bloque in bloques:  # Recorre nuevamente los bloques para detectar instrucciones válidas que omitieron NAME.
+        if bloque.nombre:  # Comprueba si la sección opcional ya fue utilizada.
+            continue  # No produce ADV-007 porque la red sí posee un nombre explícito.
 
-        ultimo_token = _ultimo_token_linea(tokens, bloque.linea_origen)  # Obtiene un punto de navegación dentro de la instrucción.
-
+        ultimo_token = _ultimo_token_linea(tokens, bloque.linea_origen)  # Obtiene un punto visible dentro de la instrucción para asociar la advertencia.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-007",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, la instrucción no incluye "
-                    f"un nombre de red. Es válido, pero se recomienda asignar uno "
-                    f"para identificar mejor los resultados."
-                ),
-                linea=bloque.linea_origen,
-                columna=ultimo_token.columna if ultimo_token else 0,
-                longitud=len(ultimo_token.valor) if ultimo_token else 1,
-                fragmento=ultimo_token.valor if ultimo_token else "",
-                severidad="advertencia",
+                codigo="ADV-007",  # Identifica la ausencia del nombre opcional.
+                mensaje=f"En la línea {bloque.linea_origen}, la instrucción no incluye un nombre de red. Es válido, pero se recomienda asignar uno para identificar mejor los resultados.",  # Aclara que NAME continúa siendo opcional.
+                linea=bloque.linea_origen,  # Relaciona el aviso con la instrucción sin nombre.
+                columna=ultimo_token.columna if ultimo_token else 0,  # Utiliza el último token disponible como punto práctico de navegación.
+                longitud=len(ultimo_token.valor) if ultimo_token else 1,  # Mantiene al menos un carácter resaltable aun si no existe información léxica.
+                fragmento=ultimo_token.valor if ultimo_token else "",  # Conserva el último elemento de la instrucción como referencia visual.
+                severidad="advertencia",  # Evita convertir NAME en una sección obligatoria.
             )
-        )  # Conserva NAME como elemento opcional y únicamente recomienda utilizarlo.
+        )  # Agrega la recomendación manteniendo intacto el bloque reconocido.
 
-    for bloque in bloques:
-        hosts_ordenados = sorted(bloque.cantidades_hosts, reverse=True)  # Calcula el orden descendente empleado internamente por VLSM.
+    for bloque in bloques:  # Comprueba finalmente si las cantidades fueron escritas en el mismo orden descendente utilizado por VLSM.
+        hosts_ordenados = sorted(bloque.cantidades_hosts, reverse=True)  # Construye el orden de mayor a menor que utilizará internamente la calculadora.
 
-        if bloque.cantidades_hosts == hosts_ordenados:
-            continue  # Evita ADV-008 cuando la entrada ya coincide con el orden recomendado.
+        if bloque.cantidades_hosts == hosts_ordenados:  # Compara directamente la secuencia original con el orden recomendado.
+            continue  # Omite ADV-008 cuando el usuario ya escribió las cantidades en orden descendente.
 
-        primer_host = str(bloque.cantidades_hosts[0])  # Utiliza la primera cantidad como punto visual de referencia.
-        token_host = _buscar_token(tokens, bloque.linea_origen, "NUMBER", primer_host)  # Localiza la primera cantidad HOSTS.
-        orden_original = ",".join(str(host) for host in bloque.cantidades_hosts)  # Reconstruye la secuencia escrita por el usuario.
-        orden_recomendado = ",".join(str(host) for host in hosts_ordenados)  # Construye la misma lista ordenada de mayor a menor.
-
+        primer_host = str(bloque.cantidades_hosts[0])  # Utiliza la primera cantidad escrita como referencia visual de la lista original.
+        token_host = _buscar_token(tokens, bloque.linea_origen, "NUMBER", primer_host)  # Localiza ese primer NUMBER dentro del código fuente.
+        orden_original = ",".join(str(host) for host in bloque.cantidades_hosts)  # Reconstruye la secuencia exactamente en el orden almacenado.
+        orden_recomendado = ",".join(str(host) for host in hosts_ordenados)  # Construye la versión ordenada que utilizará VLSM.
         advertencias.append(
             crear_diagnostico(
-                codigo="ADV-008",
-                mensaje=(
-                    f"En la línea {bloque.linea_origen}, las cantidades HOSTS "
-                    f"({orden_original}) no están escritas de mayor a menor. "
-                    f"La entrada es válida y TecNet Finder las ordenará internamente "
-                    f"como {orden_recomendado} para el cálculo VLSM."
-                ),
-                linea=bloque.linea_origen,
-                columna=token_host.columna if token_host else 0,
-                longitud=len(primer_host),
-                fragmento=primer_host,
-                severidad="advertencia",
+                codigo="ADV-008",  # Clasifica la recomendación relacionada con el orden de HOSTS.
+                mensaje=f"En la línea {bloque.linea_origen}, las cantidades HOSTS ({orden_original}) no están escritas de mayor a menor. La entrada es válida y TecNet Finder las ordenará internamente como {orden_recomendado} para el cálculo VLSM.",  # Explica tanto el orden escrito como el realmente utilizado.
+                linea=bloque.linea_origen,  # Relaciona la advertencia con la instrucción correspondiente.
+                columna=token_host.columna if token_host else 0,  # Señala la primera cantidad escrita cuando se conoce su token.
+                longitud=len(primer_host),  # Resalta únicamente la referencia inicial de la lista.
+                fragmento=primer_host,  # Conserva el valor utilizado como punto de navegación.
+                severidad="advertencia",  # Mantiene válida la instrucción porque TecNet Finder puede reorganizarla internamente.
             )
-        )  # Informa el orden recomendado sin cambiar la validez del bloque.
+        )  # Informa el orden recomendado sin modificar el contenido escrito por el usuario.
 
-    return advertencias  # Devuelve todas las recomendaciones detectadas sin alterar los resultados formales.
+    return advertencias  # Devuelve todas las recomendaciones generadas para que el flujo las agregue al resultado general.
