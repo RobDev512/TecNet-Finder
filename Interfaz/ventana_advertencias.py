@@ -78,6 +78,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         self.marco = QFrame(self)  # Crea la superficie principal visible de la ventana.
         self.marco.setObjectName("MarcoVentanaAdvertencias")  # Permite aplicar únicamente los estilos propios de esta ventana.
         self.marco.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que Qt pinte correctamente el fondo redondeado.
+
         self.marco.setStyleSheet(
             """
             QFrame#MarcoVentanaAdvertencias {
@@ -93,8 +94,15 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
             }
 
             QFrame#TarjetaAdvertenciaIndependiente:hover {
-                border-color: #f9e2af;
                 background-color: #1c1c2c;
+                border-color: #f9e2af;
+            }
+
+            QFrame#TarjetaAdvertenciaIndependiente QLabel {
+                background-color: #1e1e2e;
+                border: none;
+                border-radius: 7px;
+                padding: 2px 5px;
             }
 
             QLabel#CodigoAdvertenciaIndependiente {
@@ -125,7 +133,8 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
                 background-color: #1e1e2e;
             }
             """
-        )  # Define únicamente los elementos propios de esta ventana.
+        )  # Mantiene fondos redondeados únicamente sobre las etiquetas internas de cada tarjeta.
+
         diseno_exterior.addWidget(self.marco)  # Coloca el marco dentro del diálogo transparente.
 
         diseno_general = QVBoxLayout(self.marco)  # Divide verticalmente barra, contenido y pie.
@@ -139,6 +148,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         contenedor_barra = QFrame()  # Crea una región independiente para conservar las esquinas superiores.
         contenedor_barra.setObjectName("ContenedorBarraAdvertencias")  # Permite aplicar únicamente el fondo correspondiente a la cabecera.
         contenedor_barra.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que Qt dibuje el fondo personalizado.
+
         contenedor_barra.setStyleSheet(
             """
             QFrame#ContenedorBarraAdvertencias {
@@ -163,7 +173,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
             mostrar_pantalla_completa=False,
             mostrar_cerrar=True,
             permitir_arrastre=True,
-        )  # Reutiliza la barra oficial pero ahora muestra Advertencia.png en lugar del logotipo general.
+        )  # Reutiliza la misma estructura visual utilizada por Configuración.
 
         self.barra_titulo.setStyleSheet(
             """
@@ -172,14 +182,21 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
                 border: none;
             }
 
+            QLabel {
+                background-color: transparent;
+                border: none;
+            }
+
             QLabel#TituloBarra {
                 background-color: transparent;
+                border: none;
             }
             """
-        )  # Permite que el contenedor exterior controle completamente el fondo de la cabecera.
+        )  # Replica el tratamiento utilizado por Configuración para que icono y título formen un conjunto compacto sin recuadros visibles.
 
         if self.barra_titulo.boton_cerrar is not None:
             self.barra_titulo.boton_cerrar.setObjectName("BotonCerrarAdvertencias")  # Identifica únicamente el botón cerrar de esta ventana.
+
             self.barra_titulo.boton_cerrar.setStyleSheet(
                 """
                 QPushButton#BotonCerrarAdvertencias {
@@ -228,12 +245,14 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         diseno_contenido.addWidget(titulo)  # Coloca el título antes de la explicación.
 
         cantidad = len(self.advertencias)  # Calcula cuántos avisos pertenecen a esta compilación.
+
         descripcion = QLabel(
             f"Se detectaron {cantidad} "
             f"{'advertencia' if cantidad == 1 else 'advertencias'}. "
             "Haz doble clic sobre una advertencia para ir directamente "
             "a su ubicación en el código."
         )  # Explica también la interacción disponible sobre las tarjetas.
+
         descripcion.setObjectName("DescripcionConfiguracion")  # Mantiene una apariencia secundaria.
         descripcion.setWordWrap(True)  # Permite que el texto se adapte al ancho de la ventana.
         diseno_contenido.addWidget(descripcion)  # Sitúa la explicación encima de las tarjetas.
@@ -267,6 +286,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         pie = QFrame()  # Crea la región inferior donde vive el botón Aceptar.
         pie.setObjectName("PieVentanaAdvertencias")  # Permite aislar completamente el estilo del pie.
         pie.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que se dibujen sus esquinas inferiores.
+
         pie.setStyleSheet(
             """
             QFrame#PieVentanaAdvertencias {
@@ -287,11 +307,13 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         self.boton_aceptar.setObjectName("BotonPrincipal")  # Utiliza el estilo azul de acción principal.
         self.boton_aceptar.setDefault(True)  # Permite cerrar también presionando Enter.
         self.boton_aceptar.clicked.connect(self.accept)  # Cierra la ventana cuando el usuario confirma.
+
         diseno_pie.addWidget(self.boton_aceptar)  # Coloca la acción después del espacio flexible.
         diseno_general.addWidget(pie)  # Agrega finalmente el pie al marco.
 
     def _crear_tarjeta_advertencia(self, advertencia: Diagnostico) -> TarjetaAdvertenciaInteractiva:
         tarjeta = TarjetaAdvertenciaInteractiva(advertencia, self)  # Crea una superficie que conoce el diagnóstico que debe activar.
+
         diseno = QVBoxLayout(tarjeta)  # Organiza encabezado, mensaje y solución.
         diseno.setContentsMargins(16, 13, 16, 13)  # Separa el contenido del borde de la tarjeta.
         diseno.setSpacing(7)  # Mantiene próximos los elementos relacionados.
@@ -301,11 +323,13 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
 
         codigo = QLabel(f"{advertencia.codigo} · {advertencia.categoria}")  # Identifica código y categoría de forma compacta.
         codigo.setObjectName("CodigoAdvertenciaIndependiente")  # Utiliza el tono amarillo propio de las advertencias.
+
         fila_encabezado.addWidget(codigo)  # Coloca el identificador en el extremo izquierdo.
         fila_encabezado.addStretch()  # Separa visualmente el código de su ubicación.
 
         if advertencia.linea is not None:
             ubicacion_texto = f"Línea {advertencia.linea}"  # Muestra inicialmente la línea de origen.
+
             if advertencia.columna is not None:
                 ubicacion_texto += f", columna {advertencia.columna}"  # Añade la columna cuando también está disponible.
         else:
@@ -313,6 +337,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
 
         ubicacion = QLabel(ubicacion_texto)  # Crea la representación visual de la ubicación.
         ubicacion.setObjectName("UbicacionAdvertenciaIndependiente")  # Utiliza un tono secundario discreto.
+
         fila_encabezado.addWidget(ubicacion)  # Coloca la ubicación en el extremo derecho.
         diseno.addLayout(fila_encabezado)  # Incorpora el encabezado completo a la tarjeta.
 
@@ -363,6 +388,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         posicion_y = centro.y() - self.height() // 2  # Calcula la coordenada vertical centrada.
         posicion_x = max(area.left(), min(posicion_x, area.right() - self.width() + 1))  # Mantiene toda la ventana dentro de la pantalla.
         posicion_y = max(area.top(), min(posicion_y, area.bottom() - self.height() + 1))  # Hace lo mismo verticalmente.
+
         self.move(posicion_x, posicion_y)  # Coloca finalmente la ventana en la posición segura calculada.
 
     def showEvent(self, evento) -> None:
