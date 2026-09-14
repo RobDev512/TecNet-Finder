@@ -501,7 +501,16 @@ QFrame#TarjetaConfiguracion {
 
 QFrame#PieConfiguracion {
     background-color: #181825;
+    border: none;
     border-top: 1px solid #313244;
+    border-bottom-left-radius: 13px;
+    border-bottom-right-radius: 13px;
+}
+
+QStackedWidget#ZonaAdministracionIA,
+QWidget#PaginaAdministracionIA {
+    background-color: transparent;
+    border: none;
 }
 
 QPushButton#CasillaIA {

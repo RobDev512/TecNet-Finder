@@ -290,10 +290,12 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         diseno_componente.addWidget(descripcion_componente)  # Coloca la explicación encima de las acciones.
 
         self.zona_administracion = QStackedWidget()  # Reserva una única región que alternará entre botones y progreso.
+        self.zona_administracion.setObjectName("ZonaAdministracionIA")  # Permite retirar únicamente el fondo rectangular de esta zona interior mediante estilos.py.
         self.zona_administracion.setFixedHeight(66)  # Proporciona espacio suficiente para márgenes internos sin modificar el tamaño general.
         diseno_componente.addWidget(self.zona_administracion)  # Incorpora una sola región estable al diseño de la tarjeta.
 
         pagina_botones = QWidget()  # Representa el estado normal de administración.
+        pagina_botones.setObjectName("PaginaAdministracionIA")  # Hace transparente esta página para dejar visible el fondo redondeado de la tarjeta principal.
         diseno_botones = QHBoxLayout(pagina_botones)  # Organiza horizontalmente instalación y desinstalación.
         diseno_botones.setContentsMargins(8, 8, 8, 8)  # Aleja botones de todos los límites de la página interior.
         diseno_botones.setSpacing(12)  # Mantiene una separación visual clara entre las acciones.
@@ -310,6 +312,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         diseno_botones.addStretch()  # Mantiene ambas acciones alineadas hacia la izquierda.
 
         pagina_progreso = QWidget()  # Representa el mismo espacio durante instalaciones y desinstalaciones.
+        pagina_progreso.setObjectName("PaginaAdministracionIA")  # Mantiene también transparente la página de progreso para evitar que reaparezca el rectángulo cuadrado.
         diseno_progreso = QVBoxLayout(pagina_progreso)  # Organiza descripción y barra dentro de la zona ya reservada.
         diseno_progreso.setContentsMargins(8, 5, 8, 5)  # Separa texto y barra de los cuatro límites del contenedor interior.
         diseno_progreso.setSpacing(6)  # Mantiene próxima la etapa actual a su barra correspondiente.

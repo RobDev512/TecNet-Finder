@@ -17,7 +17,7 @@ from pathlib import Path  # Importa Path para localizar los recursos gráficos u
 from textwrap import fill  # Importa una utilidad para dividir textos largos dentro de los tooltips.
 
 from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer, Signal  # Importa eventos, geometría, temporización, señales y opciones generales.
-from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QTextCursor, QTextFormat  # Importa herramientas de dibujo, iconos y manipulación del texto.
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPen, QPixmap, QTextCursor, QTextFormat  # Importa herramientas de dibujo, iconos, paleta, imágenes y manipulación del texto.
 from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, diálogos, botones, selecciones adicionales y tooltips.
 
 from AsistenteIA.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
@@ -46,6 +46,9 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
     GROSOR_ONDA = 2.0  # Define el grosor visual utilizado para que las ondas resulten claramente visibles.
     DESPLAZAMIENTO_ONDA = 1.5  # Desplaza las ondas hacia abajo respecto a la posición normal del subrayado.
     COLOR_SUGERENCIA_IA = "#6c7086"  # Mantiene el ghost text discreto respecto al código escrito realmente.
+    COLOR_PLACEHOLDER = "#6c7086"  # Mantiene el ejemplo inicial visible pero claramente secundario respecto al código real.
+    TAMANO_ICONO_AUTOCOMPLETADO = 14  # Define un tamaño discreto para identificar visualmente una sugerencia producida por IA.
+    SEPARACION_ICONO_AUTOCOMPLETADO = 5  # Separa el icono de IA del final del ghost text sin alterar la continuidad de la sugerencia.
 
     def __init__(self, padre=None):
         super().__init__(padre)  # Inicializa el QPlainTextEdit original.
@@ -53,6 +56,8 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.sugerencia_ia = ""  # Conserva únicamente la continuación gris que todavía no forma parte del documento.
         self.prefijo_sugerencia_ia = ""  # Identifica el texto exacto que produjo la sugerencia visible.
         self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
+        ruta_icono_autocompletado = self.ruta_iconos / "Autocompletado.png"  # Localiza el recurso reservado para identificar visualmente el ghost text.
+        self.icono_autocompletado_ia = QPixmap(str(ruta_icono_autocompletado)) if ruta_icono_autocompletado.exists() else QPixmap()  # Carga el icono solo cuando el recurso se encuentra disponible.
         self.gestor_ejemplos = GestorEjemplos()  # Prepara el lector reutilizable de casos almacenados en Ejemplos.
         self.control_autocompletado = ControlAutocompletado(self)  # Prepara el asistente asíncrono asociado exclusivamente con este editor.
         self.area_numeros_linea = AreaNumerosLinea(self)  # Crea el área lateral donde se dibujarán los números.
@@ -66,6 +71,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.cursorPositionChanged.connect(self.resaltar_linea_actual)  # Actualiza el fondo de la línea cuando se mueve el cursor.
         self.cursorPositionChanged.connect(self._actualizar_autocompletado)  # Invalida sugerencias cuando el cursor deja la posición que las originó.
         self.textChanged.connect(self.limpiar_diagnosticos)  # Elimina diagnósticos antiguos cuando el código se modifica.
+        self.textChanged.connect(self.resaltar_linea_actual)  # Retira el resaltado cuando el editor queda vacío para no cubrir el placeholder.
         self.textChanged.connect(self._actualizar_autocompletado)  # Programa una nueva sugerencia cuando cambia realmente el código.
         self.control_autocompletado.sugerencia_lista.connect(self._recibir_sugerencia_ia)  # Recibe únicamente generaciones actuales aprobadas por el predictor.
         self.verticalScrollBar().rangeChanged.connect(self._posicionar_botones_flotantes)  # Reajusta ambos botones cuando aparece o desaparece la scrollbar.
@@ -74,8 +80,11 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.viewport().setMouseTracking(True)  # Mantiene disponible la posición del mouse sobre el código.
 
         self.actualizar_ancho_area_numeros_linea()  # Reserva inicialmente el espacio necesario para los números.
-        self.resaltar_linea_actual()  # Aplica el resaltado inicial de la línea activa.
+        self.resaltar_linea_actual()  # Aplica el resaltado inicial únicamente cuando existe código real.
         self.setPlaceholderText("IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina")  # Muestra una instrucción de referencia mientras el editor está vacío.
+        paleta = self.palette()  # Obtiene una copia de la paleta actual para modificar únicamente el texto de ejemplo.
+        paleta.setColor(QPalette.ColorRole.PlaceholderText, QColor(self.COLOR_PLACEHOLDER))  # Define explícitamente el gris utilizado por el placeholder.
+        self.setPalette(paleta)  # Aplica la paleta sin cambiar los demás colores administrados por los estilos generales.
 
         QTimer.singleShot(0, self._posicionar_botones_flotantes)  # Coloca los controles cuando Qt ya conoce las dimensiones reales del editor.
 
@@ -261,8 +270,8 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
     def resaltar_linea_actual(self) -> None:
         selecciones = []  # Crea la colección de selecciones visuales utilizadas por el editor.
 
-        if not self.isReadOnly():
-            seleccion = QTextEdit.ExtraSelection()  # Crea una selección independiente de la selección normal del usuario.
+        if not self.isReadOnly() and not self.document().isEmpty():
+            seleccion = QTextEdit.ExtraSelection()  # Crea el resaltado únicamente cuando existe código real para no ocultar el placeholder.
             seleccion.format.setBackground(QColor("#181825"))  # Aplica un fondo ligeramente distinto a la línea activa.
             seleccion.format.setProperty(QTextFormat.Property.FullWidthSelection, True)  # Extiende el fondo a todo el ancho disponible.
             seleccion.cursor = self.textCursor()  # Utiliza la posición actual del cursor como referencia.
@@ -336,10 +345,18 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         base_y = float(rectangulo.top() + self.fontMetrics().ascent())  # Alinea verticalmente la sugerencia con el texto real de la línea.
 
         pintor = QPainter(self.viewport())  # Dibuja directamente sobre la vista sin alterar el contenido del documento.
+        pintor.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)  # Suaviza el pequeño icono utilizado para identificar visualmente el autocompletado.
         pintor.setPen(QColor(self.COLOR_SUGERENCIA_IA))  # Aplica un color secundario claramente distinto al código confirmado.
         pintor.setFont(self.font())  # Mantiene exactamente la misma tipografía utilizada por el editor.
         pintor.setOpacity(0.72)  # Reduce la intensidad para dejar claro que el contenido aún no ha sido aceptado.
-        pintor.drawText(QPointF(float(rectangulo.left()), base_y), self.sugerencia_ia)  # Dibuja la continuación inmediatamente después del cursor.
+        texto_x = float(rectangulo.left())  # Conserva el comienzo exacto de la continuación para que el ghost text siga unido al código escrito.
+        pintor.drawText(QPointF(texto_x, base_y), self.sugerencia_ia)  # Dibuja la continuación inmediatamente después del cursor.
+        if not self.icono_autocompletado_ia.isNull():  # Comprueba que el recurso visual de IA se haya cargado correctamente.
+            ancho_sugerencia = float(self.fontMetrics().horizontalAdvance(self.sugerencia_ia))  # Calcula dónde termina visualmente el ghost text.
+            icono_x = int(texto_x + ancho_sugerencia + self.SEPARACION_ICONO_AUTOCOMPLETADO)  # Coloca el icono después de la sugerencia sin interrumpirla.
+            icono_y = int(rectangulo.top() + max(0, (self.fontMetrics().height() - self.TAMANO_ICONO_AUTOCOMPLETADO) / 2))  # Centra verticalmente el icono respecto a la línea.
+            pintor.setOpacity(0.88)  # Hace el indicador un poco más visible que el texto virtual sin convertirlo en protagonista.
+            pintor.drawPixmap(icono_x, icono_y, self.TAMANO_ICONO_AUTOCOMPLETADO, self.TAMANO_ICONO_AUTOCOMPLETADO, self.icono_autocompletado_ia)  # Identifica la sugerencia como contenido producido por el asistente local.
         pintor.end()  # Libera explícitamente el pintor antes de continuar con otros elementos visuales.
 
     def mostrar_diagnosticos(self, diagnosticos: list[Diagnostico]) -> None:

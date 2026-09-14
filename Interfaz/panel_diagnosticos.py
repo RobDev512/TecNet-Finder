@@ -24,8 +24,10 @@
 # lugar de comprimir excesivamente mensajes y soluciones.
 # ============================================================
 
-from PySide6.QtCore import QEvent, QTimer, Qt, Signal  # Importa eventos, temporización, roles, alineaciones, cursores y navegación.
-from PySide6.QtGui import QBrush, QColor  # Importa las herramientas utilizadas para colorear filas y estados.
+from pathlib import Path  # Permite localizar el recurso visual utilizado para identificar las funciones de IA.
+
+from PySide6.QtCore import QEvent, QSize, QTimer, Qt, Signal  # Importa eventos, tamaño de iconos, temporización, roles, alineaciones, cursores y navegación.
+from PySide6.QtGui import QBrush, QColor, QIcon  # Importa las herramientas utilizadas para colorear filas, estados e iconos.
 from PySide6.QtWidgets import QApplication, QAbstractItemView, QHeaderView, QTableWidget, QTableWidgetItem, QTabWidget  # Importa pestañas, tablas y acceso al intervalo de doble clic.
 
 from AsistenteIA.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
@@ -109,6 +111,8 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.ia_habilitada = False  # Impide solicitar explicaciones hasta recibir el estado efectivo desde Configuración.
         self.codigo_catalogo_pendiente: str | None = None  # Retrasa el clic simple sobre Código para distinguirlo correctamente del doble clic.
         self.clave_solucion_pendiente: str | None = None  # Identifica la solución que actualmente espera una respuesta de IA.
+        ruta_icono_ia = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos" / "Asistente_ia.png"  # Localiza el recurso reservado para las acciones inteligentes de diagnósticos.
+        self.icono_asistente_ia = QIcon(str(ruta_icono_ia)) if ruta_icono_ia.exists() else QIcon()  # Conserva un icono vacío cuando el recurso no se encuentra disponible.
 
         self.tabla_detectados = TablaDiagnosticosResponsiva(
             0,
@@ -162,6 +166,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.tabla_detectados.setTextElideMode(Qt.TextElideMode.ElideNone)  # Evita ocultar contenido mediante puntos suspensivos.
         self.tabla_detectados.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Habilita scroll solamente cuando los mínimos no caben.
         self.tabla_detectados.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Permite recorrer suavemente las columnas.
+        self.tabla_detectados.setIconSize(QSize(16, 16))  # Mantiene discreto el indicador visual de las funciones de IA dentro de Solución.
         self.tabla_detectados.verticalHeader().setVisible(False)  # Oculta la numeración automática de filas.
         self.tabla_detectados.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)  # Ajusta cada fila según la cantidad de texto mostrada.
         self.tabla_detectados.setMouseTracking(True)  # Permite actualizar el cursor sin necesidad de pulsar.
@@ -208,8 +213,8 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             if evento.type() == QEvent.Type.MouseMove:
                 indice = self.tabla_detectados.indexAt(evento.position().toPoint())  # Obtiene la celda situada debajo del cursor.
 
-                if indice.isValid() and indice.column() == 0:
-                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.PointingHandCursor)  # Representa Código como un enlace interactivo.
+                if indice.isValid() and (indice.column() == 0 or (indice.column() == 5 and self.ia_habilitada)):
+                    self.tabla_detectados.viewport().setCursor(Qt.CursorShape.PointingHandCursor)  # Identifica Código y la mejora de Solución como interacciones disponibles.
                 else:
                     self.tabla_detectados.viewport().setCursor(Qt.CursorShape.ArrowCursor)  # Mantiene la flecha convencional sobre las demás columnas.
 
@@ -341,6 +346,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
 
                 if columna == 5:
                     elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Explica la posibilidad de utilizar IA cuando corresponde.
+                    self._actualizar_icono_solucion(elemento)  # Muestra el asistente únicamente cuando la mejora con IA se encuentra habilitada.
 
                 self.tabla_detectados.setItem(fila, columna, elemento)  # Inserta finalmente la celda en la tabla.
 
@@ -381,10 +387,12 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             if not isinstance(solucion_ia, str) or not solucion_ia.strip():
                 elemento.setText(diagnostico.solucion)  # Recupera la solución oficial cuando la IA no produjo un resultado válido.
                 elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Permite intentar nuevamente la mejora.
+                self._actualizar_icono_solucion(elemento)  # Mantiene visible que la celda continúa ofreciendo una mejora con IA.
                 self.tabla_detectados.resizeRowsToContents()  # Recupera la altura necesaria para la solución original.
                 return
 
             elemento.setText(solucion_ia)  # Sustituye solamente la representación visual de la solución.
+            self._actualizar_icono_solucion(elemento)  # Identifica visualmente que la solución mostrada pertenece al asistente local.
             elemento.setToolTip(
                 "Solución mejorada con IA local.\n"
                 "La solución oficial permanece intacta internamente.\n\n"
@@ -416,6 +424,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             return
 
         elemento.setText("Mejorando solución con IA...")  # Informa que la petición fue iniciada explícitamente.
+        self._actualizar_icono_solucion(elemento)  # Mantiene visible qué componente está procesando la nueva explicación.
         elemento.setToolTip("La IA local está preparando una versión más clara de esta solución.")  # Explica temporalmente el estado actual.
         self.tabla_detectados.resizeRowsToContents()  # Ajusta la fila al texto de espera.
         self.control_diagnosticos_ia.procesar([diagnostico])  # Envía únicamente el diagnóstico solicitado.
@@ -439,10 +448,17 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
                 elemento.setText(diagnostico.solucion)  # Recupera la recomendación oficial.
                 elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color normal.
                 elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera la ayuda contextual original.
+                self._actualizar_icono_solucion(elemento)  # Conserva el indicador solamente si la mejora con IA sigue disponible.
 
             break  # Finaliza porque cada clave pertenece a una sola fila.
 
         self.tabla_detectados.resizeRowsToContents()  # Recupera la altura apropiada de la fila.
+
+    def _actualizar_icono_solucion(self, elemento: QTableWidgetItem) -> None:
+        if self.ia_habilitada and not self.icono_asistente_ia.isNull():  # Comprueba que la función y su recurso visual se encuentren realmente disponibles.
+            elemento.setIcon(self.icono_asistente_ia)  # Identifica la celda como una acción o resultado relacionado con la IA local.
+            return  # Evita borrar inmediatamente el icono recién aplicado.
+        elemento.setIcon(QIcon())  # Retira cualquier indicador de IA cuando la función se encuentra desactivada.
 
     def _texto_ayuda_solucion(self, diagnostico: Diagnostico) -> str:
         texto = f"Solución oficial de TecNet Finder:\n{diagnostico.solucion}"  # Identifica siempre el origen determinista de la recomendación.
@@ -459,6 +475,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             if elemento is None:
                 continue  # Ignora filas que todavía no poseen contenido.
 
+            self._actualizar_icono_solucion(elemento)  # Sincroniza el indicador visual con el estado efectivo de la función de IA.
             if elemento.text() == diagnostico.solucion:
                 elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Actualiza únicamente las soluciones oficiales todavía visibles.
 
@@ -474,6 +491,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
             elemento.setText(diagnostico.solucion)  # Recupera exactamente la recomendación oficial.
             elemento.setForeground(QBrush(self._color_diagnostico(diagnostico)))  # Recupera el color correspondiente a la fila.
             elemento.setToolTip(self._texto_ayuda_solucion(diagnostico))  # Recupera la ayuda adecuada al nuevo estado.
+            self._actualizar_icono_solucion(elemento)  # Retira el icono al desactivar IA o lo conserva mientras la función siga disponible.
 
         self.tabla_detectados.resizeRowsToContents()  # Ajusta nuevamente las alturas.
 
