@@ -49,6 +49,8 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
     COLOR_PLACEHOLDER = "#6c7086"  # Mantiene el ejemplo inicial visible pero claramente secundario respecto al código real.
     TAMANO_ICONO_AUTOCOMPLETADO = 14  # Define un tamaño discreto para identificar visualmente una sugerencia producida por IA.
     SEPARACION_ICONO_AUTOCOMPLETADO = 5  # Separa el icono de IA del final del ghost text sin alterar la continuidad de la sugerencia.
+    OPACIDAD_ICONO_AUTOCOMPLETADO = 0.48  # Reduce el protagonismo del indicador para que acompañe al ghost text sin parecer parte del código real.
+    DESPLAZAMIENTO_VERTICAL_ICONO_AUTOCOMPLETADO = -2  # Eleva ligeramente el icono para alinearlo mejor con la altura visual de los caracteres.
 
     def __init__(self, padre=None):
         super().__init__(padre)  # Inicializa el QPlainTextEdit original.
@@ -354,8 +356,8 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         if not self.icono_autocompletado_ia.isNull():  # Comprueba que el recurso visual de IA se haya cargado correctamente.
             ancho_sugerencia = float(self.fontMetrics().horizontalAdvance(self.sugerencia_ia))  # Calcula dónde termina visualmente el ghost text.
             icono_x = int(texto_x + ancho_sugerencia + self.SEPARACION_ICONO_AUTOCOMPLETADO)  # Coloca el icono después de la sugerencia sin interrumpirla.
-            icono_y = int(rectangulo.top() + max(0, (self.fontMetrics().height() - self.TAMANO_ICONO_AUTOCOMPLETADO) / 2))  # Centra verticalmente el icono respecto a la línea.
-            pintor.setOpacity(0.88)  # Hace el indicador un poco más visible que el texto virtual sin convertirlo en protagonista.
+            icono_y = int(rectangulo.top() + max(0, (self.fontMetrics().height() - self.TAMANO_ICONO_AUTOCOMPLETADO) / 2) + self.DESPLAZAMIENTO_VERTICAL_ICONO_AUTOCOMPLETADO)  # Centra el icono y lo eleva ligeramente para evitar que se perciba caído respecto al texto.
+            pintor.setOpacity(self.OPACIDAD_ICONO_AUTOCOMPLETADO)  # Mantiene el símbolo más tenue que la propia sugerencia para que funcione únicamente como indicador secundario.
             pintor.drawPixmap(icono_x, icono_y, self.TAMANO_ICONO_AUTOCOMPLETADO, self.TAMANO_ICONO_AUTOCOMPLETADO, self.icono_autocompletado_ia)  # Identifica la sugerencia como contenido producido por el asistente local.
         pintor.end()  # Libera explícitamente el pintor antes de continuar con otros elementos visuales.
 

@@ -16,8 +16,10 @@
 # cuyo color cambia dinámicamente al ser cubierto por el avance.
 # ============================================================
 
+from pathlib import Path  # Permite localizar los iconos utilizados para identificar visualmente cada función inteligente.
+
 from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
-from PySide6.QtGui import QColor, QPainter  # Permite dibujar manualmente el porcentaje dinámico sobre la barra de progreso.
+from PySide6.QtGui import QColor, QPainter, QPixmap  # Permite dibujar el progreso y cargar los recursos gráficos asociados con las funciones de IA.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QStackedWidget, QVBoxLayout, QWidget  # Importa los controles utilizados por el panel.
 
 from AsistenteIA.configuracion import MODELO_IA  # Permite mostrar el modelo técnico utilizado actualmente.
@@ -167,6 +169,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.actualizando_controles = False  # Evita interpretar sincronizaciones visuales como decisiones nuevas.
         self.operacion_en_curso = False  # Permite impedir acciones simultáneas durante inicio, cierre o instalación.
         self.trabajo_actual = None  # Conserva el trabajo activo hasta recibir su resultado.
+        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Centraliza la carpeta donde viven los indicadores visuales de ambas funciones inteligentes.
 
         self.hilos = QThreadPool(self)  # Mantiene todas las operaciones lentas fuera del hilo gráfico.
         self.hilos.setMaxThreadCount(1)  # Evita modificar el mismo componente mediante varias acciones simultáneas.
@@ -247,9 +250,11 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_autocompletado = QLabel("Activar autocompletado con IA")  # Explica claramente qué controla la primera selección.
         self.etiqueta_autocompletado.setObjectName("TextoConfiguracion")  # Mantiene el aspecto normal del contenido.
         self.etiqueta_autocompletado.setContentsMargins(2, 0, 2, 0)  # Mantiene una pequeña separación interna alrededor del texto.
+        self.icono_autocompletado = self._crear_etiqueta_icono("Autocompletado.png", "Indicador visual del autocompletado generado por IA")  # Identifica la misma función mediante el recurso utilizado dentro del editor.
 
         fila_autocompletado.addWidget(self.boton_autocompletado)  # Coloca primero el control interactivo.
         fila_autocompletado.addWidget(self.etiqueta_autocompletado)  # Coloca inmediatamente después su descripción.
+        fila_autocompletado.addWidget(self.icono_autocompletado)  # Añade el icono al final del nombre sin separarlo innecesariamente hacia el borde de la tarjeta.
         fila_autocompletado.addStretch()  # Mantiene el conjunto alineado hacia la izquierda.
         diseno_funciones.addLayout(fila_autocompletado)  # Incorpora la primera función al grupo.
 
@@ -261,9 +266,11 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_diagnosticos = QLabel("Mejorar soluciones de diagnósticos con IA")  # Describe la generación automática que aparecerá en la columna Solución.
         self.etiqueta_diagnosticos.setObjectName("TextoConfiguracion")  # Mantiene el estilo común del resto de opciones.
         self.etiqueta_diagnosticos.setContentsMargins(2, 0, 2, 0)  # Conserva el mismo padding visual que la primera fila.
+        self.icono_diagnosticos = self._crear_etiqueta_icono("Asistente_ia.png", "Indicador visual de la mejora de diagnósticos mediante IA")  # Relaciona esta preferencia con el mismo símbolo utilizado en la tabla de soluciones.
 
         fila_diagnosticos.addWidget(self.boton_diagnosticos)  # Coloca la segunda casilla en el mismo eje horizontal.
         fila_diagnosticos.addWidget(self.etiqueta_diagnosticos)  # Coloca su explicación inmediatamente después.
+        fila_diagnosticos.addWidget(self.icono_diagnosticos)  # Añade el indicador al final del nombre de la función.
         fila_diagnosticos.addStretch()  # Mantiene la opción alineada hacia la izquierda.
         diseno_funciones.addLayout(fila_diagnosticos)  # Incorpora la mejora automática debajo del autocompletado.
 
@@ -353,6 +360,18 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
 
         self.boton_autocompletado.toggled.connect(self._cambiar_autocompletado)  # Procesa únicamente la preferencia del ghost text.
         self.boton_diagnosticos.toggled.connect(self._cambiar_diagnosticos)  # Procesa únicamente la preferencia de soluciones automáticas.
+
+    def _crear_etiqueta_icono(self, nombre_archivo: str, ayuda: str) -> QLabel:
+        etiqueta = QLabel(self)  # Crea un indicador puramente informativo que no altera el comportamiento de la opción asociada.
+        etiqueta.setFixedSize(20, 20)  # Reserva un espacio pequeño y uniforme junto al nombre de cada función.
+        etiqueta.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene el PNG centrado dentro de su propia región.
+        etiqueta.setToolTip(ayuda)  # Explica por qué aparece el símbolo sin añadir texto permanente a la fila.
+        etiqueta.setStyleSheet("background-color: transparent; border: none; padding: 0px;")  # Evita que el estilo general de las tarjetas dibuje un recuadro detrás del icono.
+        ruta = self.ruta_iconos / nombre_archivo  # Construye la ubicación exacta del recurso solicitado.
+        if ruta.exists():
+            imagen = QPixmap(str(ruta))  # Carga el PNG original conservando su transparencia.
+            etiqueta.setPixmap(imagen.scaled(17, 17, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))  # Reduce el recurso con suavizado para que acompañe al texto sin dominarlo.
+        return etiqueta  # Devuelve el control listo para insertarse al final de la fila correspondiente.
 
     def _actualizar_estado(self) -> None:
         instalado = self.componente_ia.instalado()  # Comprueba únicamente los archivos administrados del runtime y el modelo.
