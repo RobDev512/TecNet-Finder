@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 1, 0, 0),
-    prodvers=(1, 1, 0, 0),
+    filevers=(1, 2, 0, 0),
+    prodvers=(1, 2, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -17,11 +17,11 @@ VSVersionInfo(
           [
             StringStruct(u'CompanyName', u'RobDev512'),
             StringStruct(u'FileDescription', u'TecNet Finder'),
-            StringStruct(u'FileVersion', u'1.1.0'),
+            StringStruct(u'FileVersion', u'1.2.0'),
             StringStruct(u'InternalName', u'TecNetFinder'),
             StringStruct(u'OriginalFilename', u'TecNetFinder.exe'),
             StringStruct(u'ProductName', u'TecNet Finder'),
-            StringStruct(u'ProductVersion', u'1.1.0')
+            StringStruct(u'ProductVersion', u'1.2.0')
           ]
         )
       ]

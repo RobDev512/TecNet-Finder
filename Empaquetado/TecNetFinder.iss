@@ -1,5 +1,5 @@
 #define MyAppName "TecNet Finder"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "RobDev512"
 #define MyAppExeName "TecNetFinder.exe"
 
@@ -12,7 +12,7 @@ DefaultDirName={localappdata}\Programs\TecNet Finder
 DefaultGroupName=TecNet Finder
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=..\dist\Instalador
-OutputBaseFilename=TecNet Finder 1.1.0 Setup
+OutputBaseFilename=TecNet Finder 1.2.0 Setup
 SetupIconFile=..\Recursos\LogoTNF.ico
 Compression=lzma2
 SolidCompression=yes
