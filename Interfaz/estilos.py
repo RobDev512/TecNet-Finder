@@ -403,25 +403,38 @@ QHeaderView::section {
     font-weight: bold;
 }
 
+QTabBar {
+    background-color: transparent;
+}
+
 QTabWidget::pane {
-    border: 1px solid #313244;
     background-color: #181825;
+    border: 1px solid #313244;
+    top: -1px;
 }
 
 QTabBar::tab {
     background-color: #313244;
     color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-bottom: 1px solid #313244;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
     padding: 7px 13px;
     margin-right: 2px;
 }
 
 QTabBar::tab:hover {
     background-color: #45475a;
+    border-color: #585b70;
+    border-bottom-color: #313244;
 }
 
 QTabBar::tab:selected {
     background-color: #89b4fa;
     color: #1e1e2e;
+    border-color: #89b4fa;
+    border-bottom-color: #181825;
     font-weight: bold;
 }
 
