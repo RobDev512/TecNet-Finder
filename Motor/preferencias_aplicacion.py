@@ -5,7 +5,8 @@
 #
 # Descripción:
 # Administra las preferencias generales persistentes de TecNet
-# Finder relacionadas con ventana, editor, navegación y avisos.
+# Finder relacionadas con ventana, apariencia, editor,
+# navegación y avisos.
 #
 # Los valores se almacenan dentro de LocalAppData para mantener
 # estas decisiones separadas del código fuente del compilador.
@@ -17,17 +18,32 @@ from pathlib import Path  # Permite construir rutas independientes del usuario.
 
 
 class PreferenciasAplicacion:  # Centraliza todas las preferencias generales persistentes.
+
+    # ========================================================
+    # Claves de Ventana y apariencia
+    # ========================================================
+
     CLAVE_INICIAR_MAXIMIZADO = "iniciar_maximizado"  # Guarda el estado utilizado durante un inicio convencional.
     CLAVE_RECORDAR_ESTADO_VENTANA = "recordar_estado_ventana"  # Guarda si debe recuperarse el estado anterior.
     CLAVE_ULTIMO_ESTADO_VENTANA = "ultimo_estado_ventana"  # Guarda exclusivamente normal o maximizada.
     CLAVE_RECORDAR_SECCION_CONFIGURACION = "recordar_seccion_configuracion"  # Guarda si Configuración recupera su categoría anterior.
     CLAVE_ULTIMA_SECCION_CONFIGURACION = "ultima_seccion_configuracion"  # Guarda la última categoría visitada.
+    CLAVE_FAMILIA_FUENTE_INTERFAZ = "familia_fuente_interfaz"  # Guarda la familia tipográfica utilizada por la interfaz general.
+    CLAVE_TAMANO_FUENTE_INTERFAZ = "tamano_fuente_interfaz"  # Guarda el tamaño base utilizado por la interfaz general.
+
+    # ========================================================
+    # Claves del Editor
+    # ========================================================
 
     CLAVE_AJUSTE_LINEA_EDITOR = "ajuste_linea_editor"  # Guarda el ajuste automático de líneas.
     CLAVE_BOTONES_RAPIDOS_EDITOR = "mostrar_botones_rapidos_editor"  # Guarda la visibilidad de Pegar y Ejemplos.
     CLAVE_FAMILIA_FUENTE_EDITOR = "familia_fuente_editor"  # Guarda la tipografía elegida para escribir código.
     CLAVE_TAMANO_FUENTE_EDITOR = "tamano_fuente_editor"  # Guarda el tamaño del texto del editor.
     CLAVE_ESPACIOS_TABULACION_EDITOR = "espacios_tabulacion_editor"  # Guarda el ancho visual de una tabulación.
+
+    # ========================================================
+    # Claves de navegación y advertencias
+    # ========================================================
 
     CLAVE_NAVEGACION_ANTIGUA = "navegacion_automatica"  # Conserva compatibilidad con versiones anteriores.
     CLAVE_NAVEGACION_ERRORES = "navegacion_errores"  # Guarda la navegación hacia diagnósticos.
@@ -36,16 +52,43 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
     CLAVE_ADVERTENCIAS_VENTANA = "mostrar_advertencias_ventana"  # Guarda la modalidad independiente.
     CLAVE_CERRAR_VENTANA_AL_NAVEGAR = "cerrar_ventana_advertencias_al_navegar"  # Guarda el comportamiento del doble clic.
 
+    # ========================================================
+    # Estados de ventana
+    # ========================================================
+
     ESTADO_VENTANA_MAXIMIZADA = "maximizada"  # Representa una sesión cerrada maximizada.
     ESTADO_VENTANA_NORMAL = "normal"  # Representa una sesión cerrada en modo ventana.
+
+    # ========================================================
+    # Categorías de Configuración
+    # ========================================================
 
     SECCION_VENTANA = "ventana"  # Identifica Ventana y apariencia.
     SECCION_EDITOR = "editor"  # Identifica Editor.
     SECCION_RESULTADOS = "resultados"  # Identifica Resultados y navegación.
     SECCION_IA = "ia"  # Identifica Asistencia de IA.
-    SECCIONES_CONFIGURACION_VALIDAS = {SECCION_VENTANA, SECCION_EDITOR, SECCION_RESULTADOS, SECCION_IA}  # Limita las categorías recuperables.
+    SECCIONES_CONFIGURACION_VALIDAS = {
+        SECCION_VENTANA,
+        SECCION_EDITOR,
+        SECCION_RESULTADOS,
+        SECCION_IA,
+    }  # Limita las categorías recuperables.
 
-    FUENTE_EDITOR_PREDETERMINADA = "Consolas"  # Conserva la tipografía utilizada históricamente por TecNet Finder.
+    # ========================================================
+    # Límites y valores predeterminados de la interfaz
+    # ========================================================
+
+    FUENTE_INTERFAZ_PREDETERMINADA = "Consolas"  # Conserva la apariencia general utilizada históricamente por TecNet Finder.
+    TAMANO_FUENTE_INTERFAZ_PREDETERMINADO = 10  # Conserva el tamaño base utilizado actualmente por la interfaz.
+    TAMANO_FUENTE_INTERFAZ_MINIMO = 8  # Evita una interfaz demasiado pequeña para resultar legible.
+    TAMANO_FUENTE_INTERFAZ_MAXIMO = 14  # Evita que el tamaño base rompa innecesariamente la distribución de los controles.
+
+    # ========================================================
+    # Límites y valores predeterminados del editor
+    # ========================================================
+
+    FUENTE_EDITOR_PREDETERMINADA = "Consolas"  # Conserva la tipografía utilizada históricamente por el editor.
+    TAMANO_FUENTE_EDITOR_PREDETERMINADO = 10  # Conserva el tamaño original del código.
     TAMANO_FUENTE_EDITOR_MINIMO = 8  # Evita tamaños excesivamente pequeños.
     TAMANO_FUENTE_EDITOR_MAXIMO = 20  # Evita tamaños poco prácticos.
     ESPACIOS_TABULACION_VALIDOS = {2, 4, 8}  # Define los anchos ofrecidos desde Configuración.
@@ -98,6 +141,30 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
             return False  # Rechaza identificadores desconocidos.
         return self._guardar_valor(self.CLAVE_ULTIMA_SECCION_CONFIGURACION, seccion)  # Persiste la clave válida.
 
+    def familia_fuente_interfaz(self) -> str:
+        valor = self._leer_preferencias().get(self.CLAVE_FAMILIA_FUENTE_INTERFAZ, self.FUENTE_INTERFAZ_PREDETERMINADA)  # Recupera la familia tipográfica global.
+        if isinstance(valor, str) and valor.strip():  # Comprueba que exista un nombre utilizable.
+            return valor.strip()  # Devuelve la familia almacenada sin espacios sobrantes.
+        return self.FUENTE_INTERFAZ_PREDETERMINADA  # Recupera el valor seguro ante información inválida.
+
+    def establecer_familia_fuente_interfaz(self, familia: str) -> bool:
+        if not isinstance(familia, str) or not familia.strip():  # Comprueba que se haya recibido una familia utilizable.
+            return False  # Rechaza valores vacíos o incompatibles.
+        return self._guardar_valor(self.CLAVE_FAMILIA_FUENTE_INTERFAZ, familia.strip())  # Persiste exactamente la familia seleccionada.
+
+    def tamano_fuente_interfaz(self) -> int:
+        valor = self._leer_preferencias().get(self.CLAVE_TAMANO_FUENTE_INTERFAZ, self.TAMANO_FUENTE_INTERFAZ_PREDETERMINADO)  # Recupera el tamaño base guardado.
+        if isinstance(valor, int) and not isinstance(valor, bool) and self.TAMANO_FUENTE_INTERFAZ_MINIMO <= valor <= self.TAMANO_FUENTE_INTERFAZ_MAXIMO:  # Comprueba tipo y rango.
+            return valor  # Devuelve el tamaño válido.
+        return self.TAMANO_FUENTE_INTERFAZ_PREDETERMINADO  # Recupera el valor seguro ante información inválida.
+
+    def establecer_tamano_fuente_interfaz(self, tamano: int) -> bool:
+        if not isinstance(tamano, int) or isinstance(tamano, bool):  # Evita booleanos y otros tipos incompatibles.
+            return False  # Rechaza el valor recibido.
+        if not self.TAMANO_FUENTE_INTERFAZ_MINIMO <= tamano <= self.TAMANO_FUENTE_INTERFAZ_MAXIMO:  # Comprueba el intervalo permitido.
+            return False  # Evita tamaños capaces de romper innecesariamente la interfaz.
+        return self._guardar_valor(self.CLAVE_TAMANO_FUENTE_INTERFAZ, tamano)  # Persiste el tamaño base seleccionado.
+
     # ========================================================
     # Editor
     # ========================================================
@@ -126,10 +193,10 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
         return self._guardar_valor(self.CLAVE_FAMILIA_FUENTE_EDITOR, familia.strip())  # Persiste exactamente el nombre seleccionado.
 
     def tamano_fuente_editor(self) -> int:
-        valor = self._leer_preferencias().get(self.CLAVE_TAMANO_FUENTE_EDITOR, 10)  # Recupera el tamaño guardado.
+        valor = self._leer_preferencias().get(self.CLAVE_TAMANO_FUENTE_EDITOR, self.TAMANO_FUENTE_EDITOR_PREDETERMINADO)  # Recupera el tamaño guardado.
         if isinstance(valor, int) and not isinstance(valor, bool) and self.TAMANO_FUENTE_EDITOR_MINIMO <= valor <= self.TAMANO_FUENTE_EDITOR_MAXIMO:  # Valida tipo y rango.
             return valor  # Devuelve el tamaño permitido.
-        return 10  # Recupera el tamaño original ante información inválida.
+        return self.TAMANO_FUENTE_EDITOR_PREDETERMINADO  # Recupera el tamaño original ante información inválida.
 
     def establecer_tamano_fuente_editor(self, tamano: int) -> bool:
         if not isinstance(tamano, int) or isinstance(tamano, bool):  # Evita booleanos y otros tipos.
@@ -177,7 +244,10 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
         return self.navegacion_errores_activada() and self.navegacion_vlsm_activada()  # Mantiene compatibilidad con la antigua opción general.
 
     def establecer_navegacion_automatica_activada(self, activada: bool) -> bool:
-        return self._guardar_valores({self.CLAVE_NAVEGACION_ERRORES: bool(activada), self.CLAVE_NAVEGACION_VLSM: bool(activada)})  # Aplica la decisión antigua a ambas opciones actuales.
+        return self._guardar_valores({
+            self.CLAVE_NAVEGACION_ERRORES: bool(activada),
+            self.CLAVE_NAVEGACION_VLSM: bool(activada),
+        })  # Aplica la decisión antigua a ambas opciones actuales.
 
     # ========================================================
     # Presentación de advertencias
@@ -228,10 +298,14 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
     def _guardar_valores(self, cambios: dict) -> bool:
         datos = self._leer_preferencias()  # Conserva todos los valores que no serán modificados.
         datos.update(cambios)  # Sustituye exclusivamente las claves solicitadas.
+
         try:  # Protege la aplicación frente a problemas del sistema de archivos.
             self.ruta_directorio.mkdir(parents=True, exist_ok=True)  # Crea la carpeta cuando todavía no existe.
             ruta_temporal = self.ruta_archivo.with_suffix(".tmp")  # Prepara una escritura segura mediante archivo temporal.
-            ruta_temporal.write_text(json.dumps(datos, indent=4, ensure_ascii=False), encoding="utf-8")  # Guarda toda la configuración de forma legible.
+            ruta_temporal.write_text(
+                json.dumps(datos, indent=4, ensure_ascii=False),
+                encoding="utf-8",
+            )  # Guarda toda la configuración de forma legible.
             ruta_temporal.replace(self.ruta_archivo)  # Sustituye el archivo real después de completar la escritura.
             return True  # Confirma que las preferencias fueron persistidas.
         except OSError:  # Captura cualquier problema de escritura.
@@ -240,10 +314,12 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
     def _leer_preferencias(self) -> dict:
         if not self.ruta_archivo.is_file():  # Comprueba si todavía no existe un archivo de preferencias.
             return {}  # Permite que todos los getters utilicen sus valores iniciales.
+
         try:  # Protege el inicio frente a archivos corruptos.
             datos = json.loads(self.ruta_archivo.read_text(encoding="utf-8"))  # Lee y convierte el JSON persistente.
         except (OSError, json.JSONDecodeError):  # Captura problemas de lectura o contenido inválido.
             return {}  # Recupera valores predeterminados sin bloquear TecNet Finder.
+
         return datos if isinstance(datos, dict) else {}  # Acepta exclusivamente un objeto JSON.
 
     def _obtener_ruta_datos_locales(self) -> Path:

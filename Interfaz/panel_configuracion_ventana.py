@@ -4,215 +4,254 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo contiene las preferencias relacionadas con el
-# comportamiento general de la ventana de TecNet Finder.
+# Contiene las preferencias relacionadas con ventana y apariencia.
 #
-# La sección permite decidir:
+# Permite modificar:
+# - Estado inicial de la ventana.
+# - Recuperación del estado entre sesiones.
+# - Modo visual: oscuro o claro.
+# - Variante perteneciente al modo seleccionado.
+# - Tipografía general.
+# - Última categoría visitada de Configuración.
 #
-# - Si TecNet Finder debe iniciar maximizado.
-# - Si debe recordar entre ejecuciones si anteriormente estaba
-#   maximizado o utilizando una ventana convencional.
-# - Si Configuración debe recuperar la última categoría visitada.
-#
-# Estas preferencias solamente modifican la experiencia visual
-# de la aplicación y no intervienen en ninguna fase del compilador.
+# El modo no se guarda independientemente. Se obtiene del tema
+# seleccionado para evitar combinaciones inconsistentes.
 # ============================================================
 
-from PySide6.QtCore import Qt  # Permite configurar el cursor utilizado por las casillas personalizadas.
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los controles necesarios para construir esta categoría.
+from PySide6.QtCore import Qt, Signal  # Permite configurar controles y comunicar modificaciones temporales.
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes visuales necesarios.
+from Interfaz.controles_configuracion import CampoNumeroConfiguracion, SelectorDesplegableConfiguracion  # Proporciona los controles personalizados generales.
+from Interfaz.selector_fuentes import SelectorFuentes  # Proporciona búsqueda especializada de familias tipográficas.
+from Motor.catalogo_temas import modo_del_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo  # Proporciona modos y variantes visuales.
+from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores compartidos.
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Centraliza las preferencias generales utilizadas por la aplicación.
 
+class BotonCasillaVentana(QPushButton):  # Representa una casilla coherente con las demás categorías de Configuración.
+    def __init__(self, nombre_accesible: str, padre=None):
+        super().__init__(padre)  # Inicializa QPushButton.
+        self.setCheckable(True)  # Permite conservar un estado activado o desactivado.
+        self.setFixedSize(24, 24)  # Mantiene dimensiones compactas.
+        self.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que puede pulsarse.
+        self.setAccessibleName(nombre_accesible)  # Proporciona una descripción accesible.
+        self.setStyleSheet("padding: 0px; font-family: 'Segoe UI Symbol'; font-size: 12pt; font-weight: bold;")  # Garantiza la representación correcta de la marca.
+        self.toggled.connect(self._actualizar_apariencia)  # Sincroniza representación y estado.
+        self._actualizar_apariencia(False)  # Prepara inicialmente una casilla vacía.
 
-class BotonCasillaVentana(QPushButton):  # Representa una casilla con la misma apariencia utilizada por las demás categorías.
-    def __init__(self, nombre_accesible: str, padre=None):  # Recibe la descripción accesible y el panel propietario.
-        super().__init__(padre)  # Inicializa el botón utilizado como control de selección.
-        self.setCheckable(True)  # Permite conservar explícitamente los estados activado y desactivado.
-        self.setFixedSize(24, 24)  # Mantiene las mismas dimensiones utilizadas por las demás casillas.
-        self.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica visualmente que el usuario puede pulsar el control.
-        self.setAccessibleName(nombre_accesible)  # Proporciona una descripción útil para herramientas de accesibilidad.
-        self.setStyleSheet("padding: 0px; font-family: 'Segoe UI Symbol'; font-size: 12pt; font-weight: bold;")  # Mantiene centrada la marca de verificación.
-        self.toggled.connect(self._actualizar_apariencia)  # Actualiza inmediatamente la apariencia cuando cambia el estado.
-        self._actualizar_apariencia(False)  # Prepara inicialmente una casilla desactivada.
-
-    def _actualizar_apariencia(self, activado: bool) -> None:  # Sincroniza la representación visual con el estado lógico.
-        self.setText("✓" if activado else "")  # Muestra la marca solamente mientras la opción se encuentra activa.
-        self.setObjectName("BotonPrincipal" if activado else "CasillaIA")  # Reutiliza los estilos azul y oscuro existentes.
+    def _actualizar_apariencia(self, activado: bool) -> None:
+        self.setText("✓" if activado else "")  # Muestra la marca solamente cuando corresponde.
+        self.setObjectName("BotonPrincipal" if activado else "CasillaIA")  # Reutiliza los estilos existentes.
         self.style().unpolish(self)  # Retira temporalmente la apariencia anterior.
-        self.style().polish(self)  # Aplica nuevamente la hoja de estilos con el nuevo estado.
-        self.update()  # Solicita el redibujado inmediato del control.
+        self.style().polish(self)  # Aplica nuevamente la hoja de estilos.
+        self.update()  # Solicita el redibujado inmediato.
 
 
-class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias correspondientes con ventana y comportamiento visual.
-    def __init__(self, preferencias_aplicacion: PreferenciasAplicacion, padre=None):  # Recibe el administrador de preferencias utilizado por Configuración.
-        super().__init__(padre)  # Vincula el panel con la ventana general de Configuración.
-        self.preferencias_aplicacion = preferencias_aplicacion  # Conserva la misma instancia compartida por esta sesión.
-        self._construir_interfaz()  # Construye todos los controles representando los valores actuales.
+class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana, tema y tipografía general.
+    configuracion_modificada = Signal()  # Informa que existe al menos una modificación temporal.
 
-    def _construir_interfaz(self) -> None:  # Construye encabezado y las tres tarjetas de esta categoría.
-        diseno = QVBoxLayout(self)  # Organiza verticalmente título, descripción y tarjetas.
-        diseno.setContentsMargins(24, 22, 24, 22)  # Utiliza los mismos márgenes exteriores de las demás categorías.
-        diseno.setSpacing(14)  # Conserva una separación uniforme entre grupos.
+    def __init__(self, preferencias_aplicacion, preferencias_tema, padre=None):
+        super().__init__(padre)  # Vincula el panel con Configuración.
+        self.preferencias_aplicacion = preferencias_aplicacion  # Conserva la copia temporal de preferencias generales.
+        self.preferencias_tema = preferencias_tema  # Conserva la copia temporal específica del tema.
+        tema_actual = self.preferencias_tema.tema()  # Recupera la variante utilizada al abrir Configuración.
+        self._ultima_variante_por_modo = {modo_del_tema(tema_actual): tema_actual}  # Recuerda la última variante visitada de cada modo durante esta sesión.
+        self._construir_interfaz()  # Construye todos los controles.
+
+    def _crear_tarjeta(self, titulo: str, descripcion: str) -> tuple[QFrame, QVBoxLayout]:
+        tarjeta = QFrame()  # Crea una superficie visual reutilizable.
+        tarjeta.setObjectName("TarjetaConfiguracion")  # Reutiliza el estilo común.
+        diseno = QVBoxLayout(tarjeta)  # Organiza verticalmente su contenido.
+        diseno.setContentsMargins(22, 16, 22, 16)  # Mantiene padding uniforme.
+        diseno.setSpacing(9)  # Conserva una separación compacta.
+        subtitulo = QLabel(titulo)  # Presenta el nombre de la tarjeta.
+        subtitulo.setObjectName("SubtituloConfiguracion")  # Utiliza el estilo interno.
+        subtitulo.setContentsMargins(4, 0, 4, 0)  # Mantiene alineación lateral.
+        descripcion_widget = QLabel(descripcion)  # Presenta una breve explicación.
+        descripcion_widget.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario.
+        descripcion_widget.setContentsMargins(4, 2, 4, 2)  # Mantiene separación interior.
+        descripcion_widget.setWordWrap(True)  # Permite adaptar el texto.
+        diseno.addWidget(subtitulo)  # Añade primero el título.
+        diseno.addWidget(descripcion_widget)  # Añade después la explicación.
+        return tarjeta, diseno  # Entrega tarjeta y layout para completar su contenido.
+
+    def _crear_fila_casilla(self, casilla: QPushButton, texto: str, ayuda: str = "") -> QHBoxLayout:
+        fila = QHBoxLayout()  # Organiza horizontalmente casilla y descripción.
+        fila.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación general.
+        fila.setSpacing(9)  # Separa ambos elementos.
+        etiqueta = QLabel(texto)  # Presenta el nombre visible de la opción.
+        etiqueta.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        if ayuda: casilla.setToolTip(ayuda); etiqueta.setToolTip(ayuda)  # Comparte la ayuda contextual.
+        fila.addWidget(casilla)  # Coloca primero la casilla.
+        fila.addWidget(etiqueta)  # Coloca después la descripción.
+        fila.addStretch()  # Mantiene el conjunto alineado a la izquierda.
+        return fila  # Entrega la fila terminada.
+
+    def _construir_interfaz(self) -> None:
+        diseno = QVBoxLayout(self)  # Organiza toda la categoría verticalmente.
+        diseno.setContentsMargins(24, 22, 24, 22)  # Mantiene los márgenes existentes.
+        diseno.setSpacing(14)  # Conserva separación uniforme.
 
         titulo = QLabel("Ventana y apariencia")  # Presenta el nombre de la categoría.
-        titulo.setObjectName("TituloConfiguracion")  # Reutiliza el estilo general de los títulos.
-        titulo.setContentsMargins(4, 0, 4, 0)  # Mantiene una pequeña separación lateral.
-        diseno.addWidget(titulo)  # Coloca el encabezado al principio del panel.
+        titulo.setObjectName("TituloConfiguracion")  # Reutiliza el encabezado principal.
+        titulo.setContentsMargins(4, 0, 4, 0)  # Mantiene alineación lateral.
+        descripcion = QLabel("Personaliza cómo inicia TecNet Finder, su tema visual y la tipografía utilizada por la interfaz.")  # Resume el propósito actualizado.
+        descripcion.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario.
+        descripcion.setContentsMargins(4, 0, 4, 0)  # Mantiene la misma alineación.
+        descripcion.setWordWrap(True)  # Permite adaptar la explicación.
+        diseno.addWidget(titulo)  # Añade el encabezado.
+        diseno.addWidget(descripcion)  # Añade su explicación.
 
-        descripcion = QLabel("Personaliza cómo inicia TecNet Finder y qué comportamiento de la interfaz debe conservar entre ejecuciones.")  # Resume el propósito de la categoría.
-        descripcion.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario común.
-        descripcion.setContentsMargins(4, 0, 4, 0)  # Mantiene la misma alineación horizontal del título.
-        descripcion.setWordWrap(True)  # Permite adaptar naturalmente el texto al ancho disponible.
-        diseno.addWidget(descripcion)  # Coloca la explicación debajo del encabezado.
+        tarjeta_inicio, diseno_inicio = self._crear_tarjeta("Inicio de TecNet Finder", "Define el estado utilizado al abrir TecNet Finder cuando no se está recuperando un estado anterior.")  # Construye la primera tarjeta.
+        self.casilla_iniciar_maximizado = BotonCasillaVentana("Iniciar TecNet Finder maximizado", self)  # Crea la preferencia.
+        self.casilla_iniciar_maximizado.setChecked(self.preferencias_aplicacion.iniciar_maximizado())  # Recupera el valor temporal.
+        self.casilla_iniciar_maximizado.toggled.connect(self._cambiar_iniciar_maximizado)  # Registra modificaciones.
+        diseno_inicio.addLayout(self._crear_fila_casilla(self.casilla_iniciar_maximizado, "Iniciar TecNet Finder maximizado", "Cuando no exista un estado anterior para recuperar, TecNet Finder iniciará ocupando toda el área disponible."))  # Añade la opción.
+        diseno.addWidget(tarjeta_inicio)  # Incorpora la primera tarjeta.
 
-        # ====================================================
-        # Tarjeta 1: Inicio de TecNet Finder
-        # ====================================================
-
-        tarjeta_inicio = QFrame()  # Crea la tarjeta relacionada con el comportamiento inicial.
-        tarjeta_inicio.setObjectName("TarjetaConfiguracion")  # Reutiliza el diseño exterior común.
-        diseno_inicio = QVBoxLayout(tarjeta_inicio)  # Organiza título, descripción y opción.
-        diseno_inicio.setContentsMargins(22, 16, 22, 16)  # Mantiene el padding utilizado por las demás tarjetas.
-        diseno_inicio.setSpacing(9)  # Conserva próximos los elementos del mismo grupo.
-
-        subtitulo_inicio = QLabel("Inicio de TecNet Finder")  # Identifica la primera tarjeta.
-        subtitulo_inicio.setObjectName("SubtituloConfiguracion")  # Reutiliza el estilo interno de subtítulos.
-        subtitulo_inicio.setContentsMargins(4, 0, 4, 0)  # Mantiene la alineación del contenido.
-        diseno_inicio.addWidget(subtitulo_inicio)  # Coloca el encabezado interno.
-
-        descripcion_inicio = QLabel("Define el estado utilizado al abrir TecNet Finder cuando no se está recuperando un estado anterior.")  # Explica cuándo se utiliza esta preferencia.
-        descripcion_inicio.setObjectName("DescripcionConfiguracion")  # Mantiene la apariencia secundaria.
-        descripcion_inicio.setContentsMargins(4, 2, 4, 2)  # Conserva una pequeña separación alrededor del texto.
-        descripcion_inicio.setWordWrap(True)  # Permite distribuir correctamente la explicación.
-        diseno_inicio.addWidget(descripcion_inicio)  # Coloca el texto antes de la opción.
-
-        fila_inicio = QHBoxLayout()  # Organiza horizontalmente la casilla y su descripción.
-        fila_inicio.setContentsMargins(4, 2, 4, 2)  # Mantiene la misma alineación de las demás opciones.
-        fila_inicio.setSpacing(9)  # Separa casilla y texto.
-
-        self.casilla_iniciar_maximizado = BotonCasillaVentana("Iniciar TecNet Finder maximizado", self)  # Crea la preferencia correspondiente con el estado inicial.
-        self.etiqueta_iniciar_maximizado = QLabel("Iniciar TecNet Finder maximizado")  # Presenta el texto visible de la opción.
-        self.etiqueta_iniciar_maximizado.setObjectName("TextoConfiguracion")  # Mantiene el estilo tipográfico general.
-        self.etiqueta_iniciar_maximizado.setContentsMargins(2, 0, 2, 0)  # Conserva una pequeña separación interior.
-        self.casilla_iniciar_maximizado.setChecked(self.preferencias_aplicacion.iniciar_maximizado())  # Representa el valor actual de la preferencia.
-
-        ayuda_inicio = "Cuando no exista un estado anterior para recuperar, TecNet Finder iniciará ocupando toda el área disponible."  # Prepara una explicación compartida por casilla y texto.
-        self.casilla_iniciar_maximizado.setToolTip(ayuda_inicio)  # Permite consultar la explicación desde la casilla.
-        self.etiqueta_iniciar_maximizado.setToolTip(ayuda_inicio)  # Permite consultarla también desde la etiqueta.
-        self.casilla_iniciar_maximizado.toggled.connect(self._cambiar_iniciar_maximizado)  # Registra cualquier decisión nueva.
-
-        fila_inicio.addWidget(self.casilla_iniciar_maximizado)  # Coloca primero la casilla.
-        fila_inicio.addWidget(self.etiqueta_iniciar_maximizado)  # Coloca después su descripción.
-        fila_inicio.addStretch()  # Mantiene el conjunto alineado hacia la izquierda.
-        diseno_inicio.addLayout(fila_inicio)  # Incorpora la opción dentro de la tarjeta.
-        diseno.addWidget(tarjeta_inicio)  # Añade la tarjeta completa al panel.
+        tarjeta_estado, diseno_estado = self._crear_tarjeta("Estado entre sesiones", "Permite recuperar si TecNet Finder estaba maximizado o en modo ventana cuando terminó la sesión anterior.")  # Construye la segunda tarjeta.
+        self.casilla_recordar_estado = BotonCasillaVentana("Recordar el estado de la ventana al cerrar", self)  # Crea la preferencia.
+        self.casilla_recordar_estado.setChecked(self.preferencias_aplicacion.recordar_estado_ventana())  # Recupera el valor temporal.
+        self.casilla_recordar_estado.toggled.connect(self._cambiar_recordar_estado)  # Registra modificaciones.
+        diseno_estado.addLayout(self._crear_fila_casilla(self.casilla_recordar_estado, "Recordar el estado de la ventana al cerrar", "Media pantalla y pantalla completa continúan siendo estados temporales y no se recuperan entre ejecuciones."))  # Añade la opción.
+        diseno.addWidget(tarjeta_estado)  # Incorpora la tarjeta.
 
         # ====================================================
-        # Tarjeta 2: Estado entre sesiones
+        # Tema de la aplicación
         # ====================================================
 
-        tarjeta_estado = QFrame()  # Crea la tarjeta dedicada con la recuperación del estado.
-        tarjeta_estado.setObjectName("TarjetaConfiguracion")  # Mantiene el mismo diseño visual.
-        diseno_estado = QVBoxLayout(tarjeta_estado)  # Organiza título, descripción y opción.
-        diseno_estado.setContentsMargins(22, 16, 22, 16)  # Mantiene exactamente el mismo espacio interior.
-        diseno_estado.setSpacing(9)  # Conserva una separación uniforme.
+        tarjeta_tema, diseno_tema = self._crear_tarjeta("Tema de la aplicación", "Selecciona primero un modo y después una variante. Los colores de errores, advertencias y demás diagnósticos conservan siempre su significado.")  # Construye la tarjeta completa de apariencia.
+        tema_actual = self.preferencias_tema.tema()  # Recupera la variante temporal actual.
+        modo_actual = modo_del_tema(tema_actual)  # Obtiene automáticamente el modo correspondiente.
 
-        subtitulo_estado = QLabel("Estado entre sesiones")  # Identifica la persistencia del estado de ventana.
-        subtitulo_estado.setObjectName("SubtituloConfiguracion")  # Utiliza el estilo de los demás subtítulos.
-        subtitulo_estado.setContentsMargins(4, 0, 4, 0)  # Mantiene la misma alineación.
-        diseno_estado.addWidget(subtitulo_estado)  # Coloca el encabezado interno.
+        fila_modo = QHBoxLayout()  # Organiza la selección de modo.
+        fila_modo.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
+        fila_modo.setSpacing(10)  # Separa etiqueta y selector.
+        etiqueta_modo = QLabel("Modo:")  # Identifica la primera selección.
+        etiqueta_modo.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        self.selector_modo = SelectorDesplegableConfiguracion(self)  # Utiliza el selector personalizado para una lista pequeña.
+        self.selector_modo.setFixedWidth(220)  # Mantiene un ancho cómodo.
+        for modo in obtener_modos_disponibles(): self.selector_modo.agregar_opcion(modo["nombre"], modo["id"])  # Añade Oscuro y Claro desde el catálogo central.
+        self.selector_modo.establecer_valor(modo_actual)  # Marca el modo correspondiente con el tema actual.
+        self.selector_modo.valor_cambiado.connect(self._cambiar_modo_tema)  # Reconstruye las variantes cuando cambia el modo.
+        fila_modo.addWidget(etiqueta_modo)  # Coloca la etiqueta.
+        fila_modo.addWidget(self.selector_modo)  # Coloca el selector.
+        fila_modo.addStretch()  # Mantiene el contenido alineado.
+        diseno_tema.addLayout(fila_modo)  # Añade la primera fila.
 
-        descripcion_estado = QLabel("Si se activa, TecNet Finder recordará si estaba maximizado o en modo ventana cuando se cerró y utilizará ese estado la próxima vez.")  # Explica qué estados se conservan entre sesiones.
-        descripcion_estado.setObjectName("DescripcionConfiguracion")  # Mantiene el estilo secundario.
-        descripcion_estado.setContentsMargins(4, 2, 4, 2)  # Conserva una separación discreta.
-        descripcion_estado.setWordWrap(True)  # Permite mostrar completamente la explicación.
-        diseno_estado.addWidget(descripcion_estado)  # Coloca la descripción debajo del subtítulo.
+        fila_variante = QHBoxLayout()  # Organiza la selección de variante.
+        fila_variante.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
+        fila_variante.setSpacing(10)  # Separa etiqueta y selector.
+        etiqueta_variante = QLabel("Variante:")  # Identifica la segunda selección.
+        etiqueta_variante.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        self.selector_variante = SelectorDesplegableConfiguracion(self)  # Utiliza el mismo control reutilizable.
+        self.selector_variante.setFixedWidth(260)  # Reserva espacio suficiente para nombres futuros.
+        self._cargar_variantes(modo_actual, tema_actual)  # Añade solamente las variantes pertenecientes al modo inicial.
+        self.selector_variante.valor_cambiado.connect(self._cambiar_variante_tema)  # Registra una selección concreta.
+        fila_variante.addWidget(etiqueta_variante)  # Coloca la etiqueta.
+        fila_variante.addWidget(self.selector_variante)  # Coloca el selector.
+        fila_variante.addStretch()  # Mantiene el contenido alineado.
+        diseno_tema.addLayout(fila_variante)  # Añade la segunda fila.
 
-        fila_estado = QHBoxLayout()  # Organiza casilla y descripción sobre una misma línea.
-        fila_estado.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación interior.
-        fila_estado.setSpacing(9)  # Separa visualmente ambos elementos.
-
-        self.casilla_recordar_estado = BotonCasillaVentana("Recordar el estado de la ventana al cerrar", self)  # Crea la preferencia que conserva maximizado o modo ventana.
-        self.etiqueta_recordar_estado = QLabel("Recordar el estado de la ventana al cerrar")  # Presenta el texto correspondiente.
-        self.etiqueta_recordar_estado.setObjectName("TextoConfiguracion")  # Reutiliza la apariencia de las opciones.
-        self.etiqueta_recordar_estado.setContentsMargins(2, 0, 2, 0)  # Mantiene una separación mínima.
-        self.casilla_recordar_estado.setChecked(self.preferencias_aplicacion.recordar_estado_ventana())  # Recupera el valor almacenado actualmente.
-
-        ayuda_estado = "La aplicación recordará únicamente si estaba maximizada o en modo ventana. Media pantalla y pantalla completa continúan siendo estados temporales."  # Explica qué estados no se persisten.
-        self.casilla_recordar_estado.setToolTip(ayuda_estado)  # Muestra la explicación sobre el control.
-        self.etiqueta_recordar_estado.setToolTip(ayuda_estado)  # Muestra la misma explicación sobre el texto.
-        self.casilla_recordar_estado.toggled.connect(self._cambiar_recordar_estado)  # Registra futuras modificaciones.
-
-        fila_estado.addWidget(self.casilla_recordar_estado)  # Coloca la casilla.
-        fila_estado.addWidget(self.etiqueta_recordar_estado)  # Coloca su descripción.
-        fila_estado.addStretch()  # Mantiene el conjunto alineado a la izquierda.
-        diseno_estado.addLayout(fila_estado)  # Incorpora la opción.
-        diseno.addWidget(tarjeta_estado)  # Añade la tarjeta completa.
+        self.etiqueta_descripcion_tema = QLabel("")  # Reserva una explicación específica para la variante actual.
+        self.etiqueta_descripcion_tema.setObjectName("DescripcionConfiguracion")  # Utiliza la apariencia secundaria.
+        self.etiqueta_descripcion_tema.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
+        self.etiqueta_descripcion_tema.setWordWrap(True)  # Permite varias líneas.
+        diseno_tema.addWidget(self.etiqueta_descripcion_tema)  # Coloca la explicación debajo de los selectores.
+        self._actualizar_descripcion_tema(tema_actual)  # Presenta la descripción inicial.
+        diseno.addWidget(tarjeta_tema)  # Incorpora la tarjeta completa.
 
         # ====================================================
-        # Tarjeta 3: Ventana de Configuración
+        # Tipografía general
         # ====================================================
 
-        tarjeta_configuracion = QFrame()  # Crea una tarjeta relacionada con el propio diálogo de Configuración.
-        tarjeta_configuracion.setObjectName("TarjetaConfiguracion")  # Mantiene el mismo diseño exterior.
-        diseno_configuracion = QVBoxLayout(tarjeta_configuracion)  # Organiza su contenido.
-        diseno_configuracion.setContentsMargins(22, 16, 22, 16)  # Mantiene el mismo padding.
-        diseno_configuracion.setSpacing(9)  # Conserva la separación uniforme.
+        tarjeta_tipografia, diseno_tipografia = self._crear_tarjeta("Tipografía de la interfaz", "Cambia la fuente utilizada por la interfaz general. El editor conserva su propia configuración independiente.")  # Construye la tarjeta de tipografía.
+        fila_familia = QHBoxLayout()  # Organiza la familia global.
+        fila_familia.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
+        fila_familia.setSpacing(10)  # Separa los controles.
+        etiqueta_familia = QLabel("Familia de fuente:")  # Identifica la preferencia.
+        etiqueta_familia.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        self.selector_fuente_interfaz = SelectorFuentes(self)  # Utiliza el selector buscable.
+        self.selector_fuente_interfaz.setFixedWidth(300)  # Mantiene espacio suficiente para nombres largos.
+        self.selector_fuente_interfaz.establecer_valor(self.preferencias_aplicacion.familia_fuente_interfaz())  # Recupera la selección temporal.
+        self.selector_fuente_interfaz.valor_cambiado.connect(self._cambiar_familia_fuente_interfaz)  # Registra futuras selecciones.
+        fila_familia.addWidget(etiqueta_familia)  # Coloca la etiqueta.
+        fila_familia.addWidget(self.selector_fuente_interfaz)  # Coloca el selector.
+        fila_familia.addStretch()  # Mantiene todo alineado.
+        diseno_tipografia.addLayout(fila_familia)  # Añade la primera fila.
 
-        subtitulo_configuracion = QLabel("Ventana de Configuración")  # Identifica las preferencias correspondientes con este diálogo.
-        subtitulo_configuracion.setObjectName("SubtituloConfiguracion")  # Aplica la apariencia de subtítulo.
-        subtitulo_configuracion.setContentsMargins(4, 0, 4, 0)  # Mantiene la alineación.
-        diseno_configuracion.addWidget(subtitulo_configuracion)  # Coloca el encabezado interno.
+        fila_tamano = QHBoxLayout()  # Organiza el tamaño base.
+        fila_tamano.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
+        fila_tamano.setSpacing(10)  # Separa los controles.
+        etiqueta_tamano = QLabel("Tamaño base:")  # Identifica la preferencia.
+        etiqueta_tamano.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        self.selector_tamano_interfaz = CampoNumeroConfiguracion(self)  # Utiliza el campo numérico propio.
+        self.selector_tamano_interfaz.setRange(PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MINIMO, PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MAXIMO)  # Limita la selección a valores seguros.
+        self.selector_tamano_interfaz.setSuffix(" pt")  # Aclara la unidad.
+        self.selector_tamano_interfaz.setValue(self.preferencias_aplicacion.tamano_fuente_interfaz())  # Recupera el valor temporal.
+        self.selector_tamano_interfaz.setFixedWidth(130)  # Mantiene un ancho compacto.
+        self.selector_tamano_interfaz.valueChanged.connect(self._cambiar_tamano_fuente_interfaz)  # Registra modificaciones.
+        fila_tamano.addWidget(etiqueta_tamano)  # Coloca la etiqueta.
+        fila_tamano.addWidget(self.selector_tamano_interfaz)  # Coloca el campo.
+        fila_tamano.addStretch()  # Mantiene la fila alineada.
+        diseno_tipografia.addLayout(fila_tamano)  # Añade la segunda fila.
+        diseno.addWidget(tarjeta_tipografia)  # Incorpora la tarjeta.
 
-        descripcion_configuracion = QLabel("Permite regresar directamente a la última categoría que estabas consultando cuando vuelvas a abrir Configuración.")  # Explica el beneficio de conservar la sección visitada.
-        descripcion_configuracion.setObjectName("DescripcionConfiguracion")  # Mantiene el estilo secundario.
-        descripcion_configuracion.setContentsMargins(4, 2, 4, 2)  # Conserva la separación interior.
-        descripcion_configuracion.setWordWrap(True)  # Permite ajustar el texto al ancho del panel.
-        diseno_configuracion.addWidget(descripcion_configuracion)  # Coloca la explicación.
+        tarjeta_configuracion, diseno_configuracion = self._crear_tarjeta("Ventana de Configuración", "Permite regresar directamente a la última categoría que estabas consultando cuando vuelvas a abrir Configuración.")  # Construye la última tarjeta.
+        self.casilla_recordar_seccion = BotonCasillaVentana("Abrir Configuración en la última sección visitada", self)  # Crea la preferencia.
+        self.casilla_recordar_seccion.setChecked(self.preferencias_aplicacion.recordar_seccion_configuracion())  # Recupera el valor temporal.
+        self.casilla_recordar_seccion.toggled.connect(self._cambiar_recordar_seccion)  # Registra modificaciones.
+        diseno_configuracion.addLayout(self._crear_fila_casilla(self.casilla_recordar_seccion, "Abrir Configuración en la última sección visitada"))  # Añade la opción.
+        diseno.addWidget(tarjeta_configuracion)  # Incorpora la tarjeta.
+        diseno.addStretch()  # Mantiene todas las tarjetas agrupadas arriba.
 
-        fila_configuracion = QHBoxLayout()  # Organiza casilla y descripción.
-        fila_configuracion.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación con las demás opciones.
-        fila_configuracion.setSpacing(9)  # Separa ambos elementos.
+    def _cargar_variantes(self, modo_id: str, tema_preferido: str | None = None) -> None:
+        temas = obtener_temas_por_modo(modo_id)  # Recupera únicamente las variantes compatibles con el modo solicitado.
+        self.selector_variante.limpiar_opciones()  # Elimina las opciones pertenecientes al modo anterior.
+        for tema in temas: self.selector_variante.agregar_opcion(tema["nombre"], tema["id"])  # Reconstruye el selector mediante el catálogo central.
+        ids = {tema["id"] for tema in temas}  # Obtiene rápidamente los identificadores disponibles.
+        seleccionado = tema_preferido if tema_preferido in ids else (temas[0]["id"] if temas else None)  # Conserva una variante preferida o utiliza la primera disponible.
+        if seleccionado is not None: self.selector_variante.establecer_valor(seleccionado)  # Sincroniza visualmente la variante definitiva.
 
-        self.casilla_recordar_seccion = BotonCasillaVentana("Abrir Configuración en la última sección visitada", self)  # Crea la preferencia de recuperación de categoría.
-        self.etiqueta_recordar_seccion = QLabel("Abrir Configuración en la última sección visitada")  # Presenta el texto visible.
-        self.etiqueta_recordar_seccion.setObjectName("TextoConfiguracion")  # Mantiene el estilo de opción.
-        self.etiqueta_recordar_seccion.setContentsMargins(2, 0, 2, 0)  # Conserva separación mínima.
-        self.casilla_recordar_seccion.setChecked(self.preferencias_aplicacion.recordar_seccion_configuracion())  # Recupera el valor actual.
-        self.casilla_recordar_seccion.toggled.connect(self._cambiar_recordar_seccion)  # Registra futuras modificaciones.
+    def _cambiar_modo_tema(self, modo_id) -> None:
+        modo_id = str(modo_id)  # Normaliza el identificador recibido desde el selector.
+        tema_preferido = self._ultima_variante_por_modo.get(modo_id)  # Intenta recuperar la última variante visitada de este modo durante la sesión.
+        temas = obtener_temas_por_modo(modo_id)  # Recupera las variantes disponibles.
+        if not temas: return  # Evita modificar la preferencia si un modo futuro todavía no posee variantes.
+        ids = {tema["id"] for tema in temas}  # Obtiene sus identificadores.
+        tema_nuevo = tema_preferido if tema_preferido in ids else temas[0]["id"]  # Recupera la variante recordada o utiliza la primera.
+        self._cargar_variantes(modo_id, tema_nuevo)  # Reconstruye visualmente el segundo selector.
+        if self.preferencias_tema.establecer_tema(tema_nuevo): self._ultima_variante_por_modo[modo_id] = tema_nuevo; self._actualizar_descripcion_tema(tema_nuevo); self.configuracion_modificada.emit()  # Conserva temporalmente la nueva combinación.
 
-        fila_configuracion.addWidget(self.casilla_recordar_seccion)  # Coloca primero la casilla.
-        fila_configuracion.addWidget(self.etiqueta_recordar_seccion)  # Coloca después la descripción.
-        fila_configuracion.addStretch()  # Mantiene la opción alineada hacia la izquierda.
-        diseno_configuracion.addLayout(fila_configuracion)  # Añade la fila dentro de la tarjeta.
-        diseno.addWidget(tarjeta_configuracion)  # Añade la tercera tarjeta completa.
+    def _cambiar_variante_tema(self, tema_id) -> None:
+        tema_id = str(tema_id)  # Normaliza el valor recibido.
+        if self.preferencias_tema.establecer_tema(tema_id):
+            modo_id = modo_del_tema(tema_id)  # Recupera el modo al que pertenece la variante.
+            self._ultima_variante_por_modo[modo_id] = tema_id  # Recuerda esta selección durante la sesión actual.
+            self._actualizar_descripcion_tema(tema_id)  # Actualiza la explicación visible.
+            self.configuracion_modificada.emit()  # Solicita reevaluar Aplicar.
 
-        diseno.addStretch()  # Mantiene todo el contenido agrupado hacia la parte superior.
+    def _actualizar_descripcion_tema(self, tema_id: str) -> None:
+        self.etiqueta_descripcion_tema.setText(obtener_tema(tema_id)["descripcion"])  # Presenta la descripción centralizada de la variante.
 
-    # ========================================================
-    # Persistencia de las opciones
-    # ========================================================
+    def _cambiar_iniciar_maximizado(self, activado: bool) -> None:
+        if self.preferencias_aplicacion.establecer_iniciar_maximizado(activado): self.configuracion_modificada.emit(); return  # Conserva temporalmente la decisión.
+        self._restaurar_casilla(self.casilla_iniciar_maximizado, self.preferencias_aplicacion.iniciar_maximizado())  # Recupera el valor anterior ante un fallo.
 
-    def _cambiar_iniciar_maximizado(self, activado: bool) -> None:  # Intenta actualizar el comportamiento inicial.
-        if self.preferencias_aplicacion.establecer_iniciar_maximizado(activado):  # Comprueba que la preferencia pueda conservarse correctamente.
-            return  # Mantiene el nuevo estado cuando la operación fue satisfactoria.
+    def _cambiar_recordar_estado(self, activado: bool) -> None:
+        if self.preferencias_aplicacion.establecer_recordar_estado_ventana(activado): self.configuracion_modificada.emit(); return  # Conserva temporalmente la decisión.
+        self._restaurar_casilla(self.casilla_recordar_estado, self.preferencias_aplicacion.recordar_estado_ventana())  # Recupera el valor anterior.
 
-        self._restaurar_casilla(self.casilla_iniciar_maximizado, self.preferencias_aplicacion.iniciar_maximizado())  # Recupera el valor anterior cuando la escritura falla.
+    def _cambiar_recordar_seccion(self, activado: bool) -> None:
+        if self.preferencias_aplicacion.establecer_recordar_seccion_configuracion(activado): self.configuracion_modificada.emit(); return  # Conserva temporalmente la decisión.
+        self._restaurar_casilla(self.casilla_recordar_seccion, self.preferencias_aplicacion.recordar_seccion_configuracion())  # Recupera el valor realmente válido.
 
-    def _cambiar_recordar_estado(self, activado: bool) -> None:  # Intenta actualizar la recuperación del estado entre sesiones.
-        if self.preferencias_aplicacion.establecer_recordar_estado_ventana(activado):  # Comprueba que el nuevo valor pueda guardarse.
-            return  # Conserva visualmente la decisión realizada.
+    def _cambiar_familia_fuente_interfaz(self, familia: str) -> None:
+        if self.preferencias_aplicacion.establecer_familia_fuente_interfaz(str(familia)): self.configuracion_modificada.emit()  # Conserva temporalmente la fuente seleccionada.
 
-        self._restaurar_casilla(self.casilla_recordar_estado, self.preferencias_aplicacion.recordar_estado_ventana())  # Recupera el valor realmente almacenado.
+    def _cambiar_tamano_fuente_interfaz(self, tamano: int) -> None:
+        if self.preferencias_aplicacion.establecer_tamano_fuente_interfaz(tamano): self.configuracion_modificada.emit()  # Conserva temporalmente el tamaño.
 
-    def _cambiar_recordar_seccion(self, activado: bool) -> None:  # Intenta actualizar la recuperación de la última categoría visitada.
-        if self.preferencias_aplicacion.establecer_recordar_seccion_configuracion(activado):  # Comprueba que la escritura haya sido satisfactoria.
-            return  # Conserva el nuevo valor.
-
-        self._restaurar_casilla(self.casilla_recordar_seccion, self.preferencias_aplicacion.recordar_seccion_configuracion())  # Recupera la preferencia que continúa almacenada.
-
-    def _restaurar_casilla(self, casilla: BotonCasillaVentana, valor: bool) -> None:  # Recupera silenciosamente una casilla cuando no pudo persistirse un cambio.
-        casilla.blockSignals(True)  # Evita volver a ejecutar la escritura mientras se restaura.
-        casilla.setChecked(bool(valor))  # Recupera el valor que continúa siendo válido.
-        casilla.blockSignals(False)  # Reactiva futuras interacciones del usuario.
-        casilla._actualizar_apariencia(bool(valor))  # Actualiza manualmente la representación porque las señales estuvieron bloqueadas.
+    def _restaurar_casilla(self, casilla: BotonCasillaVentana, valor: bool) -> None:
+        casilla.blockSignals(True)  # Evita ejecutar nuevamente la modificación mientras se restaura.
+        casilla.setChecked(bool(valor))  # Recupera el valor todavía válido.
+        casilla.blockSignals(False)  # Reactiva las futuras interacciones.
+        casilla._actualizar_apariencia(bool(valor))  # Sincroniza manualmente la representación visual.

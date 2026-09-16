@@ -4,12 +4,15 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo contiene el estilo visual general de la interfaz
-# gráfica de TecNet Finder desarrollada con PySide6.
+# Contiene la apariencia visual general de TecNet Finder.
 #
-# Centralizar los estilos permite modificar posteriormente la
-# apariencia sin mezclar diseño visual con la lógica de los
-# componentes de la aplicación.
+# La familia y el tamaño base de la interfaz ya no se fijan
+# directamente desde esta hoja de estilos. Esos valores son
+# administrados mediante QApplication y las preferencias
+# configurables del usuario.
+#
+# Algunos controles especiales conservan una fuente específica
+# cuando la necesitan para representar símbolos correctamente.
 # ============================================================
 
 ESTILO_APLICACION = """
@@ -20,8 +23,6 @@ QMainWindow {
 QWidget {
     background-color: #1e1e2e;
     color: #cdd6f4;
-    font-family: "Consolas";
-    font-size: 10pt;
 }
 
 QWidget#VentanaCentral {
@@ -40,8 +41,6 @@ QWidget#BarraTitulo {
 QLabel#TituloBarra {
     background-color: transparent;
     color: #cdd6f4;
-    font-family: "Segoe UI";
-    font-size: 9pt;
 }
 
 QPushButton#BotonVentana,
@@ -86,8 +85,6 @@ QMenuBar#MenuPrincipal {
     border: none;
     border-bottom: 1px solid #313244;
     padding: 1px 6px;
-    font-family: "Segoe UI";
-    font-size: 9pt;
 }
 
 QMenuBar#MenuPrincipal::item {
@@ -104,8 +101,6 @@ QMenu {
     color: #cdd6f4;
     border: 1px solid #45475a;
     padding: 4px;
-    font-family: "Segoe UI";
-    font-size: 9pt;
 }
 
 QMenu::item {
@@ -138,7 +133,6 @@ QLabel#TituloPrincipal {
 
 QLabel#SubtituloPrincipal {
     color: #a6adc8;
-    font-size: 10pt;
 }
 
 QLabel#TituloSeccion {
@@ -181,7 +175,6 @@ QLabel#EstadoIANeutral {
 QLabel#TituloTarjeta {
     background-color: transparent;
     color: #a6adc8;
-    font-size: 9pt;
     font-weight: bold;
 }
 

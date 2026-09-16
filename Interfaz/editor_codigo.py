@@ -54,6 +54,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
 
     def __init__(self, padre=None):
         super().__init__(padre)  # Inicializa el QPlainTextEdit original.
+        self.setObjectName("EditorCodigo")  # Identifica el editor para mantener separada su configuración tipográfica.
         self.diagnosticos: list[Diagnostico] = []  # Conserva los diagnósticos relacionados con la compilación actual.
         self.sugerencia_ia = ""  # Conserva únicamente la continuación gris que todavía no forma parte del documento.
         self.prefijo_sugerencia_ia = ""  # Identifica el texto exacto que produjo la sugerencia visible.

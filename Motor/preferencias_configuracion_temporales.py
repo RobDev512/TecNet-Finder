@@ -15,6 +15,7 @@ from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona 
 
 
 class PreferenciasConfiguracionTemporales:  # Representa las preferencias todavía no confirmadas.
+
     def __init__(self, preferencias_reales: PreferenciasAplicacion):
         self.preferencias_reales = preferencias_reales  # Conserva la configuración persistente como referencia.
         self.recargar_desde_preferencias_reales()  # Copia todos los valores actuales.
@@ -23,16 +24,24 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
         self._iniciar_maximizado = self.preferencias_reales.iniciar_maximizado()  # Copia el estado inicial de ventana.
         self._recordar_estado_ventana = self.preferencias_reales.recordar_estado_ventana()  # Copia la recuperación entre sesiones.
         self._recordar_seccion_configuracion = self.preferencias_reales.recordar_seccion_configuracion()  # Copia la recuperación de categoría.
+        self._familia_fuente_interfaz = self.preferencias_reales.familia_fuente_interfaz()  # Copia la tipografía general de la interfaz.
+        self._tamano_fuente_interfaz = self.preferencias_reales.tamano_fuente_interfaz()  # Copia el tamaño base de la interfaz.
+
         self._ajuste_linea_editor = self.preferencias_reales.ajuste_linea_editor_activado()  # Copia el ajuste de líneas.
         self._botones_rapidos_editor = self.preferencias_reales.botones_rapidos_editor_visibles()  # Copia la visibilidad de controles rápidos.
         self._familia_fuente_editor = self.preferencias_reales.familia_fuente_editor()  # Copia la tipografía del editor.
         self._tamano_fuente_editor = self.preferencias_reales.tamano_fuente_editor()  # Copia el tamaño del texto.
         self._espacios_tabulacion_editor = self.preferencias_reales.espacios_tabulacion_editor()  # Copia el ancho de Tab.
+
         self._navegacion_errores = self.preferencias_reales.navegacion_errores_activada()  # Copia la navegación hacia errores.
         self._navegacion_vlsm = self.preferencias_reales.navegacion_vlsm_activada()  # Copia la navegación hacia VLSM.
         self._advertencias_vlsm = self.preferencias_reales.advertencias_vlsm_visibles()  # Copia la modalidad compacta.
         self._advertencias_ventana = self.preferencias_reales.advertencias_ventana_independiente()  # Copia la modalidad independiente.
         self._cerrar_ventana_advertencias = self.preferencias_reales.cerrar_ventana_advertencias_al_navegar()  # Copia el comportamiento del doble clic.
+
+    # ========================================================
+    # Ventana y apariencia
+    # ========================================================
 
     def iniciar_maximizado(self) -> bool:
         return self._iniciar_maximizado  # Devuelve el valor temporal actual.
@@ -54,6 +63,30 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
     def establecer_recordar_seccion_configuracion(self, activado: bool) -> bool:
         self._recordar_seccion_configuracion = bool(activado)  # Conserva el nuevo valor en memoria.
         return True  # Mantiene el mismo contrato que la configuración real.
+
+    def familia_fuente_interfaz(self) -> str:
+        return self._familia_fuente_interfaz  # Devuelve la tipografía general todavía no confirmada.
+
+    def establecer_familia_fuente_interfaz(self, familia: str) -> bool:
+        if not isinstance(familia, str) or not familia.strip():  # Comprueba que exista un nombre utilizable.
+            return False  # Rechaza valores vacíos o incompatibles.
+        self._familia_fuente_interfaz = familia.strip()  # Conserva solamente el nombre limpio.
+        return True  # Confirma el cambio temporal.
+
+    def tamano_fuente_interfaz(self) -> int:
+        return self._tamano_fuente_interfaz  # Devuelve el tamaño base todavía no confirmado.
+
+    def establecer_tamano_fuente_interfaz(self, tamano: int) -> bool:
+        if not isinstance(tamano, int) or isinstance(tamano, bool):  # Comprueba que sea un entero real.
+            return False  # Rechaza booleanos y otros tipos.
+        if not PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MINIMO <= tamano <= PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MAXIMO:  # Comprueba los límites compartidos.
+            return False  # Rechaza valores capaces de romper la interfaz.
+        self._tamano_fuente_interfaz = tamano  # Conserva temporalmente el nuevo tamaño.
+        return True  # Confirma el cambio.
+
+    # ========================================================
+    # Editor
+    # ========================================================
 
     def ajuste_linea_editor_activado(self) -> bool:
         return self._ajuste_linea_editor  # Devuelve el ajuste temporal.
@@ -96,7 +129,11 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
         if espacios not in PreferenciasAplicacion.ESPACIOS_TABULACION_VALIDOS:  # Comprueba que pertenezca a las opciones soportadas.
             return False  # Rechaza cualquier otra cantidad.
         self._espacios_tabulacion_editor = espacios  # Conserva temporalmente la selección.
-        return True  # Confirma el cambio.
+        return True  # Confirma el cambio temporal.
+
+    # ========================================================
+    # Navegación
+    # ========================================================
 
     def navegacion_errores_activada(self) -> bool:
         return self._navegacion_errores  # Devuelve la navegación temporal.
@@ -120,6 +157,10 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
         self._navegacion_errores = valor  # Aplica temporalmente la decisión a errores.
         self._navegacion_vlsm = valor  # Aplica temporalmente la misma decisión a VLSM.
         return True  # Confirma la modificación.
+
+    # ========================================================
+    # Presentación de advertencias
+    # ========================================================
 
     def advertencias_vlsm_visibles(self) -> bool:
         return self._advertencias_vlsm  # Devuelve la modalidad compacta temporal.
