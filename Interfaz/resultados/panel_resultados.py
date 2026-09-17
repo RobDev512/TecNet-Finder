@@ -35,8 +35,8 @@ from PySide6.QtCore import QEvent, QSize, QTimer, Qt  # Aporta eventos, tamaños
 from PySide6.QtGui import QBrush, QColor, QIcon, QPixmap  # Aporta colores, iconos e imágenes utilizados en los resultados.
 from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Aporta los widgets utilizados por el panel.
 
-from Interfaz.recursos_tema import ruta_icono_comun, ruta_icono_oscuro  # Proporciona recursos iniciales y semánticos mediante la estructura centralizada.
-from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
+from Interfaz.apariencia.recursos_tema import ruta_icono_comun, ruta_icono_oscuro  # Proporciona recursos iniciales y semánticos mediante la estructura centralizada.
+from Interfaz.resultados.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
 from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
 from Motor.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
 

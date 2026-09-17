@@ -24,12 +24,12 @@ from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QListW
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
 from AsistenteIA.gestor_ollama import GestorOllama  # Comparte el servidor local administrado.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Conserva las preferencias persistentes de IA.
-from Interfaz.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada.
-from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el engrane inicial utilizado por la ventana de Configuración.
-from Interfaz.panel_configuracion_editor import PanelConfiguracionEditor  # Importa la categoría Editor.
-from Interfaz.panel_configuracion_ia_diferida import PanelConfiguracionIADiferida  # Importa la categoría de IA.
-from Interfaz.panel_configuracion_resultados import PanelConfiguracionResultados  # Importa Resultados y navegación.
-from Interfaz.panel_configuracion_ventana import PanelConfiguracionVentana  # Importa Ventana y apariencia.
+from Interfaz.ventanas.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada.
+from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el engrane inicial utilizado por la ventana de Configuración.
+from Interfaz.configuracion.panel_configuracion_editor import PanelConfiguracionEditor  # Importa la categoría Editor.
+from Interfaz.configuracion.panel_configuracion_ia_diferida import PanelConfiguracionIADiferida  # Importa la categoría de IA.
+from Interfaz.configuracion.panel_configuracion_resultados import PanelConfiguracionResultados  # Importa Resultados y navegación.
+from Interfaz.configuracion.panel_configuracion_ventana import PanelConfiguracionVentana  # Importa Ventana y apariencia.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales reales.
 from Motor.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Mantiene una copia temporal de las preferencias generales.
 from Motor.preferencias_tema import PreferenciasTema  # Administra la selección real del tema.

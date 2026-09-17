@@ -30,12 +30,12 @@ from PySide6.QtCore import QEvent, QEasingCurve, QPropertyAnimation, QTimer, Qt 
 from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut  # Proporciona iconos, imágenes y atajos de teclado.
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QVBoxLayout, QWidget  # Proporciona los componentes principales de la interfaz.
 
-from Interfaz.barra_titulo import BarraTitulo  # Proporciona la barra personalizada utilizada por la ventana principal.
-from Interfaz.editor_codigo import EditorCodigo  # Proporciona el editor especializado del lenguaje.
-from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Proporciona la vista estructurada de errores y advertencias.
-from Interfaz.panel_resultados import PanelResultados  # Proporciona las pestañas y tablas donde se presentan los resultados.
-from Interfaz.recursos_tema import ruta_marca  # Centraliza el acceso al logotipo oficial y demás recursos de identidad visual.
-from Interfaz.resaltador_sintaxis import ResaltadorSintaxis  # Proporciona únicamente el coloreado visual del código.
+from Interfaz.ventanas.barra_titulo import BarraTitulo  # Proporciona la barra personalizada utilizada por la ventana principal.
+from Interfaz.editor.editor_codigo import EditorCodigo  # Proporciona el editor especializado del lenguaje.
+from Interfaz.resultados.panel_diagnosticos import PanelDiagnosticos  # Proporciona la vista estructurada de errores y advertencias.
+from Interfaz.resultados.panel_resultados import PanelResultados  # Proporciona las pestañas y tablas donde se presentan los resultados.
+from Interfaz.apariencia.recursos_tema import ruta_marca  # Centraliza el acceso al logotipo oficial y demás recursos de identidad visual.
+from Interfaz.editor.resaltador_sintaxis import ResaltadorSintaxis  # Proporciona únicamente el coloreado visual del código.
 from Motor.flujo_compilacion import FlujoCompilacion  # Coordina las fases formales actualmente disponibles.
 
 

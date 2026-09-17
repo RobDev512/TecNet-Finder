@@ -26,7 +26,7 @@ from pathlib import Path  # Permite localizar los recursos gráficos mediante ru
 from PySide6.QtCore import QPoint, QSize, Qt, Signal  # Proporciona posiciones, tamaños, estados y señales utilizadas por la barra.
 from PySide6.QtGui import QIcon  # Permite cargar los iconos utilizados por los controles.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes necesarios para barra y selector.
-from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos oscuros utilizados como estado inicial antes de aplicar el tema confirmado.
+from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos oscuros utilizados como estado inicial antes de aplicar el tema confirmado.
 
 
 class BotonIconoEstado(QPushButton):  # Representa un botón capaz de cambiar automáticamente su icono según la interacción.

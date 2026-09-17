@@ -28,12 +28,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )  # Importa los componentes básicos del panel.
 
-from Interfaz.controles_configuracion import (
+from Interfaz.configuracion.controles_configuracion import (
     CampoNumeroConfiguracion,
     SelectorDesplegableConfiguracion,
 )  # Mantiene los controles generales utilizados para números y listas pequeñas.
 
-from Interfaz.selector_fuentes import SelectorFuentes  # Proporciona el selector especializado con búsqueda de tipografías.
+from Interfaz.configuracion.selector_fuentes import SelectorFuentes  # Proporciona el selector especializado con búsqueda de tipografías.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores predeterminados del editor.
 
 

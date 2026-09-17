@@ -8,7 +8,7 @@
 # según el tema y la categoría física donde se almacenan.
 # ============================================================
 
-import Interfaz.recursos_tema as recursos_tema  # Permite sustituir temporalmente las carpetas utilizadas por el resolvedor.
+import Interfaz.apariencia.recursos_tema as recursos_tema  # Permite sustituir temporalmente las carpetas utilizadas por el resolvedor.
 from Motor.catalogo_temas import TEMA_CLARO_NIEBLA, TEMA_CLARO_TECNET, TEMA_OSCURO_OCEANO, TEMA_OSCURO_TECNET  # Proporciona temas representativos de ambos modos.
 
 

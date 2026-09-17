@@ -24,9 +24,9 @@ from PySide6.QtWidgets import QPlainTextEdit, QPushButton  # Proporciona el ajus
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
 from AsistenteIA.gestor_ollama import GestorOllama  # Comparte el runtime local administrado.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Comparte las preferencias persistentes de IA.
-from Interfaz.gestor_tipografia import GestorTipografia  # Centraliza tema y fuentes.
-from Interfaz.ventana_advertencias import VentanaAdvertencias  # Presenta avisos mediante una ventana independiente.
-from Interfaz.ventana_configuracion_extendida import VentanaConfiguracionExtendida  # Añade preferencias especializadas sin aumentar VentanaConfiguracion.
+from Interfaz.apariencia.gestor_tipografia import GestorTipografia  # Centraliza tema y fuentes.
+from Interfaz.ventanas.ventana_advertencias import VentanaAdvertencias  # Presenta avisos mediante una ventana independiente.
+from Interfaz.configuracion.ventana_configuracion_extendida import VentanaConfiguracionExtendida  # Añade preferencias especializadas sin aumentar VentanaConfiguracion.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales persistentes.
 from Motor.preferencias_modalidad_advertencias import PreferenciasModalidadAdvertencias  # Administra exclusivamente el comportamiento modal de Advertencias.
 from Motor.preferencias_tema import PreferenciasTema  # Administra el tema visual persistente.

@@ -15,7 +15,7 @@
 # tengan prioridad dentro de los temas claros.
 # ============================================================
 
-from Interfaz.estilos import ESTILO_APLICACION  # Recupera la estructura visual base de TecNet Finder.
+from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la estructura visual base de TecNet Finder.
 from Motor.catalogo_temas import obtener_tema  # Recupera la paleta previamente validada.
 
 

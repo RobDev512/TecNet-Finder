@@ -21,8 +21,8 @@ from PySide6.QtCore import QRectF, QSize, Qt, QTimer  # Proporciona geometría, 
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen  # Proporciona herramientas para dibujar la casilla personalizada y cargar iconos.
 from PySide6.QtWidgets import QAbstractItemView, QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles necesarios para construir el selector.
 
-from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
-from Interfaz.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
+from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
+from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
 from Motor.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
 from Motor.pruebas_ejemplos import EjecutorPruebasEjemplos  # Ejecuta los ejemplos mediante el mismo flujo real del compilador.
 

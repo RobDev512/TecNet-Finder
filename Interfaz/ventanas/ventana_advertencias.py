@@ -24,8 +24,8 @@ from PySide6.QtCore import Qt, Signal  # Permite emitir la advertencia seleccion
 from PySide6.QtGui import QIcon  # Permite asignar el icono de advertencia también a la ventana independiente.
 from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget  # Importa los controles utilizados por la ventana.
 
-from Interfaz.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada oficial.
-from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el icono inicial de advertencia desde la estructura centralizada.
+from Interfaz.ventanas.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada oficial.
+from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el icono inicial de advertencia desde la estructura centralizada.
 from Motor.diagnosticos import Diagnostico  # Define la estructura recibida por cada advertencia.
 
 

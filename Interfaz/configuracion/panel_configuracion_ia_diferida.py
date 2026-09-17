@@ -23,7 +23,7 @@
 
 from PySide6.QtCore import Signal, Slot  # Proporciona la señal de cambios pendientes y conserva el slot utilizado al finalizar operaciones.
 
-from Interfaz.panel_configuracion_ia import PanelConfiguracionIA  # Reutiliza toda la implementación estable encargada del componente de inteligencia artificial.
+from Interfaz.configuracion.panel_configuracion_ia import PanelConfiguracionIA  # Reutiliza toda la implementación estable encargada del componente de inteligencia artificial.
 
 
 class PanelConfiguracionIADiferida(PanelConfiguracionIA):  # Añade preferencias diferidas sin duplicar la administración completa del panel original.

@@ -27,7 +27,7 @@ from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite consu
 from AsistenteIA.gestor_instalacion_ia import GestorInstalacionIA, VERSION_OLLAMA  # Permite instalar y retirar físicamente el componente opcional.
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite iniciar y detener la instancia privada.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite conservar independientemente las funciones solicitadas por el usuario.
-from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los indicadores gráficos iniciales utilizados por las funciones de IA.
+from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los indicadores gráficos iniciales utilizados por las funciones de IA.
 
 
 class SenalesOperacionIA(QObject):  # Define el canal seguro utilizado para regresar desde los trabajos de administración.

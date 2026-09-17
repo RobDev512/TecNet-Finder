@@ -23,7 +23,7 @@ from types import MethodType  # Permite sustituir proveedores internos de color 
 from PySide6.QtCore import QEvent, QTimer, Qt  # Proporciona eventos, temporización y opciones generales.
 from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPixmap, QTextFormat  # Proporciona pintura, iconos y formatos.
 from PySide6.QtWidgets import QApplication, QFrame, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem, QLabel, QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget, QTextEdit, QWidget  # Proporciona componentes especiales y políticas de tamaño para evitar desbordamiento horizontal.
-from Interfaz.recursos_tema import resolver_icono_tema  # Resuelve recursos oscuros o claros.
+from Interfaz.apariencia.recursos_tema import resolver_icono_tema  # Resuelve recursos oscuros o claros.
 from Motor.catalogo_temas import TEMA_PREDETERMINADO, obtener_tema  # Proporciona la paleta activa.
 from Motor.diagnosticos import ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos  # Proporciona información formal de diagnósticos.
 

@@ -26,9 +26,9 @@ from PySide6.QtWidgets import QApplication, QMessageBox  # Proporciona la aplica
 from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite saber si el componente opcional de inteligencia artificial está instalado.
 from AsistenteIA.gestor_ollama import GestorOllama  # Administra el servidor privado utilizado por las funciones locales de IA.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Recupera las preferencias persistentes relacionadas con las funciones de asistencia.
-from Interfaz.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
-from Interfaz.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
-from Interfaz.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
+from Interfaz.configuracion.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
+from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
+from Interfaz.ventanas.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
 
 

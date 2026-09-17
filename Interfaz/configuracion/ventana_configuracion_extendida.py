@@ -18,8 +18,8 @@
 
 from PySide6.QtCore import Signal  # Permite comunicar al controlador una preferencia ya confirmada.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout  # Proporciona los controles utilizados por la nueva tarjeta.
-from Interfaz.panel_configuracion_resultados import BotonCasillaConfiguracion  # Reutiliza la misma casilla utilizada actualmente por Resultados y navegación.
-from Interfaz.ventana_configuracion import VentanaConfiguracion  # Extiende la ventana estable sin duplicar sus cientos de líneas.
+from Interfaz.configuracion.panel_configuracion_resultados import BotonCasillaConfiguracion  # Reutiliza la misma casilla utilizada actualmente por Resultados y navegación.
+from Interfaz.configuracion.ventana_configuracion import VentanaConfiguracion  # Extiende la ventana estable sin duplicar sus cientos de líneas.
 from Motor.preferencias_modalidad_advertencias import PreferenciasModalidadAdvertencias  # Administra exclusivamente la nueva decisión persistente.
 
 

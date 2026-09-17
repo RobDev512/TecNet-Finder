@@ -20,8 +20,8 @@
 
 from PySide6.QtCore import Qt, Signal  # Permite configurar controles y comunicar modificaciones temporales.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes visuales necesarios.
-from Interfaz.controles_configuracion import CampoNumeroConfiguracion, SelectorDesplegableConfiguracion  # Proporciona los controles personalizados generales.
-from Interfaz.selector_fuentes import SelectorFuentes  # Proporciona búsqueda especializada de familias tipográficas.
+from Interfaz.configuracion.controles_configuracion import CampoNumeroConfiguracion, SelectorDesplegableConfiguracion  # Proporciona los controles personalizados generales.
+from Interfaz.configuracion.selector_fuentes import SelectorFuentes  # Proporciona búsqueda especializada de familias tipográficas.
 from Motor.catalogo_temas import modo_del_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo  # Proporciona modos y variantes visuales.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores compartidos.
 
