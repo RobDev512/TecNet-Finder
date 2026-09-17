@@ -22,7 +22,7 @@
 from types import MethodType  # Permite sustituir proveedores internos de color sin reescribir clases completas.
 from PySide6.QtCore import QEvent, QTimer, Qt  # Proporciona eventos, temporización y opciones generales.
 from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPixmap, QTextFormat  # Proporciona pintura, iconos y formatos.
-from PySide6.QtWidgets import QApplication, QFrame, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem, QPushButton, QScrollArea, QStackedWidget, QTableWidget, QTextEdit, QWidget  # Proporciona componentes especiales.
+from PySide6.QtWidgets import QApplication, QFrame, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem, QLabel, QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTableWidget, QTextEdit, QWidget  # Proporciona componentes especiales y políticas de tamaño para evitar desbordamiento horizontal.
 from Interfaz.recursos_tema import resolver_icono_tema  # Resuelve recursos oscuros o claros.
 from Motor.catalogo_temas import TEMA_PREDETERMINADO, obtener_tema  # Proporciona la paleta activa.
 from Motor.diagnosticos import ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos  # Proporciona información formal de diagnósticos.
@@ -339,6 +339,8 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
 
         for tarjeta in ventana.findChildren(QFrame, "TarjetaConfiguracion"):
             tarjeta.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que cada tarjeta pinte realmente su superficie y su contorno.
+            tarjeta.setMinimumWidth(0)  # Permite que la tarjeta se contraiga hasta el ancho real del viewport sin crear desplazamiento horizontal.
+            tarjeta.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # Hace que cada tarjeta use el ancho disponible en lugar de imponer el tamaño sugerido por textos largos.
             tarjeta.setStyleSheet(f"""
                 QFrame#TarjetaConfiguracion {{
                     background-color: {p["panel"]};
@@ -411,6 +413,12 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
                 }}
             """)  # Recupera el borde exterior de cada tarjeta y los recuadros interiores de etiquetas especiales sin tocar la lógica de casillas.
 
+        for etiqueta in ventana.findChildren(QLabel):
+            if etiqueta.objectName() not in ("DescripcionConfiguracion", "TextoConfiguracion"): continue  # Atiende solamente explicaciones y textos de opciones capaces de superar el ancho disponible.
+            etiqueta.setWordWrap(True)  # Permite que cualquier texto largo continúe en la línea siguiente en lugar de ensanchar el panel completo.
+            etiqueta.setMinimumWidth(0)  # Elimina mínimos derivados del sizeHint que podrían forzar un ancho superior al viewport.
+            etiqueta.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # Aprovecha el ancho disponible y conserva solamente la altura que necesite el texto envuelto.
+
         marco = getattr(ventana, "marco_ventana", None)  # Recupera el marco exterior.
         if marco is not None: marco.setStyleSheet(f"QFrame#MarcoVentanaConfiguracion {{ background-color: {p['fondo']}; border: 1px solid {p['borde_fuerte']}; border-radius: 14px; }}")  # Conserva un borde visible tanto en claro como en oscuro.
 
@@ -434,11 +442,15 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
 
         for area in ventana.findChildren(QScrollArea):
             if area.objectName() != "AreaDesplazamientoConfiguracion": continue  # Atiende exclusivamente las categorías de Configuración.
+            area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Prohíbe explícitamente desplazamiento lateral porque todas las tarjetas deben adaptarse al viewport.
+            area.setWidgetResizable(True)  # Reafirma que el panel interno debe seguir el ancho útil del área desplazable.
             area.setStyleSheet(f"QScrollArea#AreaDesplazamientoConfiguracion {{ background-color: {p['fondo']}; border: none; }} QScrollArea#AreaDesplazamientoConfiguracion > QWidget > QWidget {{ background-color: {p['fondo']}; }}")  # Sincroniza el scroll y su contenido.
             area.viewport().setStyleSheet(f"background-color: {p['fondo']}; border: none;")  # Sincroniza también el viewport interno.
 
             contenido = area.widget()  # Recupera el panel real.
             if contenido is not None:
+                contenido.setMinimumWidth(0)  # Permite al panel comprimirse exactamente hasta el ancho del viewport.
+                contenido.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)  # Evita que un texto largo convierta su sizeHint en un ancho obligatorio.
                 contenido.setObjectName("ContenidoSeccionConfiguracion")  # Proporciona un identificador exclusivo.
                 contenido.setStyleSheet(f"QWidget#ContenidoSeccionConfiguracion {{ background-color: {p['fondo']}; }}")  # Mantiene el fondo correcto detrás de todas las tarjetas.
 
@@ -589,6 +601,17 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
                 QFrame#TarjetaAdvertenciaIndependiente {{ background-color: {p["panel"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 8px; }}
                 QFrame#TarjetaAdvertenciaIndependiente:hover {{ background-color: {p["superficie_suave"]}; border: 1px solid {p["advertencia"]}; }}
             """)  # Aplica el borde directamente sobre cada tarjeta para que sea visible tanto en oscuro como en claro.
+
+        estilos_labels = {
+            "CodigoAdvertenciaIndependiente": (p["superficie"], p["advertencia"], "bold"),  # Conserva el código destacado mediante el color semántico de advertencia.
+            "UbicacionAdvertenciaIndependiente": (p["superficie"], p["texto_secundario"], "600"),  # Mantiene la ubicación como información secundaria claramente delimitada.
+            "TituloCampoAdvertenciaIndependiente": (p["superficie"], p["texto"], "bold"),  # Presenta Mensaje y Solución como encabezados internos compactos.
+            "TextoAdvertenciaIndependiente": (p["superficie_suave"], p["texto"], "normal"),  # Conserva el contenido sobre una superficie ligeramente diferenciada.
+        }  # Centraliza los cuatro tratamientos internos para evitar reglas inconsistentes entre temas.
+        for nombre, (fondo, color, peso) in estilos_labels.items():
+            for etiqueta in ventana.findChildren(QLabel, nombre):
+                etiqueta.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Fuerza a Qt a recortar el fondo utilizando realmente el radio indicado.
+                etiqueta.setStyleSheet(f"QLabel#{nombre} {{ background-color: {fondo}; color: {color}; border: none; border-radius: 7px; padding: 6px 10px; font-weight: {peso}; }}")  # Aplica el fondo redondeado directamente al QLabel para que una regla heredada no vuelva a cuadrarlo.
 
         area = getattr(ventana, "area_desplazamiento", None)  # Recupera el viewport interno.
         if area is not None: area.viewport().setStyleSheet(f"background-color: {p['fondo']}; border: none;")  # Evita restos de otro tema.

@@ -11,8 +11,9 @@
 # - Selector desplegable personalizado.
 # - Popup redondeado y desplazable.
 #
-# Los desplegables comprueban el área útil del monitor para
-# decidir si deben abrirse debajo o encima del control.
+# Los desplegables de pocas opciones ajustan exactamente su
+# altura al contenido. Las listas extensas continúan utilizando
+# desplazamiento y respetan siempre el área útil del monitor.
 # ============================================================
 
 from PySide6.QtCore import QPoint, Qt, Signal  # Proporciona posición, opciones visuales y señales.
@@ -34,6 +35,7 @@ class CampoNumeroConfiguracion(QSpinBox):  # Representa un campo numérico sin l
 
 class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por los selectores generales.
     opcion_seleccionada = Signal(object)  # Comunica al selector el valor real relacionado con la fila elegida.
+    MAXIMO_FILAS_SIN_CRECER = 7  # Limita listas grandes sin añadir espacio vacío a selectores pequeños.
 
     def __init__(self, padre=None):
         super().__init__(padre, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)  # Crea un popup sin barra nativa que se cierra al pulsar fuera.
@@ -54,7 +56,7 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
         self.lista = QListWidget()  # Crea la lista desplazable.
         self.lista.setObjectName("ListaOpcionesConfiguracion")  # Permite aplicar su estilo propio.
         self.lista.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Elimina desplazamiento lateral.
-        self.lista.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra scrollbar cuando la lista lo necesita.
+        self.lista.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # Oculta inicialmente el scrollbar hasta comprobar que realmente sea necesario.
         self.lista.setSpacing(1)  # Mantiene una separación mínima entre opciones.
         self.lista.itemPressed.connect(self._seleccionar_elemento)  # Procesa el clic antes de que Qt cierre automáticamente el popup.
         self.lista.itemActivated.connect(self._seleccionar_elemento)  # Permite confirmar también mediante teclado.
@@ -78,6 +80,7 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
 
     def limpiar(self) -> None:
         self.lista.clear()  # Elimina todas las filas para reutilizar el mismo popup con otra colección de opciones.
+        self.lista.verticalScrollBar().setValue(0)  # Recupera también el inicio de la lista para la siguiente colección.
 
     def agregar_opcion(self, texto: str, dato) -> None:
         elemento = QListWidgetItem(texto)  # Crea la fila visible.
@@ -87,21 +90,27 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
     def seleccionar_dato(self, dato) -> None:
         for indice in range(self.lista.count()):  # Recorre todas las opciones visibles.
             elemento = self.lista.item(indice)  # Recupera la fila correspondiente.
-            if elemento.data(Qt.ItemDataRole.UserRole) == dato:  # Comprueba si corresponde con el dato solicitado.
-                self.lista.setCurrentItem(elemento)  # Marca visualmente la opción.
-                self.lista.scrollToItem(elemento)  # Garantiza que quede visible dentro del popup.
+            if elemento.data(Qt.ItemDataRole.UserRole) == dato:
+                self.lista.setCurrentItem(elemento)  # Marca visualmente la opción seleccionada.
+                if self.lista.count() > self.MAXIMO_FILAS_SIN_CRECER: self.lista.scrollToItem(elemento)  # Desplaza únicamente listas extensas que realmente lo necesitan.
+                else: self.lista.verticalScrollBar().setValue(0)  # Mantiene visibles todas las opciones de listas pequeñas sin saltos innecesarios.
                 return  # Finaliza después de localizar la coincidencia.
 
     def mostrar_junto_control(self, control, ancho: int) -> None:
         cantidad = self.lista.count()  # Recupera la cantidad de opciones disponibles.
-        alto_fila = self.lista.sizeHintForRow(0) if cantidad else 34  # Calcula la altura real de una fila o utiliza un respaldo.
-        alto_deseado = min(270, max(48, alto_fila * min(cantidad, 7) + 14))  # Limita la altura para que listas extensas utilicen scrollbar.
+        filas_visibles = min(cantidad, self.MAXIMO_FILAS_SIN_CRECER)  # Determina cuántas filas deben formar parte de la altura máxima.
+        alto_respaldo = self.lista.fontMetrics().height() + 16  # Calcula una fila coherente incluso antes de que Qt termine de resolver sizeHintForRow().
+        alturas = [max(alto_respaldo, self.lista.sizeHintForRow(indice)) for indice in range(filas_visibles)]  # Recupera la altura real de cada fila visible.
+        alto_filas = sum(alturas) + max(0, filas_visibles - 1) * self.lista.spacing()  # Suma exclusivamente contenido real y separaciones existentes.
+        alto_deseado = max(48, alto_filas + 18) if cantidad else 48  # Añade solamente los márgenes del marco, evitando zonas vacías arbitrarias.
+        alto_deseado = min(270, alto_deseado)  # Conserva el límite histórico para listas extensas.
+        self.lista.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if cantidad <= self.MAXIMO_FILAS_SIN_CRECER else Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra scrollbar únicamente cuando existen más filas que las admitidas sin crecer.
+        if cantidad <= self.MAXIMO_FILAS_SIN_CRECER: self.lista.verticalScrollBar().setValue(0)  # Garantiza que una selección previa no deje opciones pequeñas fuera de la vista.
 
         origen = control.mapToGlobal(QPoint(0, 0))  # Recupera la posición global del selector.
         centro = control.mapToGlobal(control.rect().center())  # Obtiene un punto perteneciente al monitor actual.
         pantalla = QApplication.screenAt(centro) or QApplication.primaryScreen()  # Utiliza ese monitor o la pantalla principal como respaldo.
-        if pantalla is None:  # Comprueba el caso excepcional donde Qt todavía no conoce una pantalla.
-            return  # Evita mostrar el popup en una posición imposible de calcular.
+        if pantalla is None: return  # Evita mostrar el popup en una posición imposible de calcular cuando Qt todavía no conoce una pantalla.
 
         area = pantalla.availableGeometry()  # Recupera el área útil excluyendo la barra de tareas.
         margen = 8  # Reserva un pequeño espacio respecto a los bordes del monitor.
@@ -110,31 +119,29 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
         espacio_abajo = area.bottom() - (origen.y() + control.height()) - margen - separacion  # Calcula el espacio útil inferior.
         espacio_arriba = origen.y() - area.top() - margen - separacion  # Calcula el espacio útil superior.
 
-        if espacio_abajo >= alto_deseado:  # Comprueba si toda la lista cabe debajo.
-            alto_popup = alto_deseado  # Conserva la altura deseada.
+        if espacio_abajo >= alto_deseado:
+            alto_popup = alto_deseado  # Conserva exactamente la altura necesaria cuando toda la lista cabe debajo.
             y = origen.y() + control.height() + separacion  # Abre debajo del selector.
-        elif espacio_arriba >= alto_deseado:  # Comprueba si toda la lista cabe encima.
-            alto_popup = alto_deseado  # Conserva la altura deseada.
+        elif espacio_arriba >= alto_deseado:
+            alto_popup = alto_deseado  # Conserva exactamente la altura necesaria cuando toda la lista cabe encima.
             y = origen.y() - alto_deseado - separacion  # Abre hacia arriba.
-        elif espacio_arriba > espacio_abajo:  # Compara ambas regiones cuando ninguna permite la altura completa.
-            alto_popup = max(48, espacio_arriba)  # Aprovecha la región superior.
+        elif espacio_arriba > espacio_abajo:
+            alto_popup = max(48, espacio_arriba)  # Aprovecha la región superior únicamente cuando la pantalla obliga a reducir el popup.
             y = area.top() + margen  # Coloca el popup dentro del límite superior.
-        else:  # Utiliza la región inferior cuando dispone de más espacio.
-            alto_popup = max(48, espacio_abajo)  # Aprovecha el espacio inferior disponible.
+        else:
+            alto_popup = max(48, espacio_abajo)  # Aprovecha el espacio inferior disponible cuando la pantalla obliga a reducirlo.
             y = origen.y() + control.height() + separacion  # Mantiene el popup debajo.
 
         alto_popup = min(alto_popup, area.height() - margen * 2)  # Garantiza que la altura final nunca exceda el monitor.
         x = max(area.left() + margen, min(origen.x(), area.right() - ancho_popup - margen + 1))  # Corrige cualquier desbordamiento horizontal.
         y = max(area.top() + margen, min(y, area.bottom() - alto_popup - margen + 1))  # Corrige cualquier desbordamiento vertical.
-
         self.setFixedSize(ancho_popup, alto_popup)  # Aplica las dimensiones calculadas.
         self.move(x, y)  # Sitúa completamente el popup dentro de la pantalla.
         self.show()  # Hace visible la ventana flotante.
         self.raise_()  # Garantiza que aparezca encima de Configuración.
 
     def _seleccionar_elemento(self, elemento: QListWidgetItem) -> None:
-        if not self.isVisible():  # Evita una segunda emisión causada por itemActivated después de itemPressed.
-            return  # No procesa nuevamente la misma selección.
+        if not self.isVisible(): return  # Evita una segunda emisión causada por itemActivated después de itemPressed.
         dato = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el valor real asociado con la fila.
         self.opcion_seleccionada.emit(dato)  # Comunica el valor antes de cerrar el popup.
         self.close()  # Cierra el desplegable después de entregar correctamente la selección.
@@ -147,7 +154,6 @@ class SelectorDesplegableConfiguracion(QFrame):  # Sustituye QComboBox mediante 
         super().__init__(padre)  # Inicializa la superficie principal.
         self.setObjectName("SelectorDesplegableConfiguracion")  # Identifica exclusivamente el selector.
         self.setFixedHeight(38)  # Mantiene la misma altura que CampoNumeroConfiguracion.
-
         self._datos = []  # Conserva las relaciones entre texto visible y valor real.
         self._dato_actual = None  # Conserva la selección actual.
 
@@ -194,28 +200,24 @@ class SelectorDesplegableConfiguracion(QFrame):  # Sustituye QComboBox mediante 
         dato_real = texto if dato is None else dato  # Utiliza el mismo texto como dato cuando no se necesita otro valor.
         self._datos.append((texto, dato_real))  # Conserva internamente la relación.
         self.popup.agregar_opcion(texto, dato_real)  # Registra la misma opción dentro del popup.
-        if self._dato_actual is None:  # Comprueba si todavía no existe ninguna selección.
-            self.establecer_valor(dato_real, emitir=False)  # Utiliza la primera opción como selección inicial sin emitir un cambio.
+        if self._dato_actual is None: self.establecer_valor(dato_real, emitir=False)  # Utiliza la primera opción como selección inicial sin emitir un cambio.
 
     def establecer_valor(self, dato, emitir: bool = False) -> None:
-        for texto, dato_opcion in self._datos:  # Recorre las opciones hasta localizar el dato solicitado.
-            if dato_opcion == dato:  # Comprueba si corresponde con el valor pedido.
+        for texto, dato_opcion in self._datos:
+            if dato_opcion == dato:
                 cambio = self._dato_actual != dato_opcion  # Determina si realmente existe una modificación.
                 self._dato_actual = dato_opcion  # Actualiza primero el estado interno.
                 self.boton_texto.setText(texto)  # Presenta inmediatamente el texto correspondiente.
                 self.boton_texto.setToolTip(texto)  # Permite consultar textos extensos.
                 self.popup.seleccionar_dato(dato_opcion)  # Mantiene sincronizada la selección del popup.
-                if emitir and cambio:  # Comprueba si debe informar la modificación.
-                    self.valor_cambiado.emit(dato_opcion)  # Comunica solamente una selección real del usuario.
+                if emitir and cambio: self.valor_cambiado.emit(dato_opcion)  # Comunica solamente una selección real del usuario.
                 return  # Finaliza una vez localizada la opción.
 
     def valor_actual(self):
         return self._dato_actual  # Permite consultar el valor actualmente seleccionado.
 
     def _mostrar_opciones(self) -> None:
-        if self.popup.isVisible():  # Comprueba si el selector ya se encuentra abierto.
-            self.popup.close()  # Lo cierra al pulsarlo nuevamente.
-            return  # Evita volver a abrirlo inmediatamente.
+        if self.popup.isVisible(): self.popup.close(); return  # Cierra el selector al pulsarlo nuevamente.
         self.popup.mostrar_junto_control(self, self.width())  # Decide automáticamente si el popup debe abrirse arriba o abajo.
 
     def _seleccionar_valor(self, dato) -> None:
