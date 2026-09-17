@@ -18,7 +18,7 @@ from PySide6.QtGui import QIcon  # Permite cargar los recursos PNG disponibles d
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout  # Proporciona los controles necesarios para construir la ventana.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos iniciales utilizados por la ventana de reporte.
 
-from Motor.pruebas_ejemplos import ResumenPruebasEjemplos, generar_reporte_pruebas  # Proporciona el resumen estructurado y su representación textual completa.
+from Motor.ejemplos.pruebas_ejemplos import ResumenPruebasEjemplos, generar_reporte_pruebas  # Proporciona el resumen estructurado y su representación textual completa.
 
 
 class VentanaReportePruebas(QDialog):  # Presenta visualmente el resultado de una ejecución automática de ejemplos.

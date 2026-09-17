@@ -22,8 +22,8 @@
 from dataclasses import dataclass  # Permite representar de forma organizada e inmutable las ubicaciones léxicas relacionadas con cada bloque.
 import ipaddress  # Proporciona las operaciones estándar utilizadas para interpretar direcciones y redes IPv4.
 
-from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para generar los errores semánticos.
-from Motor.modelos import BloqueRed, ResultadoSemantico, Token  # Proporciona los bloques recibidos, el resultado de esta fase y los tokens originales.
+from Motor.compilacion.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para generar los errores semánticos.
+from Motor.compilacion.modelos import BloqueRed, ResultadoSemantico, Token  # Proporciona los bloques recibidos, el resultado de esta fase y los tokens originales.
 
 
 @dataclass(frozen=True)  # Impide modificar accidentalmente la correspondencia recuperada entre un bloque y sus tokens originales.

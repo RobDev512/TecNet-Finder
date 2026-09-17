@@ -23,8 +23,8 @@ from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton,
 from AsistenteIA.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos gráficos iniciales utilizados por el editor.
 from Interfaz.ejemplos.selector_ejemplos import SelectorEjemplos  # Importa la ventana especializada utilizada para consultar casos válidos e inválidos.
-from Motor.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
-from Motor.gestor_ejemplos import GestorEjemplos  # Importa el componente encargado de leer e interpretar los archivos de ejemplos.
+from Motor.compilacion.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
+from Motor.ejemplos.gestor_ejemplos import GestorEjemplos  # Importa el componente encargado de leer e interpretar los archivos de ejemplos.
 
 
 class AreaNumerosLinea(QWidget):  # Define el pequeño widget colocado a la izquierda del editor para dibujar números.

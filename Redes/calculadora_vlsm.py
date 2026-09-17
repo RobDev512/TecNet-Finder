@@ -17,7 +17,7 @@
 import ipaddress  # Importa las herramientas estándar de Python para trabajar con direcciones y redes IPv4.
 import math  # Importa funciones matemáticas utilizadas para calcular la cantidad de bits necesarios.
 
-from Motor.modelos import SubredVLSM  # Importa el modelo utilizado para representar cada subred calculada.
+from Motor.compilacion.modelos import SubredVLSM  # Importa el modelo utilizado para representar cada subred calculada.
 
 
 class ErrorCalculoVLSM(Exception):  # Representa una imposibilidad técnica de cálculo conservando la solicitud concreta que la produjo.

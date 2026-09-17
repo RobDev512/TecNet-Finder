@@ -20,9 +20,9 @@
 import re  # Permite extraer únicamente las declaraciones formales de códigos esperados escritas dentro de los ejemplos.
 from dataclasses import dataclass, field  # Permite representar de forma organizada los resultados individuales y sus resúmenes.
 
-from Motor.diagnosticos import codigo_diagnostico_disponible, codigo_diagnostico_es_error, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes  # Proporciona el estado centralizado de todos los códigos registrados.
-from Motor.flujo_compilacion import FlujoCompilacion  # Ejecuta cada ejemplo mediante exactamente el mismo flujo utilizado por TecNet Finder.
-from Motor.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura con la que se representan los casos cargados desde los archivos TXT.
+from Motor.compilacion.diagnosticos import codigo_diagnostico_disponible, codigo_diagnostico_es_error, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes  # Proporciona el estado centralizado de todos los códigos registrados.
+from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Ejecuta cada ejemplo mediante exactamente el mismo flujo utilizado por TecNet Finder.
+from Motor.ejemplos.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura con la que se representan los casos cargados desde los archivos TXT.
 
 
 ESTADO_CORRECTO = "correcto"  # Representa un ejemplo cuya parte actualmente evaluable se comportó como se esperaba.

@@ -14,8 +14,8 @@
 from openpyxl import load_workbook  # Importa la función utilizada para volver a abrir los libros creados durante las pruebas.
 import pytest  # Importa pytest para comprobar errores esperados durante una exportación inválida.
 
-from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel, generar_reporte_texto  # Importa las funciones públicas que serán verificadas.
-from Motor.flujo_compilacion import FlujoCompilacion  # Importa el flujo real para producir resultados iguales a los utilizados por la interfaz.
+from Motor.exportacion.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel, generar_reporte_texto  # Importa las funciones públicas que serán verificadas.
+from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Importa el flujo real para producir resultados iguales a los utilizados por la interfaz.
 
 
 def prueba_exporta_excel_con_una_red(tmp_path):  # Comprueba que una red válida produzca un libro con su tabla VLSM completa.

@@ -21,9 +21,9 @@
 from Compilador.analizador_lexico import AnalizadorLexico  # Proporciona la primera fase encargada de convertir el código fuente en tokens.
 from Compilador.analizador_semantico import AnalizadorSemantico  # Proporciona la fase que valida el significado de los bloques sintácticamente correctos.
 from Compilador.analizador_sintactico import AnalizadorSintactico  # Proporciona la fase que comprueba el orden gramatical de los tokens reconocidos.
-from Motor.advertencias import generar_advertencias  # Genera recomendaciones no bloqueantes independientes de las fases formales.
-from Motor.diagnosticos import crear_diagnostico  # Permite construir diagnósticos generales cuando ocurre un fallo técnico controlado.
-from Motor.modelos import BloqueRed, ResultadoCompilacion, Token  # Proporciona los modelos utilizados para reunir resultados y localizar elementos originales.
+from Motor.compilacion.advertencias import generar_advertencias  # Genera recomendaciones no bloqueantes independientes de las fases formales.
+from Motor.compilacion.diagnosticos import crear_diagnostico  # Permite construir diagnósticos generales cuando ocurre un fallo técnico controlado.
+from Motor.compilacion.modelos import BloqueRed, ResultadoCompilacion, Token  # Proporciona los modelos utilizados para reunir resultados y localizar elementos originales.
 from Redes.calculadora_vlsm import ErrorCalculoVLSM, calcular_vlsm  # Proporciona el cálculo VLSM y su excepción técnica controlada.
 
 

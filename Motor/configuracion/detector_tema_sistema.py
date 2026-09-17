@@ -17,7 +17,7 @@
 import sys  # Permite identificar Windows antes de consultar su registro.
 from PySide6.QtCore import Qt  # Proporciona los valores oficiales de esquema claro y oscuro de Qt.
 from PySide6.QtGui import QGuiApplication  # Permite consultar el esquema reconocido por Qt cuando la aplicación ya existe.
-from Motor.catalogo_temas import MODO_CLARO, MODO_OSCURO, TEMA_CLARO_TECNET, TEMA_OSCURO_TECNET  # Proporciona modos y variantes oficiales de TecNet Finder.
+from Motor.configuracion.catalogo_temas import MODO_CLARO, MODO_OSCURO, TEMA_CLARO_TECNET, TEMA_OSCURO_TECNET  # Proporciona modos y variantes oficiales de TecNet Finder.
 
 
 def detectar_modo_sistema() -> str:

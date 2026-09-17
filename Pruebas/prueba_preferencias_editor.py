@@ -9,8 +9,8 @@
 # rápidos y tabulación.
 # ============================================================
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Importa la configuración persistente.
-from Motor.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Importa la copia utilizada por Configuración.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Importa la configuración persistente.
+from Motor.configuracion.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Importa la copia utilizada por Configuración.
 
 
 def test_valores_predeterminados_editor(tmp_path):

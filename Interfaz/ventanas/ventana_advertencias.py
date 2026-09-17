@@ -26,7 +26,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QLabel
 
 from Interfaz.ventanas.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada oficial.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el icono inicial de advertencia desde la estructura centralizada.
-from Motor.diagnosticos import Diagnostico  # Define la estructura recibida por cada advertencia.
+from Motor.compilacion.diagnosticos import Diagnostico  # Define la estructura recibida por cada advertencia.
 
 
 class TarjetaAdvertenciaInteractiva(QFrame):  # Representa una advertencia que puede activarse mediante doble clic.

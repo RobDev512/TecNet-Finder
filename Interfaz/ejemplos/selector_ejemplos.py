@@ -23,8 +23,8 @@ from PySide6.QtWidgets import QAbstractItemView, QCheckBox, QDialog, QHBoxLayout
 
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
 from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
-from Motor.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
-from Motor.pruebas_ejemplos import EjecutorPruebasEjemplos  # Ejecuta los ejemplos mediante el mismo flujo real del compilador.
+from Motor.ejemplos.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
+from Motor.ejemplos.pruebas_ejemplos import EjecutorPruebasEjemplos  # Ejecuta los ejemplos mediante el mismo flujo real del compilador.
 
 
 class CasillaEjemplo(QCheckBox):  # Representa una casilla personalizada claramente visible dentro de las tablas del tema oscuro.

@@ -11,9 +11,9 @@
 # ============================================================
 
 import json  # Permite preparar archivos alterados manualmente durante algunas pruebas.
-from Motor.catalogo_temas import MODO_CLARO, MODO_OSCURO, TEMA_CLARO_NIEBLA, TEMA_CLARO_TECNET, TEMA_OSCURO_MEDIANOCHE, TEMA_OSCURO_OCEANO, TEMA_OSCURO_TECNET, TEMA_PREDETERMINADO, modo_del_tema, normalizar_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo, tema_existe  # Importa las operaciones públicas del catálogo.
-from Motor.preferencias_tema import PreferenciasTema  # Proporciona la persistencia real del tema.
-from Motor.preferencias_tema_temporales import PreferenciasTemaTemporales  # Proporciona la copia temporal utilizada por Configuración.
+from Motor.configuracion.catalogo_temas import MODO_CLARO, MODO_OSCURO, TEMA_CLARO_NIEBLA, TEMA_CLARO_TECNET, TEMA_OSCURO_MEDIANOCHE, TEMA_OSCURO_OCEANO, TEMA_OSCURO_TECNET, TEMA_PREDETERMINADO, modo_del_tema, normalizar_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo, tema_existe  # Importa las operaciones públicas del catálogo.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Proporciona la persistencia real del tema.
+from Motor.configuracion.preferencias_tema_temporales import PreferenciasTemaTemporales  # Proporciona la copia temporal utilizada por Configuración.
 
 
 def test_catalogo_incluye_tres_variantes_oscuras():

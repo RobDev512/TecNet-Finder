@@ -27,9 +27,9 @@ from AsistenteIA.preferencias_ia import PreferenciasIA  # Comparte las preferenc
 from Interfaz.apariencia.gestor_tipografia import GestorTipografia  # Centraliza tema y fuentes.
 from Interfaz.ventanas.ventana_advertencias import VentanaAdvertencias  # Presenta avisos mediante una ventana independiente.
 from Interfaz.configuracion.ventana_configuracion_extendida import VentanaConfiguracionExtendida  # Añade preferencias especializadas sin aumentar VentanaConfiguracion.
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales persistentes.
-from Motor.preferencias_modalidad_advertencias import PreferenciasModalidadAdvertencias  # Administra exclusivamente el comportamiento modal de Advertencias.
-from Motor.preferencias_tema import PreferenciasTema  # Administra el tema visual persistente.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales persistentes.
+from Motor.configuracion.preferencias_modalidad_advertencias import PreferenciasModalidadAdvertencias  # Administra exclusivamente el comportamiento modal de Advertencias.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Administra el tema visual persistente.
 
 
 class ControlConfiguracion(QObject):  # Coordina Configuración sin intervenir en las fases formales del compilador.

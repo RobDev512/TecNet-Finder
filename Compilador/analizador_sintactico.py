@@ -23,8 +23,8 @@
 # Actualmente implementa SIN-001 a SIN-008.
 # ============================================================
 
-from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para generar errores sintácticos.
-from Motor.modelos import BloqueRed, NodoSintactico, ResultadoSintactico, Token  # Proporciona los tokens recibidos y las estructuras producidas por el parser.
+from Motor.compilacion.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para generar errores sintácticos.
+from Motor.compilacion.modelos import BloqueRed, NodoSintactico, ResultadoSintactico, Token  # Proporciona los tokens recibidos y las estructuras producidas por el parser.
 
 
 DESCRIPCIONES_TOKEN = {  # Relaciona cada categoría léxica con una descripción comprensible para los mensajes del parser.

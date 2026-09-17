@@ -22,7 +22,7 @@
 from PySide6.QtCore import QPoint, Qt, Signal  # Proporciona coordenadas, opciones de Qt y señales personalizadas.
 from PySide6.QtGui import QKeyEvent  # Permite procesar las teclas utilizadas dentro del buscador.
 from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QPushButton, QVBoxLayout  # Proporciona los controles necesarios.
-from Motor.catalogo_fuentes import normalizar_fuente, obtener_fuentes_compatibles  # Centraliza el catálogo de fuentes seguras.
+from Motor.configuracion.catalogo_fuentes import normalizar_fuente, obtener_fuentes_compatibles  # Centraliza el catálogo de fuentes seguras.
 
 
 class VentanaFuentes(QFrame):  # Representa el popup que contiene buscador y coincidencias.

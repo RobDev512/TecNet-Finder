@@ -19,7 +19,7 @@
 # ============================================================
 
 from pathlib import Path  # Permite construir rutas relativas al proyecto sin depender de ubicaciones absolutas.
-from Motor.catalogo_temas import MODO_CLARO, modo_del_tema  # Permite determinar si el tema activo pertenece al modo claro.
+from Motor.configuracion.catalogo_temas import MODO_CLARO, modo_del_tema  # Permite determinar si el tema activo pertenece al modo claro.
 
 RAIZ_PROYECTO = Path(__file__).resolve().parent.parent.parent  # Localiza la raíz general de TecNet Finder desde el módulo de interfaz.
 RUTA_RECURSOS = RAIZ_PROYECTO / "Recursos"  # Centraliza la carpeta principal donde viven todos los recursos gráficos.

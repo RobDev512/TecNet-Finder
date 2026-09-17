@@ -40,7 +40,7 @@ def acortar_texto(texto: str, limite: int = 95) -> str:  # Construye una versió
 
 class GestorEjemplos:  # Coordina la carga de los archivos disponibles dentro de la carpeta Ejemplos.
     def __init__(self, raiz_proyecto: Path | None = None):
-        self.raiz_proyecto = raiz_proyecto or Path(__file__).resolve().parent.parent  # Utiliza TecNet-Finder como raíz cuando no se proporciona una alternativa.
+        self.raiz_proyecto = raiz_proyecto or Path(__file__).resolve().parent.parent.parent  # Utiliza TecNet-Finder como raíz cuando no se proporciona una alternativa.
         self.carpeta_ejemplos = self.raiz_proyecto / "Ejemplos"  # Localiza la carpeta que contiene los casos reutilizables.
         self.ruta_validos = self.carpeta_ejemplos / "entrada_valida.txt"  # Conserva la ruta oficial de los ejemplos válidos.
         self.ruta_invalidos = self.carpeta_ejemplos / "entradas_invalidas.txt"  # Conserva la ruta oficial de los ejemplos inválidos.

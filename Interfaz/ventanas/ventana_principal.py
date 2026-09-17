@@ -36,7 +36,7 @@ from Interfaz.resultados.panel_diagnosticos import PanelDiagnosticos  # Proporci
 from Interfaz.resultados.panel_resultados import PanelResultados  # Proporciona las pestañas y tablas donde se presentan los resultados.
 from Interfaz.apariencia.recursos_tema import ruta_marca  # Centraliza el acceso al logotipo oficial y demás recursos de identidad visual.
 from Interfaz.editor.resaltador_sintaxis import ResaltadorSintaxis  # Proporciona únicamente el coloreado visual del código.
-from Motor.flujo_compilacion import FlujoCompilacion  # Coordina las fases formales actualmente disponibles.
+from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Coordina las fases formales actualmente disponibles.
 
 
 GWL_STYLE = -16  # Identifica el conjunto de estilos principales asociado con una ventana Win32.

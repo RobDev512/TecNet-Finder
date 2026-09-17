@@ -20,8 +20,8 @@
 # como una comprobación automática contra cambios accidentales.
 # ============================================================
 
-from Motor.gestor_ejemplos import EjemploCodigo, GestorEjemplos  # Proporciona tanto la representación de un ejemplo como el lector de los archivos TXT reales.
-from Motor.pruebas_ejemplos import ESTADO_CORRECTO, EjecutorPruebasEjemplos, extraer_codigos_esperados, generar_reporte_pruebas  # Proporciona el evaluador automático y las utilidades empleadas por estas pruebas.
+from Motor.ejemplos.gestor_ejemplos import EjemploCodigo, GestorEjemplos  # Proporciona tanto la representación de un ejemplo como el lector de los archivos TXT reales.
+from Motor.ejemplos.pruebas_ejemplos import ESTADO_CORRECTO, EjecutorPruebasEjemplos, extraer_codigos_esperados, generar_reporte_pruebas  # Proporciona el evaluador automático y las utilidades empleadas por estas pruebas.
 
 
 def prueba_extrae_solamente_codigos_declarados_como_esperados():  # Comprueba que solamente se interpreten códigos escritos después de la etiqueta formal correspondiente.

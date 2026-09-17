@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QApplication, QAbstractItemView, QHeaderView, QSty
 from AsistenteIA.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
 from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Permite relacionar cada resultado de IA con la identidad exacta del diagnóstico.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el indicador gráfico inicial utilizado por las soluciones asistidas mediante IA.
-from Motor.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos, texto_estado_diagnostico  # Importa el modelo y el catálogo centralizado de diagnósticos.
+from Motor.compilacion.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos, texto_estado_diagnostico  # Importa el modelo y el catálogo centralizado de diagnósticos.
 
 
 class TablaDiagnosticosResponsiva(QTableWidget):  # Conserva columnas legibles y habilita scroll horizontal cuando la ventana no ofrece espacio suficiente.

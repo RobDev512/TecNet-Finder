@@ -21,8 +21,8 @@
 import json  # Permite almacenar la preferencia mediante un archivo estructurado.
 import os  # Permite consultar LocalAppData proporcionado por Windows.
 from pathlib import Path  # Permite construir rutas independientes del usuario.
-from Motor.catalogo_temas import TEMA_CLARO_TECNET, TEMA_OSCURO_TECNET, TEMA_PREDETERMINADO, normalizar_tema, tema_existe  # Proporciona validación centralizada del catálogo.
-from Motor.detector_tema_sistema import tema_recomendado_sistema  # Proporciona la variante adecuada mientras no exista una elección manual.
+from Motor.configuracion.catalogo_temas import TEMA_CLARO_TECNET, TEMA_OSCURO_TECNET, TEMA_PREDETERMINADO, normalizar_tema, tema_existe  # Proporciona validación centralizada del catálogo.
+from Motor.configuracion.detector_tema_sistema import tema_recomendado_sistema  # Proporciona la variante adecuada mientras no exista una elección manual.
 
 
 class PreferenciasTema:

@@ -16,7 +16,7 @@
 # inválidos.
 # ============================================================
 
-from Motor.flujo_compilacion import FlujoCompilacion  # Utiliza exactamente el mismo flujo de compilación ejecutado normalmente por la aplicación.
+from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Utiliza exactamente el mismo flujo de compilación ejecutado normalmente por la aplicación.
 
 
 def _codigos_advertencia(codigo: str) -> list[str]:  # Ejecuta una entrada y devuelve exclusivamente los códigos correspondientes con advertencias.

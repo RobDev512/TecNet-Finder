@@ -11,7 +11,7 @@
 # las preferencias reales; Cancelar simplemente descarta la copia.
 # ============================================================
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona los valores reales y reglas compartidas.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona los valores reales y reglas compartidas.
 
 
 class PreferenciasConfiguracionTemporales:  # Representa las preferencias todavía no confirmadas.

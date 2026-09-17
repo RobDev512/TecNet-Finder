@@ -19,7 +19,7 @@
 
 from dataclasses import dataclass, field  # Proporciona clases de datos y fábricas seguras para colecciones con valores predeterminados.
 
-from Motor.diagnosticos import Diagnostico  # Permite utilizar la misma estructura de errores y advertencias en los resultados de todas las fases.
+from Motor.compilacion.diagnosticos import Diagnostico  # Permite utilizar la misma estructura de errores y advertencias en los resultados de todas las fases.
 
 
 @dataclass(frozen=True)  # Mantiene inmutable cada token después de que el analizador léxico lo reconoce.

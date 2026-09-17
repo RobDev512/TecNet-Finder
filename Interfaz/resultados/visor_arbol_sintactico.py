@@ -16,7 +16,7 @@ from PySide6.QtCore import QRectF, QSize, Qt  # Proporciona geometría, tamaños
 from PySide6.QtGui import QBrush, QColor, QFont, QFontMetrics, QIcon, QImage, QPainter, QPen  # Proporciona herramientas de dibujo, fuentes e imágenes.
 from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QGraphicsView, QLabel, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles utilizados por el visor.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el recurso inicial utilizado por la acción Guardar PNG.
-from Motor.modelos import NodoSintactico  # Define la estructura recibida directamente desde el analizador sintáctico.
+from Motor.compilacion.modelos import NodoSintactico  # Define la estructura recibida directamente desde el analizador sintáctico.
 
 
 class VistaArbol(QGraphicsView):  # Representa una vista desplazable e interactiva para un único árbol sintáctico.

@@ -12,7 +12,7 @@
 # ordenadas y la exclusión de plantillas genéricas.
 # ============================================================
 
-from Motor.gestor_ejemplos import GestorEjemplos  # Importa el componente real utilizado por la interfaz para leer los casos.
+from Motor.ejemplos.gestor_ejemplos import GestorEjemplos  # Importa el componente real utilizado por la interfaz para leer los casos.
 
 
 def prueba_carga_los_catorce_ejemplos_validos():  # Comprueba que los catorce ejemplos válidos actuales se interpreten completamente.

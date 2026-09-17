@@ -37,8 +37,8 @@ from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFra
 
 from Interfaz.apariencia.recursos_tema import ruta_icono_comun, ruta_icono_oscuro  # Proporciona recursos iniciales y semánticos mediante la estructura centralizada.
 from Interfaz.resultados.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
-from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
-from Motor.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
+from Motor.exportacion.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
+from Motor.compilacion.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
 
 
 class TablaResultados(QTableWidget):  # Mantiene columnas proporcionales sin permitir que se compriman por debajo de un ancho legible.

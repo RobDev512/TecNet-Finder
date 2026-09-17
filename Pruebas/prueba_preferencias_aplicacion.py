@@ -21,7 +21,7 @@
 # la configuración real almacenada dentro de LocalAppData.
 # ============================================================
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Importa el administrador persistente que será comprobado mediante archivos temporales.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Importa el administrador persistente que será comprobado mediante archivos temporales.
 
 
 def test_valores_predeterminados(tmp_path):  # Comprueba todos los valores que debe utilizar una instalación que todavía no posee archivo de preferencias.

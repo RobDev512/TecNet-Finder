@@ -15,7 +15,7 @@
 # la información común definida para cada código.
 # ============================================================
 
-from Motor.diagnosticos import CATALOGO_DIAGNOSTICOS, ESTADO_DIAGNOSTICO_DISPONIBLE, codigo_diagnostico_disponible, codigo_diagnostico_es_error, crear_diagnostico, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes, texto_estado_diagnostico  # Importa el catálogo central y todas las consultas evaluadas por estas pruebas.
+from Motor.compilacion.diagnosticos import CATALOGO_DIAGNOSTICOS, ESTADO_DIAGNOSTICO_DISPONIBLE, codigo_diagnostico_disponible, codigo_diagnostico_es_error, crear_diagnostico, obtener_codigos_diagnosticos_disponibles, obtener_codigos_diagnosticos_pendientes, texto_estado_diagnostico  # Importa el catálogo central y todas las consultas evaluadas por estas pruebas.
 
 
 def prueba_catalogo_ya_no_conserva_diagnosticos_pendientes_de_u1():  # Comprueba que todas las reglas correspondientes con Unidad 1 ya estén implementadas.

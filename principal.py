@@ -29,7 +29,7 @@ from AsistenteIA.preferencias_ia import PreferenciasIA  # Recupera las preferenc
 from Interfaz.configuracion.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
 from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
 from Interfaz.ventanas.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
 
 
 NOMBRE_SERVIDOR_INSTANCIA = "TecNetFinder_Instancia_Unica"  # Identifica localmente la instancia principal para impedir que queden dos aplicaciones abiertas.

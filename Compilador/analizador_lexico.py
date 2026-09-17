@@ -20,8 +20,8 @@
 
 import re  # Permite definir y compilar los patrones utilizados para reconocer los elementos del lenguaje.
 
-from Motor.diagnosticos import crear_diagnostico  # Construye los diagnósticos léxicos estructurados utilizados por TecNet Finder.
-from Motor.modelos import ResultadoLexico, Token  # Proporciona las estructuras utilizadas para devolver tokens y diagnósticos.
+from Motor.compilacion.diagnosticos import crear_diagnostico  # Construye los diagnósticos léxicos estructurados utilizados por TecNet Finder.
+from Motor.compilacion.modelos import ResultadoLexico, Token  # Proporciona las estructuras utilizadas para devolver tokens y diagnósticos.
 
 
 class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una secuencia ordenada de tokens.

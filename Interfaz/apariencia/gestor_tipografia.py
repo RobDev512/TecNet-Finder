@@ -25,10 +25,10 @@ from PySide6.QtWidgets import QApplication, QPushButton, QWidget  # Permite admi
 from Interfaz.apariencia.aplicador_tema_componentes import AplicadorTemaComponentes  # Atiende componentes que no dependen exclusivamente del QSS.
 from Interfaz.apariencia.estilos_temas import construir_estilo_aplicacion  # Construye el stylesheet general del tema.
 from Interfaz.apariencia.recursos_tema import resolver_icono_tema  # Resuelve centralmente recursos comunes, claros, oscuros y alternativas de interacción.
-from Motor.catalogo_fuentes import normalizar_fuente  # Garantiza familias compatibles con Qt.
-from Motor.catalogo_temas import obtener_tema  # Proporciona la paleta utilizada para adaptar estilos locales.
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona las preferencias persistentes de tipografía.
-from Motor.preferencias_tema import PreferenciasTema  # Proporciona la variante visual persistente.
+from Motor.configuracion.catalogo_fuentes import normalizar_fuente  # Garantiza familias compatibles con Qt.
+from Motor.configuracion.catalogo_temas import obtener_tema  # Proporciona la paleta utilizada para adaptar estilos locales.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona las preferencias persistentes de tipografía.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Proporciona la variante visual persistente.
 
 
 class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.

@@ -12,8 +12,8 @@
 # Cancelar descartará la selección sin tocar el archivo.
 # ============================================================
 
-from Motor.catalogo_temas import normalizar_tema, tema_existe  # Proporciona la validación compartida del catálogo.
-from Motor.preferencias_tema import PreferenciasTema  # Proporciona la preferencia realmente persistida.
+from Motor.configuracion.catalogo_temas import normalizar_tema, tema_existe  # Proporciona la validación compartida del catálogo.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Proporciona la preferencia realmente persistida.
 
 
 class PreferenciasTemaTemporales:

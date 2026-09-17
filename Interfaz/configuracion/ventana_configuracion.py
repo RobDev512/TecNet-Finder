@@ -30,10 +30,10 @@ from Interfaz.configuracion.panel_configuracion_editor import PanelConfiguracion
 from Interfaz.configuracion.panel_configuracion_ia_diferida import PanelConfiguracionIADiferida  # Importa la categoría de IA.
 from Interfaz.configuracion.panel_configuracion_resultados import PanelConfiguracionResultados  # Importa Resultados y navegación.
 from Interfaz.configuracion.panel_configuracion_ventana import PanelConfiguracionVentana  # Importa Ventana y apariencia.
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales reales.
-from Motor.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Mantiene una copia temporal de las preferencias generales.
-from Motor.preferencias_tema import PreferenciasTema  # Administra la selección real del tema.
-from Motor.preferencias_tema_temporales import PreferenciasTemaTemporales  # Mantiene una copia temporal del tema.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias generales reales.
+from Motor.configuracion.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Mantiene una copia temporal de las preferencias generales.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Administra la selección real del tema.
+from Motor.configuracion.preferencias_tema_temporales import PreferenciasTemaTemporales  # Mantiene una copia temporal del tema.
 
 
 class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Configuración.

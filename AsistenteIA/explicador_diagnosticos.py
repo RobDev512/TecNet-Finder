@@ -17,7 +17,7 @@ import json  # Permite proporcionar al modelo los diagnósticos mediante una est
 
 from AsistenteIA.configuracion import TIEMPO_ESPERA_DIAGNOSTICOS_SEGUNDOS  # Utiliza un tiempo independiente del autocompletado para respuestas más extensas.
 from AsistenteIA.motor_local import MotorLocalOllama  # Reutiliza la misma instancia privada y el mismo modelo ya instalados.
-from Motor.diagnosticos import Diagnostico  # Utiliza directamente los diagnósticos oficiales producidos por TecNet Finder.
+from Motor.compilacion.diagnosticos import Diagnostico  # Utiliza directamente los diagnósticos oficiales producidos por TecNet Finder.
 
 
 class ExplicadorDiagnosticos:  # Convierte soluciones oficiales en explicaciones más claras sin alterar el diagnóstico original.

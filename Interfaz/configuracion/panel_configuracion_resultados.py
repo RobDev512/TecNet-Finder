@@ -21,7 +21,7 @@
 from PySide6.QtCore import Qt, Signal  # Permite manejar señales y configurar el cursor de las casillas personalizadas.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los controles utilizados por esta categoría.
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona la interfaz utilizada para consultar y modificar estas preferencias.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona la interfaz utilizada para consultar y modificar estas preferencias.
 
 
 class BotonCasillaConfiguracion(QPushButton):  # Representa una casilla con la misma apariencia utilizada por las demás categorías.

@@ -21,7 +21,7 @@
 
 from PySide6.QtCore import QRegularExpression  # Proporciona las expresiones regulares utilizadas exclusivamente para localizar fragmentos visuales.
 from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat  # Proporciona formatos y resaltado del documento.
-from Motor.catalogo_temas import MODO_CLARO, TEMA_PREDETERMINADO, modo_del_tema  # Permite conservar la identidad OG con contraste apropiado para cada modo.
+from Motor.configuracion.catalogo_temas import MODO_CLARO, TEMA_PREDETERMINADO, modo_del_tema  # Permite conservar la identidad OG con contraste apropiado para cada modo.
 
 
 class ResaltadorSintaxis(QSyntaxHighlighter):  # Define el resaltador visual asociado con el documento del editor.

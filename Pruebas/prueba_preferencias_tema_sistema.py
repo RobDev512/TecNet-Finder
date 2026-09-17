@@ -9,9 +9,9 @@
 # ============================================================
 
 import json  # Permite preparar preferencias antiguas y comprobar la persistencia resultante.
-import Motor.preferencias_tema as modulo_preferencias_tema  # Permite sustituir de forma controlada la detección del sistema durante las pruebas.
-from Motor.catalogo_temas import TEMA_CLARO_NIEBLA, TEMA_CLARO_TECNET, TEMA_OSCURO_MEDIANOCHE, TEMA_OSCURO_TECNET  # Proporciona variantes reales del catálogo.
-from Motor.preferencias_tema import PreferenciasTema  # Proporciona el componente sometido a prueba.
+import Motor.configuracion.preferencias_tema as modulo_preferencias_tema  # Permite sustituir de forma controlada la detección del sistema durante las pruebas.
+from Motor.configuracion.catalogo_temas import TEMA_CLARO_NIEBLA, TEMA_CLARO_TECNET, TEMA_OSCURO_MEDIANOCHE, TEMA_OSCURO_TECNET  # Proporciona variantes reales del catálogo.
+from Motor.configuracion.preferencias_tema import PreferenciasTema  # Proporciona el componente sometido a prueba.
 
 
 def prueba_primera_ejecucion_sigue_tema_del_sistema(tmp_path, monkeypatch):

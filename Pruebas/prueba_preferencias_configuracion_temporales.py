@@ -17,8 +17,8 @@
 # utilizadas para mostrar advertencias.
 # ============================================================
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona la configuración persistente que sirve como referencia para las pruebas.
-from Motor.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Proporciona la copia editable utilizada mientras Configuración permanece abierta.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona la configuración persistente que sirve como referencia para las pruebas.
+from Motor.configuracion.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Proporciona la copia editable utilizada mientras Configuración permanece abierta.
 
 
 def test_cambiar_preferencia_temporal_no_modifica_preferencia_real(tmp_path):  # Comprueba que una modificación temporal permanezca separada del archivo persistente.

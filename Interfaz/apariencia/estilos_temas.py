@@ -16,7 +16,7 @@
 # ============================================================
 
 from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la estructura visual base de TecNet Finder.
-from Motor.catalogo_temas import obtener_tema  # Recupera la paleta previamente validada.
+from Motor.configuracion.catalogo_temas import obtener_tema  # Recupera la paleta previamente validada.
 
 
 def construir_estilo_aplicacion(tema_id: str, familia_interfaz: str, tamano_interfaz: int, familia_editor: str, tamano_editor: int) -> str:

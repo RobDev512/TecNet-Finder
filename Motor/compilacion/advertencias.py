@@ -20,8 +20,8 @@
 from collections import Counter  # Permite contar cantidades HOSTS repetidas dentro de una misma instrucción.
 import re  # Permite detectar palabras reservadas escritas directamente junto con el valor siguiente.
 
-from Motor.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para construir advertencias uniformes.
-from Motor.modelos import ResultadoLexico, ResultadoSemantico, ResultadoSintactico, Token  # Permite reutilizar los resultados y posiciones producidos por las fases formales.
+from Motor.compilacion.diagnosticos import Diagnostico, crear_diagnostico  # Proporciona la estructura y fábrica utilizadas para construir advertencias uniformes.
+from Motor.compilacion.modelos import ResultadoLexico, ResultadoSemantico, ResultadoSintactico, Token  # Permite reutilizar los resultados y posiciones producidos por las fases formales.
 
 
 NOMBRES_GENERICOS = {  # Conserva los identificadores considerados demasiado generales para distinguir claramente una red.

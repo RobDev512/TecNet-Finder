@@ -19,7 +19,7 @@ from openpyxl import Workbook  # Importa la clase utilizada para crear libros de
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side  # Importa herramientas de formato visual para las celdas.
 from openpyxl.utils import get_column_letter  # Importa una utilidad para convertir índices de columnas en letras.
 
-from Motor.modelos import ResultadoCompilacion, SubredVLSM  # Importa los modelos necesarios para leer los resultados actuales del flujo.
+from Motor.compilacion.modelos import ResultadoCompilacion, SubredVLSM  # Importa los modelos necesarios para leer los resultados actuales del flujo.
 
 
 ENCABEZADOS_VLSM = [  # Define el mismo orden de columnas utilizado actualmente por la interfaz.

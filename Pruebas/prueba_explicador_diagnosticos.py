@@ -20,7 +20,7 @@
 # ============================================================
 
 from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Importa la capa encargada de convertir respuestas estructuradas del modelo en soluciones visuales.
-from Motor.diagnosticos import Diagnostico  # Permite construir diagnósticos oficiales completamente controlados para cada prueba.
+from Motor.compilacion.diagnosticos import Diagnostico  # Permite construir diagnósticos oficiales completamente controlados para cada prueba.
 
 
 class MotorSimulado:  # Sustituye el motor local mediante respuestas preparadas para que las pruebas nunca dependan de Ollama.

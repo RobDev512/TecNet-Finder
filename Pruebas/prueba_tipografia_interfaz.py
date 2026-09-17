@@ -21,8 +21,8 @@
 
 import json  # Permite preparar archivos de preferencias controlados durante algunas pruebas.
 
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias persistentes reales.
-from Motor.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Proporciona la copia temporal utilizada por Configuración.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Administra las preferencias persistentes reales.
+from Motor.configuracion.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Proporciona la copia temporal utilizada por Configuración.
 
 
 def test_tipografia_interfaz_utiliza_valores_predeterminados(tmp_path):

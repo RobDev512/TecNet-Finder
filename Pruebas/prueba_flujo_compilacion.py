@@ -20,7 +20,7 @@
 # ya fueron rechazados por alguna regla semántica.
 # ============================================================
 
-from Motor.flujo_compilacion import FlujoCompilacion  # Importa el coordinador real que conecta todas las fases disponibles de TecNet Finder.
+from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Importa el coordinador real que conecta todas las fases disponibles de TecNet Finder.
 
 
 def prueba_flujo_completo_con_entrada_valida():  # Comprueba el recorrido normal de una instrucción correcta desde el código fuente hasta VLSM.

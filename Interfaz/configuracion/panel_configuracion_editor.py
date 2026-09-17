@@ -34,7 +34,7 @@ from Interfaz.configuracion.controles_configuracion import (
 )  # Mantiene los controles generales utilizados para números y listas pequeñas.
 
 from Interfaz.configuracion.selector_fuentes import SelectorFuentes  # Proporciona el selector especializado con búsqueda de tipografías.
-from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores predeterminados del editor.
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores predeterminados del editor.
 
 
 class BotonCasillaEditor(QPushButton):
