@@ -34,6 +34,7 @@ from Interfaz.barra_titulo import BarraTitulo  # Proporciona la barra personaliz
 from Interfaz.editor_codigo import EditorCodigo  # Proporciona el editor especializado del lenguaje.
 from Interfaz.panel_diagnosticos import PanelDiagnosticos  # Proporciona la vista estructurada de errores y advertencias.
 from Interfaz.panel_resultados import PanelResultados  # Proporciona las pestañas y tablas donde se presentan los resultados.
+from Interfaz.recursos_tema import ruta_marca  # Centraliza el acceso al logotipo oficial y demás recursos de identidad visual.
 from Interfaz.resaltador_sintaxis import ResaltadorSintaxis  # Proporciona únicamente el coloreado visual del código.
 from Motor.flujo_compilacion import FlujoCompilacion  # Coordina las fases formales actualmente disponibles.
 
@@ -104,9 +105,8 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
         self._construir_interfaz()  # Construye todos los componentes visuales.
         self._configurar_atajos()  # Activa F11 y Escape para pantalla completa.
 
-    def _ruta_recurso(self, nombre_archivo: str) -> Path:  # Construye una ruta relativa a Recursos.
-        raiz_proyecto = Path(__file__).resolve().parent.parent  # Obtiene la carpeta raíz del proyecto.
-        return raiz_proyecto / "Recursos" / nombre_archivo  # Devuelve la ubicación completa del recurso solicitado.
+    def _ruta_recurso(self, nombre_archivo: str) -> Path:
+        return ruta_marca(nombre_archivo)  # Recupera los recursos de identidad visual desde la carpeta Marca centralizada.
 
     def _cargar_icono(self) -> None:  # Carga el ICO oficial cuando está disponible.
         ruta_icono = self._ruta_recurso("LogoTNF.ico")  # Obtiene la ubicación del recurso principal.

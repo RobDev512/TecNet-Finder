@@ -12,12 +12,14 @@
 # modificar la entrada ni los resultados del editor principal.
 # ============================================================
 
-from pathlib import Path  # Permite localizar los iconos gráficos utilizados por la ventana de reporte.
 
 from PySide6.QtCore import QSize  # Proporciona el tamaño utilizado para los iconos de los botones.
 from PySide6.QtGui import QIcon  # Permite cargar los recursos PNG disponibles dentro del proyecto.
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout  # Proporciona los controles necesarios para construir la ventana.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos gráficos iniciales utilizados por la ventana de reporte.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos grÃ¡ficos iniciales utilizados por la ventana de reporte.
 
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos iniciales utilizados por la ventana de reporte.
 from Motor.pruebas_ejemplos import ResumenPruebasEjemplos, generar_reporte_pruebas  # Proporciona el resumen estructurado y su representación textual completa.
 
 
@@ -26,13 +28,12 @@ class VentanaReportePruebas(QDialog):  # Presenta visualmente el resultado de un
         super().__init__(padre)  # Inicializa la ventana secundaria utilizando el selector de ejemplos como propietario.
         self.resumen = resumen  # Conserva el resultado estructurado por si posteriormente se requieren otras formas de presentación.
         self.reporte_texto = generar_reporte_pruebas(resumen)  # Genera una representación textual reutilizable para visor y portapapeles.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de recursos gráficos.
 
         self.setWindowTitle("Resultado de pruebas automáticas")  # Identifica claramente la finalidad de la ventana.
         self.resize(980, 650)  # Proporciona espacio suficiente para consultar varios resultados cómodamente.
         self.setMinimumSize(760, 480)  # Evita reducir la ventana hasta dimensiones donde el reporte resulte difícil de leer.
 
-        ruta_icono = self.ruta_iconos / "Pruebas.png"  # Construye la ubicación del icono correspondiente con esta característica.
+        ruta_icono = ruta_icono_oscuro("Pruebas.png")  # Obtiene el icono inicial de la ventana desde la categoría oscura.
 
         if ruta_icono.exists():  # Comprueba que el recurso exista antes de intentar utilizarlo.
             self.setWindowIcon(QIcon(str(ruta_icono)))  # Utiliza el icono de pruebas dentro de la barra de la ventana.
@@ -85,8 +86,9 @@ class VentanaReportePruebas(QDialog):  # Presenta visualmente el resultado de un
 
         diseno.addLayout(acciones)  # Incorpora finalmente la barra de acciones al diseño principal.
 
-    def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str) -> None:  # Coloca un icono PNG sin impedir el funcionamiento cuando el recurso falta.
-        ruta = self.ruta_iconos / nombre_archivo  # Construye la ruta completa del recurso solicitado.
+    def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str) -> None:
+        boton.setProperty("recurso_tema", nombre_archivo)  # Declara el nombre lógico para permitir que el gestor actualice posteriormente el icono según el tema.  # Coloca un icono PNG sin impedir el funcionamiento cuando el recurso falta.
+        ruta = ruta_icono_oscuro(nombre_archivo)  # Recupera la variante inicial mediante el sistema centralizado de recursos.
 
         if not ruta.exists():  # Comprueba si el archivo realmente está disponible dentro del proyecto.
             return  # Conserva el botón completamente funcional aun cuando el icono no exista.

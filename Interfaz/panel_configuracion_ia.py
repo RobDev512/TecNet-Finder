@@ -16,7 +16,7 @@
 # cuyo color cambia dinámicamente al ser cubierto por el avance.
 # ============================================================
 
-from pathlib import Path  # Permite localizar los iconos utilizados para identificar visualmente cada función inteligente.
+
 
 from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
 from PySide6.QtGui import QColor, QPainter, QPixmap  # Permite dibujar el progreso y cargar los recursos gráficos asociados con las funciones de IA.
@@ -27,6 +27,7 @@ from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite consu
 from AsistenteIA.gestor_instalacion_ia import GestorInstalacionIA, VERSION_OLLAMA  # Permite instalar y retirar físicamente el componente opcional.
 from AsistenteIA.gestor_ollama import GestorOllama  # Permite iniciar y detener la instancia privada.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite conservar independientemente las funciones solicitadas por el usuario.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los indicadores gráficos iniciales utilizados por las funciones de IA.
 
 
 class SenalesOperacionIA(QObject):  # Define el canal seguro utilizado para regresar desde los trabajos de administración.
@@ -169,7 +170,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.actualizando_controles = False  # Evita interpretar sincronizaciones visuales como decisiones nuevas.
         self.operacion_en_curso = False  # Permite impedir acciones simultáneas durante inicio, cierre o instalación.
         self.trabajo_actual = None  # Conserva el trabajo activo hasta recibir su resultado.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Centraliza la carpeta donde viven los indicadores visuales de ambas funciones inteligentes.
+
 
         self.hilos = QThreadPool(self)  # Mantiene todas las operaciones lentas fuera del hilo gráfico.
         self.hilos.setMaxThreadCount(1)  # Evita modificar el mismo componente mediante varias acciones simultáneas.
@@ -377,7 +378,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         etiqueta.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene el PNG centrado dentro de su propia región.
         etiqueta.setToolTip(ayuda)  # Explica por qué aparece el símbolo sin añadir texto permanente a la fila.
         etiqueta.setStyleSheet("background-color: transparent; border: none; padding: 0px;")  # Evita que el estilo general de las tarjetas dibuje un recuadro detrás del icono.
-        ruta = self.ruta_iconos / nombre_archivo  # Construye la ubicación exacta del recurso solicitado.
+        ruta = ruta_icono_oscuro(nombre_archivo)  # Recupera el recurso inicial mediante la estructura centralizada de iconos.
         if ruta.exists():
             imagen = QPixmap(str(ruta))  # Carga el PNG original conservando su transparencia.
             etiqueta.setPixmap(imagen.scaled(17, 17, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))  # Reduce el recurso con suavizado para que acompañe al texto sin dominarlo.

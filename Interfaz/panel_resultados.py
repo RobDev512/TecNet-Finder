@@ -29,12 +29,13 @@
 # ============================================================
 
 from collections import Counter  # Permite contar cuántas veces aparece cada palabra reservada.
-from pathlib import Path  # Permite localizar los iconos sin utilizar rutas absolutas.
+
 
 from PySide6.QtCore import QEvent, QSize, QTimer, Qt  # Aporta eventos, tamaños, temporización y opciones generales utilizadas por la interfaz.
 from PySide6.QtGui import QBrush, QColor, QIcon, QPixmap  # Aporta colores, iconos e imágenes utilizados en los resultados.
 from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFrame, QGridLayout, QHeaderView, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Aporta los widgets utilizados por el panel.
 
+from Interfaz.recursos_tema import ruta_icono_comun, ruta_icono_oscuro  # Proporciona recursos iniciales y semánticos mediante la estructura centralizada.
 from Interfaz.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
 from Motor.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
 from Motor.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
@@ -112,7 +113,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.accion_analizar = accion_analizar  # Conserva la acción que ejecuta el flujo de compilación.
         self.accion_limpiar = accion_limpiar  # Conserva la acción que restaura la interfaz.
         self.tarjetas_resumen = {}  # Almacena las etiquetas numéricas del resumen visual.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
+
         self.resultado_actual: ResultadoCompilacion | None = None  # Conserva la última compilación disponible.
         self.codigo_fuente_resultado = ""  # Conserva la entrada exacta asociada con la última compilación.
         self.botones_flotantes: dict[QWidget, tuple[QPushButton, str]] = {}  # Relaciona cada superficie fija con su acción flotante.
@@ -148,7 +149,8 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             )  # Recupera inmediatamente el panel cuando existe una compilación vigente que contiene advertencias.
 
     def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str, tamano: int = 18) -> None:
-        ruta = self.ruta_iconos / nombre_archivo  # Construye la ruta exacta del recurso solicitado.
+        boton.setProperty("recurso_tema", nombre_archivo)  # Declara el nombre lógico para permitir que el gestor actualice posteriormente el icono según el tema.
+        ruta = ruta_icono_oscuro(nombre_archivo)  # Recupera el recurso inicial desde la categoría oscura antes de aplicar el tema activo.
 
         if ruta.exists():
             boton.setIcon(QIcon(str(ruta)))  # Utiliza el PNG existente como icono del botón.
@@ -1106,7 +1108,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         mensaje.setText(texto)  # Coloca el mensaje principal.
         mensaje.setStandardButtons(QMessageBox.StandardButton.Ok)  # Utiliza únicamente una acción convencional de cierre.
 
-        ruta_icono = self.ruta_iconos / nombre_icono  # Localiza el recurso correspondiente.
+        ruta_icono = ruta_icono_comun(nombre_icono)  # Recupera el icono semántico compartido por todos los temas.
 
         if ruta_icono.exists():
             pixmap = QPixmap(str(ruta_icono))  # Carga el PNG original.

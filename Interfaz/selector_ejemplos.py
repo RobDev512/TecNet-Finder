@@ -16,12 +16,12 @@
 # disponibles actualmente.
 # ============================================================
 
-from pathlib import Path  # Permite localizar los recursos gráficos utilizados por las acciones del selector.
 
 from PySide6.QtCore import QRectF, QSize, Qt, QTimer  # Proporciona geometría, tamaños, estados, alineaciones y temporización de la interfaz.
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen  # Proporciona herramientas para dibujar la casilla personalizada y cargar iconos.
 from PySide6.QtWidgets import QAbstractItemView, QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles necesarios para construir el selector.
 
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
 from Interfaz.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
 from Motor.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
 from Motor.pruebas_ejemplos import EjecutorPruebasEjemplos  # Ejecuta los ejemplos mediante el mismo flujo real del compilador.
@@ -149,7 +149,6 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         self.casillas: list[tuple[CasillaEjemplo, EjemploCodigo]] = []  # Relaciona cada control visual con el ejemplo que representa.
         self.seleccion_final: list[EjemploCodigo] = []  # Mantendrá únicamente los casos confirmados mediante Insertar seleccionados.
         self.ejecutor_pruebas = EjecutorPruebasEjemplos()  # Prepara el evaluador que utiliza FlujoCompilacion para probar ejemplos.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
 
         self.setWindowTitle("Selector de ejemplos")  # Identifica la finalidad del diálogo.
         self.setModal(True)  # Impide editar simultáneamente la ventana principal mientras se seleccionan casos.
@@ -214,8 +213,9 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         boton_insertar.clicked.connect(self._aceptar_seleccion)  # Comprueba la selección antes de aceptar el diálogo.
         acciones.addWidget(boton_insertar)  # Coloca la acción principal en el extremo derecho.
 
-    def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str) -> None:  # Aplica un recurso PNG cuando se encuentra disponible.
-        ruta = self.ruta_iconos / nombre_archivo  # Construye la ruta completa del icono solicitado.
+    def _aplicar_icono(self, boton: QPushButton, nombre_archivo: str) -> None:
+        boton.setProperty("recurso_tema", nombre_archivo)  # Declara el nombre lógico para que el gestor pueda actualizarlo con el tema.  # Aplica un recurso PNG cuando se encuentra disponible.
+        ruta = ruta_icono_oscuro(nombre_archivo)  # Recupera inicialmente la variante oscura mediante el sistema centralizado.
 
         if not ruta.exists():  # Comprueba si el recurso está realmente presente.
             return  # Mantiene el botón funcional aunque el archivo gráfico falte.

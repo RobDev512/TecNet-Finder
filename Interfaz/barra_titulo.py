@@ -26,6 +26,7 @@ from pathlib import Path  # Permite localizar los recursos gráficos mediante ru
 from PySide6.QtCore import QPoint, QSize, Qt, Signal  # Proporciona posiciones, tamaños, estados y señales utilizadas por la barra.
 from PySide6.QtGui import QIcon  # Permite cargar los iconos utilizados por los controles.
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes necesarios para barra y selector.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos oscuros utilizados como estado inicial antes de aplicar el tema confirmado.
 
 
 class BotonIconoEstado(QPushButton):  # Representa un botón capaz de cambiar automáticamente su icono según la interacción.
@@ -305,7 +306,7 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
     def __init__(self, ventana, ruta_icono: Path | None = None, titulo: str = "TecNet Finder", mostrar_configuracion: bool = True, mostrar_minimizar: bool = True, mostrar_media_pantalla: bool = False, mostrar_pantalla_completa: bool = True, mostrar_cerrar: bool = True, permitir_arrastre: bool = False):  # Recibe qué controles debe mostrar según la ventana propietaria.
         super().__init__(ventana)  # Establece la ventana correspondiente como propietaria de la barra.
         self.ventana = ventana  # Conserva acceso a las acciones de ventana.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
+
         self.permitir_arrastre = permitir_arrastre  # Determina si la barra puede utilizarse para mover diálogos secundarios.
 
         self.boton_configuracion = None  # Permite omitir Configuración cuando no corresponde.
@@ -346,19 +347,19 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
             self.boton_configuracion.setFixedSize(38, 38)  # Mantiene el engrane completamente cuadrado.
             self.boton_configuracion.setIconSize(QSize(18, 18))  # Muestra claramente el recurso sin dominar la barra.
             self.boton_configuracion.setAccessibleName("Configuración")  # Conserva una descripción textual accesible.
-            self.boton_configuracion.establecer_iconos(self.ruta_iconos / "Engrane.png", self.ruta_iconos / "Engrane_Hover.png", self.ruta_iconos / "Engrane_Hover.png")  # Configura sus variantes normal y activa.
+            self.boton_configuracion.establecer_iconos(ruta_icono_oscuro("Engrane.png"), ruta_icono_oscuro("Engrane_Hover.png"), ruta_icono_oscuro("Engrane_Hover.png"))  # Inicializa Configuración con sus estados oscuros hasta que el gestor aplique el tema vigente.
             diseno.addWidget(self.boton_configuracion)  # Coloca Configuración antes de los controles de ventana.
 
         if mostrar_minimizar:  # Comprueba si la ventana puede enviarse a la barra de tareas.
             self.boton_minimizar = self._crear_boton("BotonVentana", "Minimizar")  # Construye el control correspondiente.
-            self.boton_minimizar.establecer_iconos(self.ruta_iconos / "Minimizar.png", self.ruta_iconos / "Minimizar_hover.png", self.ruta_iconos / "Minimizar_hover.png")  # Configura las variantes gráficas.
+            self.boton_minimizar.establecer_iconos(ruta_icono_oscuro("Minimizar.png"), ruta_icono_oscuro("Minimizar_hover.png"), ruta_icono_oscuro("Minimizar_hover.png"))  # Inicializa Minimizar con sus estados gráficos oficiales.
             self.boton_minimizar.clicked.connect(self.ventana.minimizar_animado)  # Ejecuta la transición implementada por VentanaPrincipal.
             diseno.addWidget(self.boton_minimizar)  # Añade el control a la barra.
 
         if mostrar_media_pantalla:  # Comprueba si esta barra pertenece a la ventana principal.
             self.boton_media_pantalla = self._crear_boton("BotonVentana", "Elegir media pantalla")  # Crea el acceso al selector visual.
             self.boton_media_pantalla.setAccessibleName("Elegir media pantalla")  # Proporciona una descripción para accesibilidad.
-            self.boton_media_pantalla.establecer_iconos(self.ruta_iconos / "Pantalla_Dividida.png", self.ruta_iconos / "Pantalla_Dividida_hover.png", self.ruta_iconos / "Pantalla_Dividida_hover.png")  # Configura las variantes propias de Media pantalla.
+            self.boton_media_pantalla.establecer_iconos(ruta_icono_oscuro("Pantalla_Dividida.png"), ruta_icono_oscuro("Pantalla_Dividida_hover.png"), ruta_icono_oscuro("Pantalla_Dividida_hover.png"))  # Inicializa Media pantalla con sus variantes gráficas oficiales.
             self.boton_media_pantalla.clicked.connect(self._mostrar_selector_media_pantalla)  # Abre el popup en lugar de aplicar inmediatamente una mitad.
             diseno.addWidget(self.boton_media_pantalla)  # Coloca el selector entre minimizar y fullscreen.
 
@@ -368,13 +369,13 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
 
         if mostrar_pantalla_completa:  # Comprueba si esta ventana admite fullscreen.
             self.boton_pantalla_completa = self._crear_boton("BotonPantallaCompleta", "Pantalla completa (F11)")  # Crea el control correspondiente.
-            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Pantalla_completa.png", self.ruta_iconos / "Pantalla_completa_hover.png")  # Configura sus variantes iniciales.
+            self.boton_pantalla_completa.establecer_iconos(ruta_icono_oscuro("Pantalla_completa.png"), ruta_icono_oscuro("Pantalla_completa_hover.png"))  # Inicializa Pantalla completa con sus variantes gráficas oficiales.
             self.boton_pantalla_completa.clicked.connect(self.ventana.alternar_pantalla_completa)  # Delega la transición en la ventana propietaria.
             diseno.addWidget(self.boton_pantalla_completa)  # Añade fullscreen después del selector de mitad.
 
         if mostrar_cerrar:  # Comprueba si la ventana necesita una acción explícita de cierre.
             self.boton_cerrar = self._crear_boton("BotonCerrar", "Cerrar")  # Crea el control correspondiente.
-            self.boton_cerrar.establecer_iconos(self.ruta_iconos / "Cerrar.png", self.ruta_iconos / "Cerrar_activo.png", self.ruta_iconos / "Cerrar_activo.png")  # Configura sus variantes visuales.
+            self.boton_cerrar.establecer_iconos(ruta_icono_oscuro("Cerrar.png"), ruta_icono_oscuro("Cerrar_activo.png"), ruta_icono_oscuro("Cerrar_activo.png"))  # Inicializa Cerrar con su variante blanca destinada al fondo rojo.
             self.boton_cerrar.clicked.connect(self.ventana.close)  # Solicita el cierre convencional de la ventana propietaria.
             diseno.addWidget(self.boton_cerrar)  # Coloca cerrar en el extremo derecho.
 
@@ -420,10 +421,10 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
 
         if pantalla_completa:  # Representa la acción que permitirá abandonar fullscreen.
             self.boton_pantalla_completa.setToolTip("Salir de pantalla completa (F11)")  # Explica la función actual.
-            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Salir_pantalla_completa.png", self.ruta_iconos / "Salir_pantalla_completa_hover.png")  # Sustituye los iconos de entrada por los de salida.
+            self.boton_pantalla_completa.establecer_iconos(ruta_icono_oscuro("Salir_pantalla_completa.png"), ruta_icono_oscuro("Salir_pantalla_completa_hover.png"))  # Sustituye los recursos de entrada por los utilizados para abandonar pantalla completa.
         else:  # Representa la acción disponible mientras la ventana no está en fullscreen.
             self.boton_pantalla_completa.setToolTip("Pantalla completa (F11)")  # Explica que el control permitirá entrar al modo.
-            self.boton_pantalla_completa.establecer_iconos(self.ruta_iconos / "Pantalla_completa.png", self.ruta_iconos / "Pantalla_completa_hover.png")  # Recupera las variantes convencionales.
+            self.boton_pantalla_completa.establecer_iconos(ruta_icono_oscuro("Pantalla_completa.png"), ruta_icono_oscuro("Pantalla_completa_hover.png"))  # Recupera los recursos convencionales para entrar a pantalla completa.
 
     def mousePressEvent(self, evento) -> None:  # Permite mover ventanas secundarias mediante el mecanismo nativo del sistema.
         if self.permitir_arrastre and evento.button() == Qt.MouseButton.LeftButton:  # Comprueba que el arrastre esté habilitado y se utilice el botón principal.

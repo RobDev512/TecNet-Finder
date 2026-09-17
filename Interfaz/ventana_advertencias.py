@@ -25,6 +25,7 @@ from PySide6.QtGui import QIcon  # Permite asignar el icono de advertencia tambi
 from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget  # Importa los controles utilizados por la ventana.
 
 from Interfaz.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada oficial.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el icono inicial de advertencia desde la estructura centralizada.
 from Motor.diagnosticos import Diagnostico  # Define la estructura recibida por cada advertencia.
 
 
@@ -68,7 +69,7 @@ class VentanaAdvertencias(QDialog):  # Representa la ventana independiente de ad
         self._construir_interfaz()  # Construye la barra personalizada, tarjetas y pie después de configurar la ventana.
 
     def _ruta_icono(self) -> Path:
-        return Path(__file__).resolve().parent.parent / "Recursos" / "Iconos" / "Advertencia.png"  # Utiliza el recurso específico de advertencia en lugar del logotipo general de TecNet Finder.
+        return ruta_icono_oscuro("Advertencia.png")  # Recupera el recurso inicial antes de que el gestor aplique la variante correspondiente con el tema.
 
     def _construir_interfaz(self) -> None:
         diseno_exterior = QVBoxLayout(self)  # Crea el margen exterior responsable de mostrar correctamente las esquinas redondeadas.

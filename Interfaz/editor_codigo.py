@@ -13,7 +13,7 @@
 # opcional mediante el asistente local de inteligencia artificial.
 # ============================================================
 
-from pathlib import Path  # Importa Path para localizar los recursos gráficos utilizados por el editor.
+
 from textwrap import fill  # Importa una utilidad para dividir textos largos dentro de los tooltips.
 
 from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer, Signal  # Importa eventos, geometría, temporización, señales y opciones generales.
@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPen,
 from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, diálogos, botones, selecciones adicionales y tooltips.
 
 from AsistenteIA.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos gráficos iniciales utilizados por el editor.
 from Interfaz.selector_ejemplos import SelectorEjemplos  # Importa la ventana especializada utilizada para consultar casos válidos e inválidos.
 from Motor.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
 from Motor.gestor_ejemplos import GestorEjemplos  # Importa el componente encargado de leer e interpretar los archivos de ejemplos.
@@ -58,8 +59,8 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.diagnosticos: list[Diagnostico] = []  # Conserva los diagnósticos relacionados con la compilación actual.
         self.sugerencia_ia = ""  # Conserva únicamente la continuación gris que todavía no forma parte del documento.
         self.prefijo_sugerencia_ia = ""  # Identifica el texto exacto que produjo la sugerencia visible.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
-        ruta_icono_autocompletado = self.ruta_iconos / "Autocompletado.png"  # Localiza el recurso reservado para identificar visualmente el ghost text.
+
+        ruta_icono_autocompletado = ruta_icono_oscuro("Autocompletado.png")  # Localiza el indicador inicial del ghost text mediante el sistema centralizado de recursos.
         self.icono_autocompletado_ia = QPixmap(str(ruta_icono_autocompletado)) if ruta_icono_autocompletado.exists() else QPixmap()  # Carga el icono solo cuando el recurso se encuentra disponible.
         self.gestor_ejemplos = GestorEjemplos()  # Prepara el lector reutilizable de casos almacenados en Ejemplos.
         self.control_autocompletado = ControlAutocompletado(self)  # Prepara el asistente asíncrono asociado exclusivamente con este editor.
@@ -109,7 +110,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         boton.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que el elemento puede pulsarse.
         boton.setStyleSheet("padding: 0px;")  # Evita que el padding general reduzca innecesariamente el icono.
 
-        ruta_icono = self.ruta_iconos / nombre_icono  # Construye la ubicación exacta del PNG solicitado.
+        ruta_icono = ruta_icono_oscuro(nombre_icono)  # Recupera el recurso inicial mediante el sistema centralizado de iconos.
 
         if ruta_icono.exists():
             boton.setIcon(QIcon(str(ruta_icono)))  # Coloca la imagen correspondiente dentro del control.

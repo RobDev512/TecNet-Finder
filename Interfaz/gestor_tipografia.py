@@ -24,7 +24,7 @@ from PySide6.QtGui import QColor, QFontMetricsF, QIcon, QPalette  # Proporciona 
 from PySide6.QtWidgets import QApplication, QPushButton, QWidget  # Permite administrar QApplication y recursos declarados.
 from Interfaz.aplicador_tema_componentes import AplicadorTemaComponentes  # Atiende componentes que no dependen exclusivamente del QSS.
 from Interfaz.estilos_temas import construir_estilo_aplicacion  # Construye el stylesheet general del tema.
-from Interfaz.recursos_tema import resolver_icono_tema, tema_utiliza_iconos_claros  # Resuelve recursos gráficos claros u oscuros.
+from Interfaz.recursos_tema import resolver_icono_tema  # Resuelve centralmente recursos comunes, claros, oscuros y alternativas de interacción.
 from Motor.catalogo_fuentes import normalizar_fuente  # Garantiza familias compatibles con Qt.
 from Motor.catalogo_temas import obtener_tema  # Proporciona la paleta utilizada para adaptar estilos locales.
 from Motor.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona las preferencias persistentes de tipografía.
@@ -230,56 +230,51 @@ class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.
     # ========================================================
     # Iconos
     # ========================================================
-
     def _aplicar_iconos_tema(self, tema_id: str) -> None:
-        aplicacion = QApplication.instance()  # Recupera ventanas superiores.
-        if aplicacion is None: return  # Evita operar durante el cierre.
+        aplicacion = QApplication.instance()  # Recupera la aplicación Qt para localizar todas las ventanas superiores existentes.
+        if aplicacion is None: return  # Evita modificar recursos cuando la aplicación ya se encuentra cerrándose.
 
-        for ventana in aplicacion.topLevelWidgets():
-            barra = getattr(ventana, "barra_titulo", None)  # Recupera BarraTitulo cuando exista.
-            if barra is not None: self._aplicar_iconos_barra(barra, tema_id, bool(getattr(ventana, "en_pantalla_completa", False)))  # Sincroniza sus recursos.
+        for ventana in aplicacion.topLevelWidgets():  # Recorre todas las ventanas principales y secundarias que existen actualmente.
+            barra = getattr(ventana, "barra_titulo", None)  # Recupera una barra personalizada solamente cuando la ventana dispone de ella.
+            if barra is not None: self._aplicar_iconos_barra(barra, tema_id, bool(getattr(ventana, "en_pantalla_completa", False)))  # Sincroniza inmediatamente todos los estados gráficos de la barra.
 
-        editor = self.ventana.editor_codigo  # Recupera botones rápidos.
-        self._establecer_icono_simple(editor.boton_pegar, editor.ruta_iconos, "Pegar.png", tema_id)  # Utiliza Pegar_Claro.
-        self._establecer_icono_simple(editor.boton_ejemplos, editor.ruta_iconos, "Ejemplos.png", tema_id)  # Utiliza Ejemplos_Claro.
-        self._aplicar_recursos_declarados(self.ventana, tema_id)  # Atiende botones auxiliares como Advertencia.
+        editor = self.ventana.editor_codigo  # Recupera el editor principal donde viven los accesos rápidos.
+        self._establecer_icono_simple(editor.boton_pegar, "Pegar.png", tema_id)  # Aplica automáticamente Pegar oscuro o claro según la variante activa.
+        self._establecer_icono_simple(editor.boton_ejemplos, "Ejemplos.png", tema_id)  # Aplica automáticamente Ejemplos oscuro o claro según la variante activa.
+        self._aplicar_recursos_declarados(self.ventana, tema_id)  # Atiende botones auxiliares que hayan declarado un recurso mediante su propiedad temática.
 
     def _aplicar_recursos_declarados(self, raiz: QWidget, tema_id: str) -> None:
-        botones = [raiz] if isinstance(raiz, QPushButton) else []  # Incluye la propia raíz cuando fuera un botón.
-        botones.extend(raiz.findChildren(QPushButton))  # Añade todos los botones descendientes.
+        botones = [raiz] if isinstance(raiz, QPushButton) else []  # Incluye la propia raíz únicamente cuando también representa un botón.
+        botones.extend(raiz.findChildren(QPushButton))  # Incorpora todos los botones descendientes disponibles dentro del subárbol recibido.
 
-        for boton in botones:
-            nombre = boton.property("recurso_tema")  # Consulta si el control declaró un archivo dependiente del tema.
-            if not isinstance(nombre, str) or not nombre: continue  # Omite controles convencionales.
-            ruta_iconos = getattr(self.ventana.panel_resultados, "ruta_iconos", None)  # Recupera la carpeta oficial de recursos.
-            if ruta_iconos is None: continue  # Protege versiones futuras sin esa propiedad.
-            ruta = resolver_icono_tema(ruta_iconos, nombre, tema_id)  # Resuelve automáticamente la variante.
-            if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Sustituye únicamente el icono.
+        for boton in botones:  # Recorre exclusivamente controles capaces de contener un recurso gráfico.
+            nombre = boton.property("recurso_tema")  # Consulta el nombre lógico declarado por el propio componente.
+            if not isinstance(nombre, str) or not nombre: continue  # Omite botones convencionales que no participan en el sistema temático.
+            ruta = resolver_icono_tema(nombre, tema_id)  # Resuelve el recurso sin depender de la estructura física desde el llamador.
+            if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Sustituye únicamente el gráfico cuando existe realmente un archivo disponible.
 
-    def _establecer_icono_simple(self, boton, ruta_iconos, nombre_archivo: str, tema_id: str) -> None:
-        ruta = resolver_icono_tema(ruta_iconos, nombre_archivo, tema_id)  # Resuelve la variante apropiada.
-        if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Sustituye exclusivamente el recurso.
+    def _establecer_icono_simple(self, boton, nombre_archivo: str, tema_id: str) -> None:
+        ruta = resolver_icono_tema(nombre_archivo, tema_id)  # Obtiene la variante correspondiente mediante el resolvedor central.
+        if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Mantiene intacto el botón cuando por alguna razón no existe el recurso solicitado.
 
     def _aplicar_iconos_barra(self, barra, tema_id: str, pantalla_completa: bool) -> None:
-        ruta_iconos = barra.ruta_iconos  # Recupera la carpeta oficial.
-        modo_claro = tema_utiliza_iconos_claros(tema_id)  # Determina si se utilizan recursos oscuros.
+        def normal(nombre_archivo: str):
+            return resolver_icono_tema(nombre_archivo, tema_id)  # Obtiene el icono normal apropiado para el modo visual actual.
 
-        def normal(nombre: str):
-            return resolver_icono_tema(ruta_iconos, nombre, tema_id)  # Busca una variante clara automáticamente.
+        def hover(nombre_archivo: str):
+            return resolver_icono_tema(nombre_archivo, tema_id)  # Permite que un hover inexistente en Claro utilice automáticamente su variante almacenada dentro de Oscuro.
 
-        def hover(nombre_normal: str, nombre_hover: str):
-            return normal(nombre_normal) if modo_claro else ruta_iconos / nombre_hover  # En modo claro reutiliza el icono oscuro sobre un fondo hover también claro.
-
-        if barra.boton_configuracion is not None: barra.boton_configuracion.establecer_iconos(normal("Engrane.png"), hover("Engrane.png", "Engrane_Hover.png"), hover("Engrane.png", "Engrane_Hover.png"))
-        if barra.boton_minimizar is not None: barra.boton_minimizar.establecer_iconos(normal("Minimizar.png"), hover("Minimizar.png", "Minimizar_hover.png"), hover("Minimizar.png", "Minimizar_hover.png"))
-        if barra.boton_media_pantalla is not None: barra.boton_media_pantalla.establecer_iconos(normal("Pantalla_Dividida.png"), hover("Pantalla_Dividida.png", "Pantalla_Dividida_hover.png"), hover("Pantalla_Dividida.png", "Pantalla_Dividida_hover.png"))
+        if barra.boton_configuracion is not None: barra.boton_configuracion.establecer_iconos(normal("Engrane.png"), hover("Engrane_Hover.png"), hover("Engrane_Hover.png"))  # Utiliza siempre el engrane de interacción durante hover y pulsación.
+        if barra.boton_minimizar is not None: barra.boton_minimizar.establecer_iconos(normal("Minimizar.png"), hover("Minimizar_hover.png"), hover("Minimizar_hover.png"))  # Utiliza la variante de interacción también cuando el modo activo es claro.
+        if barra.boton_media_pantalla is not None: barra.boton_media_pantalla.establecer_iconos(normal("Pantalla_Dividida.png"), hover("Pantalla_Dividida_hover.png"), hover("Pantalla_Dividida_hover.png"))  # Conserva el estado visual especial del selector de mitad.
 
         if barra.boton_pantalla_completa is not None:
-            nombre_normal = "Salir_pantalla_completa.png" if pantalla_completa else "Pantalla_completa.png"  # Determina la operación disponible.
-            nombre_hover = "Salir_pantalla_completa_hover.png" if pantalla_completa else "Pantalla_completa_hover.png"  # Recupera la variante oscura histórica.
-            barra.boton_pantalla_completa.establecer_iconos(normal(nombre_normal), hover(nombre_normal, nombre_hover), hover(nombre_normal, nombre_hover))  # Sincroniza fullscreen.
+            nombre_normal = "Salir_pantalla_completa.png" if pantalla_completa else "Pantalla_completa.png"  # Determina si el botón debe representar entrar o salir de pantalla completa.
+            nombre_hover = "Salir_pantalla_completa_hover.png" if pantalla_completa else "Pantalla_completa_hover.png"  # Selecciona el recurso especial correspondiente con la misma operación.
+            barra.boton_pantalla_completa.establecer_iconos(normal(nombre_normal), hover(nombre_hover), hover(nombre_hover))  # Mantiene normal y hover sincronizados con el estado real de la ventana.
 
-        if barra.boton_cerrar is not None: barra.boton_cerrar.establecer_iconos(normal("Cerrar.png"), ruta_iconos / "Cerrar_activo.png", ruta_iconos / "Cerrar_activo.png")  # Conserva blanco sobre rojo durante hover.
+        if barra.boton_cerrar is not None: barra.boton_cerrar.establecer_iconos(normal("Cerrar.png"), hover("Cerrar_activo.png"), hover("Cerrar_activo.png"))  # Utiliza Cerrar_activo sobre el fondo rojo tanto en oscuro como en claro.
+    
 
     # ========================================================
     # Ventanas creadas posteriormente

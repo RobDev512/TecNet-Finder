@@ -12,10 +12,10 @@
 # vertical ni modificar el tamaño disponible para el árbol.
 # ============================================================
 
-from pathlib import Path  # Permite localizar los recursos gráficos oficiales del proyecto.
 from PySide6.QtCore import QRectF, QSize, Qt  # Proporciona geometría, tamaños y opciones generales de Qt.
 from PySide6.QtGui import QBrush, QColor, QFont, QFontMetrics, QIcon, QImage, QPainter, QPen  # Proporciona herramientas de dibujo, fuentes e imágenes.
 from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QGraphicsView, QLabel, QPlainTextEdit, QPushButton, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles utilizados por el visor.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el recurso inicial utilizado por la acción Guardar PNG.
 from Motor.modelos import NodoSintactico  # Define la estructura recibida directamente desde el analizador sintáctico.
 
 
@@ -64,7 +64,6 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
     def __init__(self, padre=None):
         super().__init__(padre)  # Inicializa el contenedor general.
         self.escenas: list[QGraphicsScene] = []  # Conserva las escenas actuales para exportación y tematización.
-        self.ruta_iconos = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos"  # Localiza la carpeta oficial de iconos.
         diseno = QVBoxLayout(self)  # Organiza el visor completo verticalmente.
         diseno.setContentsMargins(0, 0, 0, 0)  # Aprovecha toda la superficie disponible.
         self.pestanas_vista = QTabWidget()  # Separa representación textual y gráfica.
@@ -131,7 +130,7 @@ class VisorArbolSintactico(QWidget):  # Organiza la representación textual y gr
         boton_guardar.setText("")  # Muestra únicamente el icono, sin la etiqueta Guardar PNG.
         boton_guardar.setToolTip("Guardar este árbol sintáctico como imagen PNG")  # Conserva la explicación mediante hover.
         boton_guardar.setIconSize(QSize(18, 18))  # Mantiene el recurso proporcionado dentro de una escala compacta.
-        ruta_guardar = self.ruta_iconos / "Guardar.png"  # Localiza el recurso predeterminado antes de que el tema seleccione su variante.
+        ruta_guardar = ruta_icono_oscuro("Guardar.png")  # Recupera la variante inicial de Guardar antes de que el gestor sincronice el tema actual.
         if ruta_guardar.exists(): boton_guardar.setIcon(QIcon(str(ruta_guardar)))  # Coloca el icono disponible.
         boton_guardar.clicked.connect(lambda _marcado=False, e=escena, n=nombre: self._guardar_png(e, n))  # Asocia la acción con esta escena exacta.
         vista.establecer_boton_superpuesto(boton_guardar)  # Ancla el botón a la esquina superior derecha del área gráfica.

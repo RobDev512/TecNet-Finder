@@ -41,7 +41,7 @@ ejecutable = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(raiz_proyecto / "Recursos" / "LogoTNF.ico"),
+    icon=str(raiz_proyecto / "Recursos" / "Marca" / "LogoTNF.ico"),  # Utiliza el icono oficial desde la carpeta de identidad visual.
     version=str(raiz_proyecto / "Empaquetado" / "version_info.txt"),
 )
 

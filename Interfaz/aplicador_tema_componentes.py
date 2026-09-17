@@ -237,12 +237,12 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
         for atributo, nombre in relaciones:
             boton = getattr(panel, atributo, None)  # Recupera el botón solamente cuando exista.
             if boton is None: continue  # Mantiene compatibilidad con otras versiones.
-            ruta = resolver_icono_tema(panel.ruta_iconos, nombre, self.tema_id)  # Busca automáticamente la variante clara.
+            ruta = resolver_icono_tema(nombre, self.tema_id)  # Resuelve el icono mediante la ubicación central sin depender de PanelResultados.
             if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Sustituye únicamente el gráfico.
 
         visor = getattr(panel, "visor_arbol", None)  # Recupera el visor gráfico.
         if visor is not None:
-            ruta_guardar = resolver_icono_tema(visor.ruta_iconos, "Guardar.png", self.tema_id)  # Busca Guardar_Claro.
+            ruta_guardar = resolver_icono_tema("Guardar.png", self.tema_id)  # Obtiene la variante adecuada del icono Guardar mediante el resolvedor central.
             if ruta_guardar.exists():
                 for boton in visor.findChildren(QPushButton):
                     if boton.objectName() == "BotonGuardarArbol": boton.setIcon(QIcon(str(ruta_guardar)))  # Actualiza solamente los botones flotantes de guardado del árbol.
@@ -460,7 +460,7 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
             if contenedor is not None: contenedor.setStyleSheet(f"background-color: {p['panel']}; border: none; border-top-left-radius: 13px; border-top-right-radius: 13px;")  # Adapta la cabecera.
 
             barra.setStyleSheet("QWidget#BarraTitulo { background-color: transparent; border: none; } QLabel { background-color: transparent; border: none; } QLabel#TituloBarra { background-color: transparent; border: none; }")  # Mantiene limpia la estructura interna.
-            ruta_engrane = resolver_icono_tema(barra.ruta_iconos, "Engrane.png", self.tema_id)  # Resuelve el engrane adecuado.
+            ruta_engrane = resolver_icono_tema("Engrane.png", self.tema_id)  # Recupera el engrane apropiado sin consultar directamente la carpeta física.
             if ruta_engrane.exists(): barra.etiqueta_icono.setPixmap(QPixmap(str(ruta_engrane)).scaled(18, 18, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))  # Adapta el icono del título.
 
             if barra.boton_cerrar is not None:
@@ -519,7 +519,7 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
 
     def _aplicar_ventana_advertencias(self, ventana) -> None:
         p = self.paleta  # Recupera la paleta vigente.
-        ruta_advertencia = resolver_icono_tema(ventana._ruta_icono().parent, "Advertencia.png", self.tema_id)  # Busca Advertencia_Claro cuando corresponde.
+        ruta_advertencia = resolver_icono_tema("Advertencia.png", self.tema_id)  # Recupera automáticamente la variante oscura o clara del icono de advertencia.
         if ruta_advertencia.exists(): ventana.setWindowIcon(QIcon(str(ruta_advertencia)))  # Actualiza también el icono del diálogo.
 
         marco = getattr(ventana, "marco", None)  # Recupera la superficie visible.

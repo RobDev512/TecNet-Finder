@@ -25,6 +25,7 @@ from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Comparte la i
 from AsistenteIA.gestor_ollama import GestorOllama  # Comparte el servidor local administrado.
 from AsistenteIA.preferencias_ia import PreferenciasIA  # Conserva las preferencias persistentes de IA.
 from Interfaz.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el engrane inicial utilizado por la ventana de Configuración.
 from Interfaz.panel_configuracion_editor import PanelConfiguracionEditor  # Importa la categoría Editor.
 from Interfaz.panel_configuracion_ia_diferida import PanelConfiguracionIADiferida  # Importa la categoría de IA.
 from Interfaz.panel_configuracion_resultados import PanelConfiguracionResultados  # Importa Resultados y navegación.
@@ -92,7 +93,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         self._actualizar_estado_botones()  # Mantiene Aplicar desactivado inicialmente.
 
     def _ruta_icono(self) -> Path:
-        return Path(__file__).resolve().parent.parent / "Recursos" / "Iconos" / "Engrane.png"  # Reutiliza el engrane blanco oficial.
+        return ruta_icono_oscuro("Engrane.png")  # Recupera el engrane inicial desde la nueva categoría de iconos oscuros.
 
     def _centrar_en_area_disponible(self) -> None:
         padre = self.parentWidget()  # Recupera la ventana principal como referencia.

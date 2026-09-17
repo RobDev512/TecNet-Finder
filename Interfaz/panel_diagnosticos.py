@@ -24,7 +24,7 @@
 # lugar de comprimir excesivamente mensajes y soluciones.
 # ============================================================
 
-from pathlib import Path  # Permite localizar el recurso visual utilizado para identificar las funciones de IA.
+
 
 from PySide6.QtCore import QEvent, QRect, QSize, QTimer, Qt, Signal  # Importa eventos, geometría, tamaños, temporización, roles, alineaciones, cursores y navegación.
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QIcon, QPalette  # Importa las herramientas utilizadas para colorear, medir texto y representar el icono de IA.
@@ -32,6 +32,7 @@ from PySide6.QtWidgets import QApplication, QAbstractItemView, QHeaderView, QSty
 
 from AsistenteIA.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
 from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Permite relacionar cada resultado de IA con la identidad exacta del diagnóstico.
+from Interfaz.recursos_tema import ruta_icono_oscuro  # Proporciona el indicador gráfico inicial utilizado por las soluciones asistidas mediante IA.
 from Motor.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos, texto_estado_diagnostico  # Importa el modelo y el catálogo centralizado de diagnósticos.
 
 
@@ -176,7 +177,7 @@ class PanelDiagnosticos(QTabWidget):  # Organiza diagnósticos detectados y cat�
         self.ia_habilitada = False  # Impide solicitar explicaciones hasta recibir el estado efectivo desde Configuración.
         self.codigo_catalogo_pendiente: str | None = None  # Retrasa el clic simple sobre Código para distinguirlo correctamente del doble clic.
         self.clave_solucion_pendiente: str | None = None  # Identifica la solución que actualmente espera una respuesta de IA.
-        ruta_icono_ia = Path(__file__).resolve().parent.parent / "Recursos" / "Iconos" / "Asistente_ia.png"  # Localiza el recurso reservado para las acciones inteligentes de diagnósticos.
+        ruta_icono_ia = ruta_icono_oscuro("Asistente_ia.png")  # Localiza el recurso inicial de IA mediante la estructura centralizada de iconos.
         self.icono_asistente_ia = QIcon(str(ruta_icono_ia)) if ruta_icono_ia.exists() else QIcon()  # Conserva un icono vacío cuando el recurso no se encuentra disponible.
 
         self.tabla_detectados = TablaDiagnosticosResponsiva(
