@@ -33,3 +33,5 @@ Desktop.ini
 # Office
 ~$*.docx
 ~$*.xlsx
+# Respaldos locales del proyecto
+respaldo_*.zip

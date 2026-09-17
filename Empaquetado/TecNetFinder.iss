@@ -12,7 +12,7 @@ DefaultDirName={localappdata}\Programs\TecNet Finder
 DefaultGroupName=TecNet Finder
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=..\dist\Instalador
-OutputBaseFilename=TecNet Finder 1.2.0 Setup
+OutputBaseFilename=TecNet Finder {#MyAppVersion} Setup
 SetupIconFile=..\Recursos\Marca\LogoTNF.ico
 Compression=lzma2
 SolidCompression=yes
@@ -31,8 +31,8 @@ Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; Gr
 Source: "..\dist\TecNetFinder\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\TecNet Finder"; Filename: "{app}\TecNetFinder.exe"
-Name: "{autodesktop}\TecNet Finder"; Filename: "{app}\TecNetFinder.exe"; Tasks: desktopicon
+Name: "{group}\TecNet Finder"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\TecNet Finder"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\TecNetFinder.exe"; Description: "Abrir TecNet Finder"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Abrir TecNet Finder"; Flags: nowait postinstall skipifsilent
