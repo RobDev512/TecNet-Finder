@@ -21,7 +21,7 @@
 # Ninguna prueba requiere una instancia real de Ollama.
 # ============================================================
 
-from AsistenteIA.predictor_codigo import PredictorCodigo  # Importa el componente que combina análisis contextual y datos generados por IA.
+from AsistenteIA.autocompletado.predictor_codigo import PredictorCodigo  # Importa el componente que combina análisis contextual y datos generados por IA.
 
 
 class MotorSimulado:  # Sustituye el modelo local mediante una única respuesta JSON completamente controlada.

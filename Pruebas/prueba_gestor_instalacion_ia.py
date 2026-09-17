@@ -28,9 +28,9 @@ from pathlib import Path  # Permite crear y manipular rutas temporales utilizand
 import subprocess  # Permite simular el proceso que normalmente correspondería con el servidor privado de Ollama.
 import zipfile  # Permite construir paquetes ZIP mínimos semejantes con el formato utilizado por el runtime real.
 
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite utilizar una instalación física aislada dentro del directorio temporal.
-from AsistenteIA.gestor_instalacion_ia import GestorInstalacionIA, TIEMPO_INICIO_INSTALACION_SEGUNDOS  # Importa el administrador de instalación y el tiempo especial aplicado al primer arranque.
-from AsistenteIA.gestor_ollama import GestorOllama  # Permite comprobar también el arranque temporal real del gestor sin utilizar un servidor verdadero.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite utilizar una instalación física aislada dentro del directorio temporal.
+from AsistenteIA.infraestructura.gestor_instalacion_ia import GestorInstalacionIA, TIEMPO_INICIO_INSTALACION_SEGUNDOS  # Importa el administrador de instalación y el tiempo especial aplicado al primer arranque.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Permite comprobar también el arranque temporal real del gestor sin utilizar un servidor verdadero.
 
 
 class MotorSimulado:  # Representa únicamente la disponibilidad de la API privada sin realizar ninguna petición HTTP.

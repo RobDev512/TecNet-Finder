@@ -23,8 +23,8 @@
 
 import subprocess  # Permite sustituir creación, espera y terminación de procesos sin ejecutar Ollama realmente.
 
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite crear instalaciones temporales equivalentes con el componente opcional real.
-from AsistenteIA.gestor_ollama import GestorOllama  # Importa el administrador de procesos cuyo comportamiento se comprueba en este archivo.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite crear instalaciones temporales equivalentes con el componente opcional real.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Importa el administrador de procesos cuyo comportamiento se comprueba en este archivo.
 
 
 class MotorSimulado:  # Representa diferentes estados consecutivos de disponibilidad sin realizar solicitudes HTTP.

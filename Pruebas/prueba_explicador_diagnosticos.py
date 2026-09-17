@@ -19,7 +19,7 @@
 # - Inclusión del contexto formal dentro del prompt.
 # ============================================================
 
-from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Importa la capa encargada de convertir respuestas estructuradas del modelo en soluciones visuales.
+from AsistenteIA.diagnosticos.explicador_diagnosticos import ExplicadorDiagnosticos  # Importa la capa encargada de convertir respuestas estructuradas del modelo en soluciones visuales.
 from Motor.compilacion.diagnosticos import Diagnostico  # Permite construir diagnósticos oficiales completamente controlados para cada prueba.
 
 

@@ -21,9 +21,9 @@
 from pathlib import Path  # Permite localizar los recursos gráficos utilizados por la barra.
 from PySide6.QtCore import Qt, Signal  # Proporciona opciones de ventana y señales.
 from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout  # Proporciona los componentes generales.
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
-from AsistenteIA.gestor_ollama import GestorOllama  # Comparte el servidor local administrado.
-from AsistenteIA.preferencias_ia import PreferenciasIA  # Conserva las preferencias persistentes de IA.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Comparte el servidor local administrado.
+from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Conserva las preferencias persistentes de IA.
 from Interfaz.ventanas.barra_titulo import BarraTitulo  # Reutiliza la barra personalizada.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el engrane inicial utilizado por la ventana de Configuración.
 from Interfaz.configuracion.panel_configuracion_editor import PanelConfiguracionEditor  # Importa la categoría Editor.

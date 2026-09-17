@@ -20,9 +20,9 @@ import os  # Permite construir el entorno privado y detectar el sistema operativ
 import subprocess  # Permite iniciar y detener Ollama junto con sus procesos secundarios.
 import time  # Permite esperar mientras el servidor privado comienza a responder.
 
-from AsistenteIA.configuracion import HOST_OLLAMA, PUERTO_OLLAMA  # Importa la dirección reservada para la instancia propia de TecNet Finder.
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Importa las rutas administradas del componente opcional.
-from AsistenteIA.motor_local import MotorLocalOllama  # Permite comprobar cuándo la API privada se encuentra disponible.
+from AsistenteIA.infraestructura.configuracion import HOST_OLLAMA, PUERTO_OLLAMA  # Importa la dirección reservada para la instancia propia de TecNet Finder.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Importa las rutas administradas del componente opcional.
+from AsistenteIA.infraestructura.motor_local import MotorLocalOllama  # Permite comprobar cuándo la API privada se encuentra disponible.
 
 
 class GestorOllama:  # Controla exclusivamente el servidor requerido por las funciones opcionales de inteligencia artificial.

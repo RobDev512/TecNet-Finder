@@ -30,8 +30,8 @@ from PySide6.QtCore import QEvent, QRect, QSize, QTimer, Qt, Signal  # Importa e
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QIcon, QPalette  # Importa las herramientas utilizadas para colorear, medir texto y representar el icono de IA.
 from PySide6.QtWidgets import QApplication, QAbstractItemView, QHeaderView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QTabWidget  # Importa tablas, estilos y el delegado especializado de la columna Solución.
 
-from AsistenteIA.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
-from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Permite relacionar cada resultado de IA con la identidad exacta del diagnóstico.
+from AsistenteIA.diagnosticos.control_diagnosticos_ia import ControlDiagnosticosIA  # Mejora soluciones en segundo plano sin intervenir en la detección formal.
+from AsistenteIA.diagnosticos.explicador_diagnosticos import ExplicadorDiagnosticos  # Permite relacionar cada resultado de IA con la identidad exacta del diagnóstico.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona el indicador gráfico inicial utilizado por las soluciones asistidas mediante IA.
 from Motor.compilacion.diagnosticos import Diagnostico, ESTADO_DIAGNOSTICO_DISPONIBLE, obtener_catalogo_diagnosticos, texto_estado_diagnostico  # Importa el modelo y el catálogo centralizado de diagnósticos.
 

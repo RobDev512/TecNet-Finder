@@ -21,8 +21,8 @@
 
 import urllib.request  # Permite sustituir temporalmente urlopen para evitar realizar conexiones HTTP reales.
 
-from AsistenteIA.configuracion import TIEMPO_ESPERA_SEGUNDOS  # Proporciona el tiempo de espera predeterminado utilizado por el motor local.
-from AsistenteIA.motor_local import MotorLocalOllama  # Importa la implementación encargada de comunicarse normalmente con Ollama.
+from AsistenteIA.infraestructura.configuracion import TIEMPO_ESPERA_SEGUNDOS  # Proporciona el tiempo de espera predeterminado utilizado por el motor local.
+from AsistenteIA.infraestructura.motor_local import MotorLocalOllama  # Importa la implementación encargada de comunicarse normalmente con Ollama.
 
 
 class RespuestaHTTPSimulada:  # Imita únicamente las operaciones de una respuesta HTTP que MotorLocalOllama utiliza internamente.

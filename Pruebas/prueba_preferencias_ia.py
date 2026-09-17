@@ -20,7 +20,7 @@
 
 import json  # Permite construir explícitamente una configuración perteneciente al formato histórico durante la prueba de compatibilidad.
 
-from AsistenteIA.preferencias_ia import PreferenciasIA  # Importa el administrador persistente encargado de las funciones opcionales de IA.
+from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Importa el administrador persistente encargado de las funciones opcionales de IA.
 
 
 def prueba_preferencias_activadas_por_defecto(tmp_path):  # Comprueba los valores utilizados cuando todavía no existe ningún archivo de preferencias de IA.

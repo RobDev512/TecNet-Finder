@@ -18,7 +18,7 @@
 # solicitudes innecesarias hacia la inteligencia artificial.
 # ============================================================
 
-from AsistenteIA.contexto_autocompletado import AnalizadorContextoAutocompletado  # Importa el analizador determinista que interpreta el contexto antes de consultar cualquier modelo.
+from AsistenteIA.autocompletado.contexto_autocompletado import AnalizadorContextoAutocompletado  # Importa el analizador determinista que interpreta el contexto antes de consultar cualquier modelo.
 
 
 def prueba_contexto_completa_inicio_i():  # Comprueba el caso donde el usuario apenas comenzó a escribir la palabra reservada IP.

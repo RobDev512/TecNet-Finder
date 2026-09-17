@@ -14,7 +14,7 @@
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot  # Permite ejecutar generaciones fuera del hilo gráfico y devolver resultados de forma segura.
 
-from AsistenteIA.explicador_diagnosticos import ExplicadorDiagnosticos  # Realiza la generación estructurada y mantiene la caché validada.
+from AsistenteIA.diagnosticos.explicador_diagnosticos import ExplicadorDiagnosticos  # Realiza la generación estructurada y mantiene la caché validada.
 from Motor.compilacion.diagnosticos import Diagnostico  # Conserva el tipo oficial utilizado por todas las fases del compilador.
 
 

@@ -15,7 +15,7 @@
 
 from PySide6.QtCore import QEvent, QObject, QRunnable, QThreadPool, QTimer, Qt, Signal, Slot  # Importa eventos, temporización, señales y ejecución en segundo plano.
 
-from AsistenteIA.predictor_codigo import PredictorCodigo  # Importa el predictor que combina IA con validación formal.
+from AsistenteIA.autocompletado.predictor_codigo import PredictorCodigo  # Importa el predictor que combina IA con validación formal.
 
 
 class SenalesPrediccion(QObject):  # Define el canal seguro utilizado para regresar desde un hilo secundario.

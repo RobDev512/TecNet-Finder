@@ -29,9 +29,9 @@ import urllib.error  # Permite reconocer fallos de red durante las descargas.
 import urllib.request  # Permite descargar archivos y comunicarse con Ollama sin agregar dependencias externas.
 import zipfile  # Permite extraer el paquete independiente de Ollama para Windows.
 
-from AsistenteIA.configuracion import MODELO_IA, URL_BASE_OLLAMA  # Importa el modelo requerido y la dirección exclusiva de la instancia privada.
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite utilizar las rutas administradas del componente opcional.
-from AsistenteIA.gestor_ollama import GestorOllama  # Permite iniciar el runtime temporalmente y detenerlo antes de desinstalar.
+from AsistenteIA.infraestructura.configuracion import MODELO_IA, URL_BASE_OLLAMA  # Importa el modelo requerido y la dirección exclusiva de la instancia privada.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite utilizar las rutas administradas del componente opcional.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Permite iniciar el runtime temporalmente y detenerlo antes de desinstalar.
 
 
 VERSION_OLLAMA = "0.33.3"  # Fija la versión probada por TecNet Finder para evitar instalar automáticamente binarios futuros no verificados.

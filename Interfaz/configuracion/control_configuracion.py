@@ -21,9 +21,9 @@
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QTimer, Qt  # Permite observar cambios, temporizar acciones y manejar geometría.
 from PySide6.QtWidgets import QPlainTextEdit, QPushButton  # Proporciona el ajuste de línea y el botón flotante.
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
-from AsistenteIA.gestor_ollama import GestorOllama  # Comparte el runtime local administrado.
-from AsistenteIA.preferencias_ia import PreferenciasIA  # Comparte las preferencias persistentes de IA.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Comparte la instalación local de IA.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Comparte el runtime local administrado.
+from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Comparte las preferencias persistentes de IA.
 from Interfaz.apariencia.gestor_tipografia import GestorTipografia  # Centraliza tema y fuentes.
 from Interfaz.ventanas.ventana_advertencias import VentanaAdvertencias  # Presenta avisos mediante una ventana independiente.
 from Interfaz.configuracion.ventana_configuracion_extendida import VentanaConfiguracionExtendida  # Añade preferencias especializadas sin aumentar VentanaConfiguracion.

@@ -16,8 +16,8 @@
 from ipaddress import IPv4Address  # Permite comprobar y normalizar las direcciones IPv4 propuestas por el modelo.
 import re  # Permite recuperar los valores que el usuario ya escribió dentro de la instrucción.
 
-from AsistenteIA.contexto_autocompletado import AnalizadorContextoAutocompletado, ContextoAutocompletado  # Importa el reconocimiento formal del punto actual de la gramática.
-from AsistenteIA.motor_local import MotorLocalOllama  # Importa el motor encargado de obtener propuestas JSON desde el modelo local.
+from AsistenteIA.autocompletado.contexto_autocompletado import AnalizadorContextoAutocompletado, ContextoAutocompletado  # Importa el reconocimiento formal del punto actual de la gramática.
+from AsistenteIA.infraestructura.motor_local import MotorLocalOllama  # Importa el motor encargado de obtener propuestas JSON desde el modelo local.
 from Compilador.analizador_lexico import AnalizadorLexico  # Importa el lexer oficial que conserva autoridad sobre los tokens.
 from Compilador.analizador_sintactico import AnalizadorSintactico  # Importa el parser oficial que conserva autoridad sobre la estructura.
 

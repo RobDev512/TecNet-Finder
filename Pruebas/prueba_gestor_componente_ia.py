@@ -18,7 +18,7 @@
 
 import shutil  # Permite conservar y sustituir temporalmente rmtree durante la prueba que simula un bloqueo de Windows.
 
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Importa el administrador encargado de las rutas y archivos físicos del componente opcional.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Importa el administrador encargado de las rutas y archivos físicos del componente opcional.
 
 
 def prueba_componente_utiliza_rutas_administradas(tmp_path):  # Comprueba que todos los archivos de IA se mantengan dentro del espacio privado reservado por TecNet Finder.

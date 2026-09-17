@@ -20,15 +20,15 @@
 
 from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
 from PySide6.QtGui import QColor, QPainter, QPixmap  # Permite dibujar el progreso y cargar los recursos gráficos asociados con las funciones de IA.
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QStackedWidget, QVBoxLayout, QWidget  # Importa los controles utilizados por el panel.
+from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QStackedWidget, QStyle, QVBoxLayout, QWidget  # Importa los controles utilizados por el panel.
 
-from AsistenteIA.configuracion import MODELO_IA  # Permite mostrar el modelo técnico utilizado actualmente.
-from AsistenteIA.gestor_componente_ia import GestorComponenteIA  # Permite consultar la instalación opcional administrada.
-from AsistenteIA.gestor_instalacion_ia import GestorInstalacionIA, VERSION_OLLAMA  # Permite instalar y retirar físicamente el componente opcional.
-from AsistenteIA.gestor_ollama import GestorOllama  # Permite iniciar y detener la instancia privada.
-from AsistenteIA.preferencias_ia import PreferenciasIA  # Permite conservar independientemente las funciones solicitadas por el usuario.
+from AsistenteIA.infraestructura.configuracion import MODELO_IA  # Permite mostrar el modelo técnico utilizado actualmente.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite consultar la instalación opcional administrada.
+from AsistenteIA.infraestructura.gestor_instalacion_ia import GestorInstalacionIA, VERSION_OLLAMA  # Permite instalar y retirar físicamente el componente opcional.
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Permite iniciar y detener la instancia privada.
+from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Permite conservar independientemente las funciones solicitadas por el usuario.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los indicadores gráficos iniciales utilizados por las funciones de IA.
-
+from Motor.configuracion.catalogo_temas import TEMA_PREDETERMINADO, obtener_tema  # Permite construir botones de confirmación con los colores reales del tema activo.
 
 class SenalesOperacionIA(QObject):  # Define el canal seguro utilizado para regresar desde los trabajos de administración.
     terminada = Signal(str, bool, str)  # Informa operación, resultado y mensaje final al hilo principal.
@@ -479,42 +479,112 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         return self.autocompletado_solicitado or self.diagnosticos_solicitados  # Decide el ciclo de vida de Ollama sin privilegiar una función concreta.
 
     def _preguntar_confirmacion(self, titulo: str, mensaje: str) -> bool:
-        dialogo = QMessageBox(self)  # Crea un cuadro controlado para poder personalizar los textos de sus botones.
-        dialogo.setWindowTitle(titulo)  # Conserva el mismo título utilizado anteriormente por QMessageBox.question.
-        dialogo.setIcon(QMessageBox.Icon.Question)  # Mantiene el icono de interrogación propio de una confirmación.
-        dialogo.setText(mensaje)  # Coloca el contenido correspondiente a instalar o desinstalar.
-        dialogo.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)  # Conserva semánticamente los botones estándar de confirmación.
-        dialogo.setDefaultButton(QMessageBox.StandardButton.No)  # Mantiene No como decisión predeterminada para evitar operaciones accidentales.
+        dialogo = QDialog(self)  # Crea una confirmación propia para evitar la apariencia nativa inconsistente de los botones estándar de QMessageBox.
+        dialogo.setWindowTitle(titulo)  # Conserva el título correspondiente a instalación o desinstalación.
+        dialogo.setModal(True)  # Impide interactuar con Configuración mientras la decisión siga pendiente.
+        dialogo.setMinimumWidth(610)  # Mantiene espacio suficiente para el mensaje sin producir una ventana excesivamente alta.
 
-        boton_si = dialogo.button(QMessageBox.StandardButton.Yes)  # Obtiene el botón afirmativo creado por Qt.
-        boton_no = dialogo.button(QMessageBox.StandardButton.No)  # Obtiene el botón negativo creado por Qt.
+        diseno_principal = QHBoxLayout(dialogo)  # Organiza el icono de confirmación y el contenido textual en una misma fila.
+        diseno_principal.setContentsMargins(18, 16, 18, 16)  # Mantiene respiración uniforme respecto a los límites de la ventana.
+        diseno_principal.setSpacing(18)  # Separa claramente el icono del bloque de contenido.
 
-        if boton_si is not None:
-            boton_si.setText("Sí")  # Traduce explícitamente la acción afirmativa al español.
-            boton_si.setObjectName("BotonPrincipal")  # Recupera el mismo tratamiento visual de la acción principal del resto de la aplicación.
-            boton_si.setFlat(False)  # Garantiza que Qt lo dibuje como botón completo y no solo como texto.
-            boton_si.setAutoDefault(False)  # Evita resaltar el control con la apariencia nativa del sistema.
-            boton_si.setDefault(False)  # Conserva únicamente el estilo definido por TecNet Finder.
-            boton_si.setCursor(Qt.CursorShape.PointingHandCursor)  # Mantiene el mismo indicador interactivo de los demás botones.
-            boton_si.setMinimumSize(92, 34)  # Recupera un tamaño coherente con los demás diálogos.
-            boton_si.style().unpolish(boton_si)  # Elimina cualquier apariencia anterior derivada del diálogo nativo.
-            boton_si.style().polish(boton_si)  # Reaplica inmediatamente el estilo correcto.
+        etiqueta_icono = QLabel(dialogo)  # Reserva una zona exclusiva para el símbolo de interrogación.
+        etiqueta_icono.setFixedSize(64, 64)  # Conserva una presencia visual similar a la del cuadro estándar anterior.
+        etiqueta_icono.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Mantiene el símbolo centrado.
+        icono = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxQuestion)  # Utiliza el icono estándar de confirmación proporcionado por Qt.
+        etiqueta_icono.setPixmap(icono.pixmap(52, 52))  # Representa el símbolo con un tamaño claro sin dominar el diálogo.
+        etiqueta_icono.setStyleSheet("background-color: transparent; border: none; padding: 0px;")  # Evita que los estilos generales añadan un fondo innecesario.
+        diseno_principal.addWidget(etiqueta_icono, 0, Qt.AlignmentFlag.AlignTop)  # Coloca el icono alineado con el comienzo del mensaje.
 
-        if boton_no is not None:
-            boton_no.setText("No")  # Mantiene explícitamente la acción negativa en español.
-            boton_no.setFlat(False)  # Garantiza que se represente como botón real y no como texto suelto.
-            boton_no.setAutoDefault(False)  # Evita una apariencia nativa distinta del resto de la interfaz.
-            boton_no.setDefault(False)  # Mantiene el estilo visual uniforme del proyecto.
-            boton_no.setCursor(Qt.CursorShape.PointingHandCursor)  # Conserva la misma respuesta visual al pasar el puntero.
-            boton_no.setMinimumSize(92, 34)  # Recupera dimensiones consistentes con el resto de acciones.
-            boton_no.style().unpolish(boton_no)  # Descarta cualquier acabado heredado del cuadro estándar.
-            boton_no.style().polish(boton_no)  # Reaplica el estilo global vigente.
+        columna_contenido = QVBoxLayout()  # Agrupa mensaje y botones dentro de la zona derecha.
+        columna_contenido.setContentsMargins(0, 0, 0, 0)  # Delega el margen exterior al diseño principal.
+        columna_contenido.setSpacing(16)  # Separa el texto de las acciones de confirmación.
 
-        dialogo.ensurePolished()  # Fuerza a Qt a recalcular el estilo completo del cuadro antes de mostrarlo.
-        dialogo.exec()  # Muestra la confirmación de forma modal igual que la implementación anterior.
+        etiqueta_mensaje = QLabel(mensaje, dialogo)  # Presenta íntegramente la explicación proporcionada por la operación.
+        etiqueta_mensaje.setObjectName("TextoConfiguracion")  # Reutiliza el color de texto definido por el tema activo.
+        etiqueta_mensaje.setWordWrap(True)  # Permite adaptar los párrafos cuando la ventana cambie de tamaño.
+        etiqueta_mensaje.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)  # Permite copiar el mensaje sin convertirlo en un control editable.
+        columna_contenido.addWidget(etiqueta_mensaje)  # Coloca primero la explicación completa.
 
-        return dialogo.standardButton(dialogo.clickedButton()) == QMessageBox.StandardButton.Yes  # Considera aceptada la operación solamente cuando se seleccionó Sí.
+        fila_botones = QHBoxLayout()  # Organiza las dos decisiones en una fila claramente reconocible.
+        fila_botones.setContentsMargins(0, 0, 0, 0)  # Evita introducir márgenes adicionales dentro del bloque.
+        fila_botones.setSpacing(10)  # Mantiene una separación visible entre ambas decisiones.
+        fila_botones.addStretch()  # Empuja las acciones hacia la derecha, igual que un diálogo convencional.
 
+        preferencias_tema_temporales = getattr(self.window(), "preferencias_tema_temporales", None)  # Recupera el tema que Configuración está mostrando actualmente, incluso antes de aplicarlo.
+        tema_id = preferencias_tema_temporales.tema() if preferencias_tema_temporales is not None else TEMA_PREDETERMINADO  # Utiliza el tema temporal cuando existe y conserva uno seguro como respaldo.
+        paleta = obtener_tema(tema_id)  # Obtiene los colores oficiales correspondientes al modo y variante actualmente visibles.
+
+        boton_si = QPushButton("Sí", dialogo)  # Representa explícitamente la confirmación afirmativa.
+        boton_si.setMinimumSize(92, 36)  # Hace evidente que se trata de un botón y no de texto aislado.
+        boton_si.setCursor(Qt.CursorShape.PointingHandCursor)  # Refuerza visualmente su carácter interactivo.
+        boton_si.setAutoDefault(False)  # Evita acabados adicionales del sistema.
+        boton_si.setDefault(False)  # Impide que la acción destructiva sea la predeterminada.
+        boton_si.setFlat(False)  # Fuerza la representación convencional del botón.
+        boton_si.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {paleta["acento"]};
+                color: {paleta["texto_inverso"]};
+                border: 1px solid {paleta["acento"]};
+                border-radius: 7px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {paleta["acento_hover"]};
+                color: {paleta["texto_inverso"]};
+                border: 1px solid {paleta["acento_hover"]};
+            }}
+            QPushButton:pressed {{
+                background-color: {paleta["superficie_presionada"]};
+                color: {paleta["texto"]};
+                border: 1px solid {paleta["acento"]};
+            }}
+            """
+        )  # Aplica directamente la acción principal para impedir que estilos heredados oculten fondo o borde.
+        boton_si.clicked.connect(dialogo.accept)  # Cierra la ventana informando una confirmación positiva.
+
+        boton_no = QPushButton("No", dialogo)  # Representa explícitamente la cancelación.
+        boton_no.setMinimumSize(92, 36)  # Mantiene exactamente la misma presencia visual que Sí.
+        boton_no.setCursor(Qt.CursorShape.PointingHandCursor)  # Conserva la respuesta visual habitual.
+        boton_no.setAutoDefault(True)  # Permite utilizar esta acción como decisión segura mediante teclado.
+        boton_no.setDefault(True)  # Mantiene No como opción predeterminada.
+        boton_no.setFlat(False)  # Fuerza la representación completa de su superficie.
+        boton_no.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {paleta["superficie"]};
+                color: {paleta["texto"]};
+                border: 1px solid {paleta["borde_fuerte"]};
+                border-radius: 7px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {paleta["superficie_hover"]};
+                color: {paleta["texto"]};
+                border: 1px solid {paleta["acento"]};
+            }}
+            QPushButton:pressed {{
+                background-color: {paleta["superficie_presionada"]};
+                color: {paleta["texto"]};
+                border: 1px solid {paleta["acento"]};
+            }}
+            """
+        )  # Aplica directamente la acción secundaria utilizando la misma paleta del tema visible.
+        boton_no.clicked.connect(dialogo.reject)  # Cierra la ventana sin ejecutar la operación.
+
+        fila_botones.addWidget(boton_si)  # Coloca primero la acción afirmativa.
+        fila_botones.addWidget(boton_no)  # Coloca después la cancelación segura.
+        columna_contenido.addLayout(fila_botones)  # Añade ambas acciones debajo del mensaje.
+
+        diseno_principal.addLayout(columna_contenido, 1)  # Permite que el bloque textual utilice todo el ancho restante.
+        boton_no.setFocus()  # Sitúa inicialmente el teclado sobre la decisión no destructiva.
+
+        resultado = dialogo.exec()  # Muestra la confirmación modal utilizando controles completamente tematizables.
+        return resultado == QDialog.DialogCode.Accepted  # Devuelve True solamente cuando el usuario pulsó Sí.
+    
     def _solicitar_instalacion(self) -> None:
         if self.operacion_en_curso or self.componente_ia.instalado():
             return  # Evita iniciar otra descarga cuando no corresponde.

@@ -17,7 +17,7 @@ import json  # Permite construir las solicitudes HTTP y convertir las respuestas
 import urllib.error  # Permite controlar errores producidos por la comunicación HTTP.
 import urllib.request  # Permite utilizar la API local de Ollama sin agregar librerías externas.
 
-from AsistenteIA.configuracion import MODELO_IA, TIEMPO_ESPERA_SEGUNDOS, URL_BASE_OLLAMA  # Importa la configuración central de la instancia privada.
+from AsistenteIA.infraestructura.configuracion import MODELO_IA, TIEMPO_ESPERA_SEGUNDOS, URL_BASE_OLLAMA  # Importa la configuración central de la instancia privada.
 
 
 class MotorLocalOllama:  # Encapsula todas las comunicaciones realizadas con el servidor local de Ollama.

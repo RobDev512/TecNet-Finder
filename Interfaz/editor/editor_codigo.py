@@ -20,7 +20,7 @@ from PySide6.QtCore import QEvent, QPointF, QRect, QSize, Qt, QTimer, Signal  # 
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPen, QPixmap, QTextCursor, QTextFormat  # Importa herramientas de dibujo, iconos, paleta, imágenes y manipulación del texto.
 from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton, QTextEdit, QToolTip, QWidget  # Importa el editor base, diálogos, botones, selecciones adicionales y tooltips.
 
-from AsistenteIA.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
+from AsistenteIA.autocompletado.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos gráficos iniciales utilizados por el editor.
 from Interfaz.ejemplos.selector_ejemplos import SelectorEjemplos  # Importa la ventana especializada utilizada para consultar casos válidos e inválidos.
 from Motor.compilacion.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
