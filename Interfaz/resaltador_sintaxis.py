@@ -4,58 +4,61 @@
 # Materia: Lenguajes y Autómatas II
 #
 # Descripción:
-# Este archivo contiene el resaltador de sintaxis del editor de
-# TecNet Finder.
+# Contiene el resaltador visual del editor de TecNet Finder.
 #
-# Su función es modificar únicamente la apariencia del código
-# fuente para distinguir palabras reservadas, direcciones IP,
-# máscaras, números y otros elementos del lenguaje.
+# Recupera la identidad cromática de TecNet Finder OG:
+# - IP: azul.
+# - MASK: verde.
+# - HOSTS y NUMBER: naranja.
+# - NAME: amarillo/dorado.
+# - IP_ADDRESS: turquesa.
+# - SUBNET_MASK: violeta.
+# - COMMA: rosa/rojo.
 #
-# El resaltado no realiza análisis léxico ni sintáctico real.
+# En temas claros utiliza equivalentes más oscuros para conservar
+# contraste sin perder el significado visual original.
 # ============================================================
 
-from PySide6.QtCore import QRegularExpression  # Importa las expresiones regulares utilizadas para localizar texto dentro de cada línea.
-from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat  # Importa las clases necesarias para colorear fragmentos del documento.
+from PySide6.QtCore import QRegularExpression  # Proporciona las expresiones regulares utilizadas exclusivamente para localizar fragmentos visuales.
+from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat  # Proporciona formatos y resaltado del documento.
+from Motor.catalogo_temas import MODO_CLARO, TEMA_PREDETERMINADO, modo_del_tema  # Permite conservar la identidad OG con contraste apropiado para cada modo.
 
 
-class ResaltadorSintaxis(QSyntaxHighlighter):  # Define el resaltador visual utilizado por el editor de código.
-    def __init__(self, documento):  # Inicializa el resaltador sobre el documento perteneciente al editor.
-        super().__init__(documento)  # Entrega el documento a QSyntaxHighlighter para que pueda procesar sus bloques.
-        self.reglas = []  # Crea la lista que relacionará expresiones regulares con formatos visuales.
+class ResaltadorSintaxis(QSyntaxHighlighter):  # Define el resaltador visual asociado con el documento del editor.
+    COLORES_OSCUROS = {"IP": "#89b4fa", "MASK": "#a6e3a1", "HOSTS": "#fab387", "NAME": "#f9e2af", "IP_ADDRESS": "#94e2d5", "SUBNET_MASK": "#cba6f7", "NUMBER": "#fab387", "COMMA": "#f38ba8"}  # Recupera exactamente la identidad cromática de TecNet Finder OG.
+    COLORES_CLAROS = {"IP": "#2563eb", "MASK": "#287a3d", "HOSTS": "#b45309", "NAME": "#946200", "IP_ADDRESS": "#0f766e", "SUBNET_MASK": "#7c3aed", "NUMBER": "#b45309", "COMMA": "#c42b1c"}  # Mantiene los mismos roles mediante tonos legibles sobre fondos claros.
 
-        formato_reservada = QTextCharFormat()  # Crea el formato utilizado para las palabras reservadas del DSL.
-        formato_reservada.setForeground(QColor("#89b4fa"))  # Asigna un tono azul a IP, MASK, HOSTS y NAME.
-        formato_reservada.setFontWeight(QFont.Weight.Bold)  # Muestra las palabras reservadas con mayor grosor.
+    def __init__(self, documento):
+        super().__init__(documento)  # Entrega el documento a QSyntaxHighlighter.
+        self.reglas: list[tuple[QRegularExpression, QTextCharFormat]] = []  # Conserva las reglas visuales vigentes.
+        octeto = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"  # Define la forma admitida para cada octeto IPv4.
+        self.expresion_ip = QRegularExpression(rf"\b{octeto}\.{octeto}\.{octeto}\.{octeto}\b")  # Construye una dirección IPv4 completa.
+        self.aplicar_tema(TEMA_PREDETERMINADO)  # Inicializa el resaltado antes de que el gestor aplique la preferencia real.
 
-        formato_ip = QTextCharFormat()  # Crea el formato visual utilizado para direcciones IPv4.
-        formato_ip.setForeground(QColor("#a6e3a1"))  # Asigna un tono verde a las direcciones IP.
+    def _crear_formato(self, color: str, negrita: bool = False) -> QTextCharFormat:
+        formato = QTextCharFormat()  # Crea un formato independiente para evitar compartir estados entre reglas.
+        formato.setForeground(QColor(color))  # Aplica el tono correspondiente con el token.
+        if negrita: formato.setFontWeight(QFont.Weight.Bold)  # Refuerza únicamente los elementos que TecNet Finder OG mostraba en negrita.
+        return formato  # Entrega el formato completamente preparado.
 
-        formato_mascara = QTextCharFormat()  # Crea el formato utilizado para las máscaras CIDR.
-        formato_mascara.setForeground(QColor("#cba6f7"))  # Asigna un tono violeta a valores como /24.
+    def aplicar_tema(self, tema_id: str) -> None:
+        colores = self.COLORES_CLAROS if modo_del_tema(tema_id) == MODO_CLARO else self.COLORES_OSCUROS  # Conserva la identidad original adaptando solamente el contraste del modo claro.
+        self.reglas = [
+            (QRegularExpression(r","), self._crear_formato(colores["COMMA"], True)),  # Aplica primero la regla general de las comas, igual que TecNet Finder OG.
+            (QRegularExpression(r"\b\d+\b"), self._crear_formato(colores["NUMBER"])),  # Aplica después NUMBER para cantidades de hosts.
+            (self.expresion_ip, self._crear_formato(colores["IP_ADDRESS"], True)),  # Sobrescribe NUMBER cuando los números forman una dirección IPv4 completa.
+            (QRegularExpression(r"/\d+"), self._crear_formato(colores["SUBNET_MASK"], True)),  # Sobrescribe NUMBER dentro de máscaras CIDR como /24.
+            (QRegularExpression(r"\bIP(?=\s|\d|$)"), self._crear_formato(colores["IP"], True)),  # Recupera el azul histórico de la palabra reservada IP.
+            (QRegularExpression(r"\bMASK(?=\s|/|$)"), self._crear_formato(colores["MASK"], True)),  # Recupera el verde histórico de MASK.
+            (QRegularExpression(r"\bHOSTS(?=\s|\d|,|$)"), self._crear_formato(colores["HOSTS"], True)),  # Recupera el naranja histórico de HOSTS.
+            (QRegularExpression(r"\bNAME\b"), self._crear_formato(colores["NAME"], True)),  # Recupera el amarillo/dorado histórico de NAME.
+        ]  # Mantiene las reglas específicas después de las generales para que puedan sobrescribirlas visualmente.
+        self.rehighlight()  # Vuelve a colorear inmediatamente el documento ya escrito.
 
-        formato_numero = QTextCharFormat()  # Crea el formato utilizado para cantidades numéricas.
-        formato_numero.setForeground(QColor("#fab387"))  # Asigna un tono naranja a los números de hosts.
-
-        formato_coma = QTextCharFormat()  # Crea el formato utilizado para las comas de HOSTS.
-        formato_coma.setForeground(QColor("#f9e2af"))  # Asigna un tono amarillo al separador de cantidades.
-
-        octeto = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"  # Define la misma forma general utilizada para reconocer octetos IPv4.
-        direccion_ip = rf"\b{octeto}\.{octeto}\.{octeto}\.{octeto}\b"  # Construye el patrón completo de una dirección IPv4.
-
-        self.reglas.extend([  # Registra las reglas visuales en el orden en que serán aplicadas.
-            (QRegularExpression(r"\b(?:IP|MASK|HOSTS|NAME)\b"), formato_reservada),  # Resalta las palabras reservadas principales.
-            (QRegularExpression(direccion_ip), formato_ip),  # Resalta las direcciones IPv4 completas.
-            (QRegularExpression(r"/\d+"), formato_mascara),  # Resalta máscaras escritas en notación CIDR.
-            (QRegularExpression(r"\b\d+\b"), formato_numero),  # Resalta cantidades numéricas individuales.
-            (QRegularExpression(r","), formato_coma),  # Resalta las comas utilizadas dentro de HOSTS.
-        ])
-
-    def highlightBlock(self, texto: str) -> None:  # Aplica todas las reglas visuales al bloque de texto que PySide6 está procesando.
-        for expresion, formato in self.reglas:  # Recorre cada expresión regular junto con su formato correspondiente.
-            iterador = expresion.globalMatch(texto)  # Busca todas las coincidencias de la regla dentro de la línea actual.
-
-            while iterador.hasNext():  # Continúa mientras todavía exista otra coincidencia de la misma expresión.
-                coincidencia = iterador.next()  # Obtiene la siguiente coincidencia encontrada.
-                inicio = coincidencia.capturedStart()  # Obtiene la posición donde comienza el fragmento reconocido.
-                longitud = coincidencia.capturedLength()  # Obtiene cuántos caracteres ocupa el fragmento reconocido.
-                self.setFormat(inicio, longitud, formato)  # Aplica el formato visual solamente al fragmento encontrado.
+    def highlightBlock(self, texto: str) -> None:
+        for expresion, formato in self.reglas:  # Recorre las reglas respetando el orden de precedencia visual.
+            iterador = expresion.globalMatch(texto)  # Busca todas las coincidencias dentro de la línea actual.
+            while iterador.hasNext():
+                coincidencia = iterador.next()  # Recupera la coincidencia siguiente.
+                inicio, longitud = coincidencia.capturedStart(), coincidencia.capturedLength()  # Obtiene posición y longitud del fragmento.
+                if inicio >= 0 and longitud > 0: self.setFormat(inicio, longitud, formato)  # Aplica el formato solamente cuando la coincidencia es válida.

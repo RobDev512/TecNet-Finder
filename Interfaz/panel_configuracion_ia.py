@@ -210,8 +210,11 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         self.etiqueta_instalacion = QLabel()  # Muestra si la asistencia se encuentra físicamente instalada.
         self.etiqueta_ejecucion = QLabel()  # Muestra si la instancia local se encuentra actualmente activa.
         self.etiqueta_modelo = QLabel(f"Modelo: {MODELO_IA}")  # Informa el modelo utilizado actualmente.
+        self.etiqueta_modelo.setObjectName("DetalleIA")  # Permite restaurar un fondo sutil y redondeado para los datos técnicos.
         self.etiqueta_runtime = QLabel(f"Runtime local: Ollama {VERSION_OLLAMA}")  # Informa la versión fijada por TecNet Finder.
+        self.etiqueta_runtime.setObjectName("DetalleIA")  # Mantiene el mismo tratamiento visual del resto de datos técnicos.
         self.etiqueta_ruta = QLabel()  # Muestra la ubicación administrada del componente.
+        self.etiqueta_ruta.setObjectName("DetalleIA")  # Identifica la ruta como un dato técnico dentro de la misma tarjeta.
 
         for etiqueta in (
             self.etiqueta_instalacion,
@@ -296,10 +299,17 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         descripcion_componente.setWordWrap(True)  # Permite mostrar la explicación en varias líneas.
         diseno_componente.addWidget(descripcion_componente)  # Coloca la explicación encima de las acciones.
 
+        self.marco_administracion = QFrame()  # Crea un contenedor interior para recuperar el recuadro redondeado de la zona de acciones.
+        self.marco_administracion.setObjectName("MarcoAdministracionIA")  # Permite tematizar esta región sin afectar el resto de la tarjeta.
+        diseno_marco_administracion = QVBoxLayout(self.marco_administracion)  # Organiza la zona intercambiable dentro del mismo marco.
+        diseno_marco_administracion.setContentsMargins(0, 0, 0, 0)  # Deja que el propio estilo controle completamente el padding visual.
+        diseno_marco_administracion.setSpacing(0)  # Evita espacios extra entre el marco y la página activa.
+
         self.zona_administracion = QStackedWidget()  # Reserva una única región que alternará entre botones y progreso.
-        self.zona_administracion.setObjectName("ZonaAdministracionIA")  # Permite retirar únicamente el fondo rectangular de esta zona interior mediante estilos.py.
+        self.zona_administracion.setObjectName("ZonaAdministracionIA")  # Identifica la región apilada que vive dentro del marco redondeado.
         self.zona_administracion.setFixedHeight(66)  # Proporciona espacio suficiente para márgenes internos sin modificar el tamaño general.
-        diseno_componente.addWidget(self.zona_administracion)  # Incorpora una sola región estable al diseño de la tarjeta.
+        diseno_marco_administracion.addWidget(self.zona_administracion)  # Inserta la zona intercambiable dentro del contenedor estilizado.
+        diseno_componente.addWidget(self.marco_administracion)  # Incorpora finalmente la región estable de administración.
 
         pagina_botones = QWidget()  # Representa el estado normal de administración.
         pagina_botones.setObjectName("PaginaAdministracionIA")  # Hace transparente esta página para dejar visible el fondo redondeado de la tarjeta principal.
@@ -480,10 +490,26 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
 
         if boton_si is not None:
             boton_si.setText("Sí")  # Traduce explícitamente la acción afirmativa al español.
+            boton_si.setObjectName("BotonPrincipal")  # Recupera el mismo tratamiento visual de la acción principal del resto de la aplicación.
+            boton_si.setFlat(False)  # Garantiza que Qt lo dibuje como botón completo y no solo como texto.
+            boton_si.setAutoDefault(False)  # Evita resaltar el control con la apariencia nativa del sistema.
+            boton_si.setDefault(False)  # Conserva únicamente el estilo definido por TecNet Finder.
+            boton_si.setCursor(Qt.CursorShape.PointingHandCursor)  # Mantiene el mismo indicador interactivo de los demás botones.
+            boton_si.setMinimumSize(92, 34)  # Recupera un tamaño coherente con los demás diálogos.
+            boton_si.style().unpolish(boton_si)  # Elimina cualquier apariencia anterior derivada del diálogo nativo.
+            boton_si.style().polish(boton_si)  # Reaplica inmediatamente el estilo correcto.
 
         if boton_no is not None:
             boton_no.setText("No")  # Mantiene explícitamente la acción negativa en español.
+            boton_no.setFlat(False)  # Garantiza que se represente como botón real y no como texto suelto.
+            boton_no.setAutoDefault(False)  # Evita una apariencia nativa distinta del resto de la interfaz.
+            boton_no.setDefault(False)  # Mantiene el estilo visual uniforme del proyecto.
+            boton_no.setCursor(Qt.CursorShape.PointingHandCursor)  # Conserva la misma respuesta visual al pasar el puntero.
+            boton_no.setMinimumSize(92, 34)  # Recupera dimensiones consistentes con el resto de acciones.
+            boton_no.style().unpolish(boton_no)  # Descarta cualquier acabado heredado del cuadro estándar.
+            boton_no.style().polish(boton_no)  # Reaplica el estilo global vigente.
 
+        dialogo.ensurePolished()  # Fuerza a Qt a recalcular el estilo completo del cuadro antes de mostrarlo.
         dialogo.exec()  # Muestra la confirmación de forma modal igual que la implementación anterior.
 
         return dialogo.standardButton(dialogo.clickedButton()) == QMessageBox.StandardButton.Yes  # Considera aceptada la operación solamente cuando se seleccionó Sí.

@@ -8,207 +8,219 @@
 # Finder y las paletas asociadas con cada variante.
 #
 # Cada tema posee:
-# - Un identificador interno estable.
-# - Un modo: oscuro o claro.
-# - Un nombre visible.
-# - Una descripción.
-# - Una paleta completa de interfaz.
+# - Identificador interno estable.
+# - Modo oscuro o claro.
+# - Nombre y descripción.
+# - Paleta general.
+# - Colores específicos del editor.
+# - Colores semánticos.
 #
-# Los colores semánticos conservan siempre su significado:
-# error, advertencia, éxito, sintaxis, semántica y subred.
-# Sin embargo, se utilizan tonos diferentes en modo claro para
-# conservar suficiente contraste sobre fondos luminosos.
+# El modo se obtiene siempre desde el propio tema para impedir
+# combinaciones inconsistentes entre modo y variante.
 # ============================================================
 
-MODO_OSCURO = "oscuro"  # Identifica la familia de temas oscuros.
-MODO_CLARO = "claro"  # Identifica la familia de temas claros.
+MODO_OSCURO = "oscuro"  # Identifica todos los temas diseñados para fondos oscuros.
+MODO_CLARO = "claro"  # Identifica todos los temas diseñados para fondos claros.
 
-TEMA_OSCURO_TECNET = "oscuro_tecnet"  # Conserva la apariencia oscura original de TecNet Finder.
+TEMA_OSCURO_TECNET = "oscuro_tecnet"  # Conserva la apariencia histórica azul de TecNet Finder.
 TEMA_OSCURO_MEDIANOCHE = "oscuro_medianoche"  # Utiliza fondos violetas profundos y acento lavanda.
 TEMA_OSCURO_OCEANO = "oscuro_oceano"  # Utiliza fondos azul petróleo y acento cian.
-TEMA_CLARO_TECNET = "claro_tecnet"  # Representa la versión clara principal de TecNet Finder.
-TEMA_CLARO_NIEBLA = "claro_niebla"  # Representa una variante clara más gris y discreta.
-
-TEMA_PREDETERMINADO = TEMA_OSCURO_TECNET  # Mantiene la apariencia histórica como valor inicial.
+TEMA_CLARO_TECNET = "claro_tecnet"  # Representa la variante clara principal.
+TEMA_CLARO_NIEBLA = "claro_niebla"  # Representa una variante gris clara menos luminosa.
+TEMA_PREDETERMINADO = TEMA_OSCURO_TECNET  # Mantiene la apariencia conocida en instalaciones nuevas.
 
 MODOS = (
-    {"id": MODO_OSCURO, "nombre": "Oscuro"},  # Presenta el modo oscuro dentro de Configuración.
-    {"id": MODO_CLARO, "nombre": "Claro"},  # Presenta el modo claro dentro de Configuración.
-)  # El orden declarado también determina el orden visible de los modos.
+    {"id": MODO_OSCURO, "nombre": "Oscuro"},  # Presenta primero el modo utilizado históricamente.
+    {"id": MODO_CLARO, "nombre": "Claro"},  # Presenta después la alternativa clara.
+)  # El orden también determina la presentación dentro de Configuración.
 
 SEMANTICOS_OSCUROS = {
-    "exito": "#a6e3a1",  # Mantiene verde claro para resultados satisfactorios.
-    "advertencia": "#f9e2af",  # Mantiene amarillo para recomendaciones no bloqueantes.
-    "error": "#f38ba8",  # Mantiene rosa/rojo para errores y estados bloqueantes.
+    "exito": "#a6e3a1",  # Mantiene verde claro para estados satisfactorios.
+    "advertencia": "#f9e2af",  # Mantiene amarillo claro para advertencias.
+    "error": "#f38ba8",  # Mantiene rosa rojizo para errores.
     "sintactico": "#fab387",  # Mantiene naranja para diagnósticos sintácticos.
-    "semantico": "#cba6f7",  # Mantiene morado para diagnósticos semánticos.
-    "subred": "#94e2d5",  # Mantiene turquesa para información relacionada con subredes.
-}  # Estos tonos funcionan correctamente sobre fondos oscuros.
+    "semantico": "#cba6f7",  # Mantiene violeta para diagnósticos semánticos.
+    "subred": "#94e2d5",  # Mantiene turquesa para información de subredes.
+}  # Estos tonos ofrecen buen contraste sobre superficies oscuras.
 
 SEMANTICOS_CLAROS = {
-    "exito": "#287a3d",  # Utiliza un verde más oscuro para conservar contraste sobre blanco.
-    "advertencia": "#946200",  # Utiliza ámbar oscuro para mantener legibles las advertencias.
-    "error": "#c42b1c",  # Utiliza rojo intenso para errores sobre fondos claros.
-    "sintactico": "#b45309",  # Utiliza naranja oscuro para diagnósticos sintácticos.
-    "semantico": "#7c3aed",  # Utiliza violeta intenso para diagnósticos semánticos.
-    "subred": "#0f766e",  # Utiliza turquesa oscuro para información de subredes.
-}  # El significado no cambia aunque los tonos se adapten al modo claro.
+    "exito": "#287a3d",  # Utiliza verde oscuro legible sobre fondos claros.
+    "advertencia": "#946200",  # Utiliza ámbar oscuro para advertencias.
+    "error": "#c42b1c",  # Utiliza rojo intenso para errores.
+    "sintactico": "#b45309",  # Utiliza naranja oscuro para sintaxis.
+    "semantico": "#7c3aed",  # Utiliza violeta intenso para semántica.
+    "subred": "#0f766e",  # Utiliza turquesa oscuro para subredes.
+}  # Conserva el significado de cada color sin perder contraste.
 
 TEMAS = {
     TEMA_OSCURO_TECNET: {
-        "id": TEMA_OSCURO_TECNET,  # Conserva un identificador estable independiente del idioma.
+        "id": TEMA_OSCURO_TECNET,  # Conserva el identificador utilizado por las preferencias.
         "modo": MODO_OSCURO,  # Agrupa esta variante dentro del modo oscuro.
-        "nombre": "TecNet",  # Presenta el nombre corto dentro de Configuración.
+        "nombre": "TecNet",  # Presenta el nombre corto original.
         "descripcion": "Tema oscuro original de TecNet Finder con fondos gris azulados y acento azul.",  # Resume su apariencia.
-        "fondo": "#1e1e2e",  # Define el fondo principal actual.
-        "panel": "#181825",  # Define tarjetas, menús y barras secundarias.
-        "editor": "#11111b",  # Define el fondo profundo utilizado por código y tablas.
-        "superficie": "#313244",  # Define botones, pestañas y controles convencionales.
-        "superficie_suave": "#363649",  # Define una variación ligera utilizada durante algunas interacciones.
-        "superficie_hover": "#45475a",  # Define el fondo utilizado al colocar el cursor.
+        "fondo": "#1e1e2e",  # Define el fondo general.
+        "panel": "#181825",  # Define paneles y superficies elevadas.
+        "editor": "#11111b",  # Define el fondo profundo del editor.
+        "superficie": "#313244",  # Define controles convencionales.
+        "superficie_suave": "#363649",  # Define una transición visual intermedia.
+        "superficie_hover": "#45475a",  # Define el estado hover.
         "superficie_presionada": "#585b70",  # Define el estado presionado.
-        "fondo_deshabilitado": "#242536",  # Define componentes temporalmente no disponibles.
-        "borde": "#313244",  # Define separadores y bordes discretos.
-        "borde_fuerte": "#45475a",  # Define contornos que necesitan mayor contraste.
-        "borde_deshabilitado": "#3b3d56",  # Define el contorno de componentes deshabilitados.
-        "texto": "#cdd6f4",  # Define el texto principal.
-        "texto_secundario": "#a6adc8",  # Define explicaciones y contenido menos prioritario.
-        "texto_deshabilitado": "#6c7086",  # Define contenido temporalmente no disponible.
-        "texto_inverso": "#1e1e2e",  # Define texto oscuro utilizado encima del acento claro.
-        "acento": "#89b4fa",  # Mantiene el azul oficial utilizado actualmente.
-        "acento_hover": "#b4befe",  # Utiliza una variante más clara durante hover.
-        **SEMANTICOS_OSCUROS,  # Incorpora los colores funcionales adecuados para fondos oscuros.
+        "fondo_deshabilitado": "#242536",  # Define controles temporalmente deshabilitados.
+        "borde": "#313244",  # Define separadores discretos.
+        "borde_fuerte": "#45475a",  # Define contornos con mayor contraste.
+        "borde_deshabilitado": "#3b3d56",  # Define contornos deshabilitados.
+        "texto": "#cdd6f4",  # Define texto principal.
+        "texto_secundario": "#a6adc8",  # Define texto explicativo.
+        "texto_deshabilitado": "#6c7086",  # Define texto no disponible.
+        "texto_inverso": "#1e1e2e",  # Define texto sobre superficies de acento.
+        "acento": "#89b4fa",  # Conserva el azul oficial actual.
+        "acento_hover": "#b4befe",  # Conserva el hover azul claro.
+        "editor_gutter": "#181825",  # Mantiene el margen de líneas utilizado históricamente.
+        "editor_linea_activa": "#181825",  # Mantiene el resaltado actual de la línea activa.
+        **SEMANTICOS_OSCUROS,  # Añade los colores funcionales apropiados.
     },
     TEMA_OSCURO_MEDIANOCHE: {
-        "id": TEMA_OSCURO_MEDIANOCHE,  # Conserva un identificador estable.
-        "modo": MODO_OSCURO,  # Agrupa la variante dentro del modo oscuro.
+        "id": TEMA_OSCURO_MEDIANOCHE,  # Conserva un identificador persistente propio.
+        "modo": MODO_OSCURO,  # Agrupa esta variante dentro del modo oscuro.
         "nombre": "Medianoche",  # Presenta el nombre visible.
-        "descripcion": "Tema oscuro con fondos violeta profundo, superficies púrpura y acento lavanda.",  # Describe la diferencia completa, no solo el acento.
-        "fondo": "#17141f",  # Utiliza un fondo principal violeta casi negro.
-        "panel": "#201a2b",  # Utiliza paneles ligeramente más claros y cálidos.
+        "descripcion": "Tema oscuro con fondos violeta profundo, superficies púrpura y acento lavanda.",  # Resume su identidad visual.
+        "fondo": "#17141f",  # Utiliza violeta casi negro.
+        "panel": "#201a2b",  # Diferencia paneles mediante un violeta ligeramente más claro.
         "editor": "#100d17",  # Mantiene el editor especialmente profundo.
-        "superficie": "#31283f",  # Utiliza controles con un matiz púrpura visible.
-        "superficie_suave": "#392e49",  # Proporciona un nivel intermedio para interacciones suaves.
-        "superficie_hover": "#463856",  # Utiliza un violeta más claro durante hover.
-        "superficie_presionada": "#5a486d",  # Marca claramente el estado presionado.
-        "fondo_deshabilitado": "#25202d",  # Mantiene componentes deshabilitados dentro de la misma familia cromática.
-        "borde": "#2b2435",  # Utiliza separadores violetas discretos.
-        "borde_fuerte": "#4a3b5a",  # Utiliza bordes de contraste medio.
-        "borde_deshabilitado": "#3a3045",  # Mantiene el contorno deshabilitado visible pero discreto.
-        "texto": "#eadff7",  # Utiliza texto principal ligeramente cálido.
-        "texto_secundario": "#bba9cc",  # Mantiene una jerarquía secundaria claramente distinguible.
+        "superficie": "#31283f",  # Utiliza controles púrpura.
+        "superficie_suave": "#392e49",  # Define una transición intermedia.
+        "superficie_hover": "#463856",  # Define hover violeta.
+        "superficie_presionada": "#5a486d",  # Define estado presionado.
+        "fondo_deshabilitado": "#25202d",  # Mantiene componentes inactivos dentro de la misma gama.
+        "borde": "#2b2435",  # Define separadores sutiles.
+        "borde_fuerte": "#4a3b5a",  # Define contornos visibles.
+        "borde_deshabilitado": "#3a3045",  # Define contornos de controles no disponibles.
+        "texto": "#eadff7",  # Utiliza texto claro cálido.
+        "texto_secundario": "#bba9cc",  # Define contenido secundario.
         "texto_deshabilitado": "#756881",  # Define contenido no disponible.
-        "texto_inverso": "#17141f",  # Utiliza el fondo profundo encima del acento lavanda.
-        "acento": "#cba6f7",  # Utiliza lavanda como identidad principal.
-        "acento_hover": "#ddb6f2",  # Aclara ligeramente el acento durante hover.
-        **SEMANTICOS_OSCUROS,  # Conserva intacto el significado de diagnósticos y estados.
+        "texto_inverso": "#17141f",  # Define texto sobre lavanda.
+        "acento": "#cba6f7",  # Utiliza lavanda como identidad.
+        "acento_hover": "#ddb6f2",  # Aclara el acento al colocar el cursor.
+        "editor_gutter": "#201a2b",  # Integra el margen del editor con la paleta violeta.
+        "editor_linea_activa": "#201a2b",  # Mantiene una línea activa discreta.
+        **SEMANTICOS_OSCUROS,  # Conserva colores funcionales de alto contraste.
     },
     TEMA_OSCURO_OCEANO: {
         "id": TEMA_OSCURO_OCEANO,  # Conserva un identificador interno estable.
         "modo": MODO_OSCURO,  # Agrupa esta variante dentro del modo oscuro.
         "nombre": "Océano",  # Presenta el nombre visible.
-        "descripcion": "Tema oscuro con fondos azul petróleo, superficies frías y acento cian.",  # Describe la identidad completa del tema.
-        "fondo": "#111c24",  # Utiliza azul petróleo muy oscuro como fondo general.
-        "panel": "#162630",  # Utiliza un azul profundo para paneles y tarjetas.
-        "editor": "#0a141b",  # Mantiene el editor especialmente oscuro para mejorar el contraste.
-        "superficie": "#223844",  # Utiliza azul grisáceo para controles.
-        "superficie_suave": "#28434f",  # Proporciona una transición intermedia.
-        "superficie_hover": "#2d4c5a",  # Aclara los controles al colocar el cursor.
-        "superficie_presionada": "#3b5f6f",  # Marca el estado presionado mediante un azul más intenso.
-        "fondo_deshabilitado": "#17252d",  # Mantiene elementos inactivos dentro de la misma gama.
-        "borde": "#1e3440",  # Define separadores azulados discretos.
+        "descripcion": "Tema oscuro con fondos azul petróleo, superficies frías y acento cian.",  # Resume su apariencia.
+        "fondo": "#111c24",  # Utiliza azul petróleo muy oscuro.
+        "panel": "#162630",  # Diferencia paneles mediante un azul profundo.
+        "editor": "#0a141b",  # Mantiene el editor especialmente oscuro.
+        "superficie": "#223844",  # Define controles azul grisáceos.
+        "superficie_suave": "#28434f",  # Define una transición fría.
+        "superficie_hover": "#2d4c5a",  # Define hover azul.
+        "superficie_presionada": "#3b5f6f",  # Define estado presionado.
+        "fondo_deshabilitado": "#17252d",  # Mantiene controles inactivos dentro de la gama.
+        "borde": "#1e3440",  # Define separadores discretos.
         "borde_fuerte": "#365968",  # Define contornos de mayor contraste.
-        "borde_deshabilitado": "#29424d",  # Define bordes de elementos no disponibles.
-        "texto": "#d7eef7",  # Utiliza texto claro con un ligero matiz frío.
-        "texto_secundario": "#9fb9c5",  # Mantiene explicaciones menos prioritarias.
-        "texto_deshabilitado": "#65808b",  # Define contenido temporalmente no disponible.
-        "texto_inverso": "#0e1b22",  # Utiliza azul casi negro encima del acento cian.
-        "acento": "#74c7ec",  # Utiliza cian como identidad principal.
+        "borde_deshabilitado": "#29424d",  # Define contornos deshabilitados.
+        "texto": "#d7eef7",  # Define texto principal frío.
+        "texto_secundario": "#9fb9c5",  # Define contenido secundario.
+        "texto_deshabilitado": "#65808b",  # Define contenido no disponible.
+        "texto_inverso": "#0e1b22",  # Define texto sobre el acento cian.
+        "acento": "#74c7ec",  # Utiliza cian como identidad.
         "acento_hover": "#89dceb",  # Aclara el acento durante hover.
-        **SEMANTICOS_OSCUROS,  # Mantiene los colores funcionales apropiados para fondos oscuros.
+        "editor_gutter": "#162630",  # Integra el margen de líneas con el fondo petróleo.
+        "editor_linea_activa": "#162630",  # Mantiene una línea activa fría y discreta.
+        **SEMANTICOS_OSCUROS,  # Conserva los colores funcionales apropiados.
     },
     TEMA_CLARO_TECNET: {
-        "id": TEMA_CLARO_TECNET,  # Conserva un identificador estable independiente del nombre visible.
-        "modo": MODO_CLARO,  # Agrupa esta variante dentro del modo claro.
-        "nombre": "TecNet Claro",  # Presenta el nombre principal del modo claro.
-        "descripcion": "Tema claro de TecNet Finder con fondos blancos suaves, controles azul grisáceos y acento azul.",  # Resume su apariencia completa.
-        "fondo": "#f4f7fb",  # Utiliza un blanco azulado suave en lugar de blanco puro.
-        "panel": "#ffffff",  # Utiliza blanco para tarjetas y superficies elevadas.
-        "editor": "#eef2f7",  # Mantiene el editor ligeramente diferenciado del resto.
-        "superficie": "#e2e8f0",  # Utiliza gris azulado para botones y controles.
-        "superficie_suave": "#d8e0ea",  # Proporciona una transición suave entre controles.
-        "superficie_hover": "#cbd5e1",  # Oscurece ligeramente las superficies durante hover.
-        "superficie_presionada": "#b6c2d0",  # Marca claramente el estado presionado.
-        "fondo_deshabilitado": "#edf0f4",  # Define controles inactivos sin introducir demasiado contraste.
-        "borde": "#d7dee8",  # Utiliza separadores gris azulados discretos.
-        "borde_fuerte": "#aeb8c5",  # Utiliza bordes más visibles donde resulta necesario.
-        "borde_deshabilitado": "#d2d8e0",  # Define contornos de elementos deshabilitados.
-        "texto": "#1f2937",  # Utiliza gris muy oscuro como texto principal.
-        "texto_secundario": "#5f6b7a",  # Utiliza gris medio para explicaciones.
-        "texto_deshabilitado": "#98a2b3",  # Define contenido no disponible.
-        "texto_inverso": "#ffffff",  # Utiliza blanco sobre botones y pestañas azules.
-        "acento": "#3b82f6",  # Utiliza un azul más intenso para conservar contraste sobre fondos claros.
-        "acento_hover": "#2563eb",  # Oscurece el azul durante hover en lugar de aclararlo.
-        **SEMANTICOS_CLAROS,  # Incorpora colores funcionales apropiados para superficies claras.
+        "id": TEMA_CLARO_TECNET,  # Conserva el identificador persistente de la variante clara principal.
+        "modo": MODO_CLARO,  # Agrupa la variante dentro del modo claro.
+        "nombre": "TecNet Claro",  # Presenta el nombre visible.
+        "descripcion": "Tema claro con jerarquía azul grisácea, paneles definidos y acento azul TecNet.",  # Describe la nueva apariencia con mayor contraste.
+        "fondo": "#e4eaf1",  # Utiliza gris azulado perceptible para separar la superficie general.
+        "panel": "#f7f9fc",  # Utiliza un panel casi blanco claramente distinto del fondo exterior.
+        "editor": "#ffffff",  # Utiliza blanco limpio para maximizar la legibilidad del código.
+        "superficie": "#d5dee8",  # Hace visibles botones y pestañas sin parecer deshabilitados.
+        "superficie_suave": "#cbd6e2",  # Define controles ligeramente más marcados.
+        "superficie_hover": "#bcc9d7",  # Hace evidente el estado hover.
+        "superficie_presionada": "#a7b6c8",  # Marca con claridad una pulsación.
+        "fondo_deshabilitado": "#e8edf3",  # Mantiene controles inactivos visualmente distintos.
+        "borde": "#c0cbd8",  # Define separadores claramente visibles.
+        "borde_fuerte": "#8ea0b5",  # Define contornos de botones, tablas y campos.
+        "borde_deshabilitado": "#cdd5de",  # Mantiene un borde tenue para controles inactivos.
+        "texto": "#172033",  # Utiliza un azul negro para mejorar legibilidad.
+        "texto_secundario": "#45546a",  # Utiliza gris azul oscuro para explicaciones.
+        "texto_deshabilitado": "#8795a8",  # Mantiene contenido deshabilitado sin hacerlo invisible.
+        "texto_inverso": "#ffffff",  # Utiliza blanco sobre el azul de acento.
+        "acento": "#2563eb",  # Utiliza azul intenso para conservar contraste.
+        "acento_hover": "#1d4ed8",  # Oscurece el acento durante hover.
+        "editor_gutter": "#cfd9e5",  # Reserva una franja azul grisácea para números de línea.
+        "editor_linea_activa": "#edf3fa",  # Utiliza un azul extremadamente suave para la línea actual.
+        **SEMANTICOS_CLAROS,  # Utiliza versiones oscuras de los colores funcionales.
     },
     TEMA_CLARO_NIEBLA: {
-        "id": TEMA_CLARO_NIEBLA,  # Conserva un identificador estable.
-        "modo": MODO_CLARO,  # Agrupa esta variante dentro del modo claro.
-        "nombre": "Niebla",  # Presenta un nombre breve y reconocible.
-        "descripcion": "Tema claro grisáceo y menos brillante, pensado para reducir el predominio del blanco.",  # Explica su principal diferencia.
-        "fondo": "#e9edf2",  # Utiliza gris frío como fondo general.
-        "panel": "#f7f9fb",  # Utiliza un blanco grisáceo para superficies elevadas.
-        "editor": "#e2e7ed",  # Mantiene el editor distinguible sin hacerlo blanco puro.
-        "superficie": "#d5dce5",  # Utiliza gris azulado para los controles.
-        "superficie_suave": "#cdd6e0",  # Proporciona una transición suave.
-        "superficie_hover": "#c2ccd8",  # Oscurece los controles al colocar el cursor.
-        "superficie_presionada": "#adb9c7",  # Marca claramente el estado presionado.
-        "fondo_deshabilitado": "#e1e5ea",  # Mantiene componentes deshabilitados discretos.
-        "borde": "#cbd3dc",  # Define separadores suaves.
-        "borde_fuerte": "#9faab8",  # Define contornos visibles.
-        "borde_deshabilitado": "#c7ced7",  # Define bordes de componentes inactivos.
-        "texto": "#2e3440",  # Utiliza gris oscuro para el contenido principal.
-        "texto_secundario": "#626d7a",  # Utiliza gris medio para contenido secundario.
-        "texto_deshabilitado": "#929ca8",  # Define texto no disponible.
-        "texto_inverso": "#ffffff",  # Mantiene blanco sobre el acento oscuro.
-        "acento": "#5e81ac",  # Utiliza un azul grisáceo menos intenso.
-        "acento_hover": "#4c6f99",  # Oscurece el acento durante hover.
-        **SEMANTICOS_CLAROS,  # Mantiene el significado funcional con tonos adecuados para fondos claros.
+        "id": TEMA_CLARO_NIEBLA,  # Conserva un identificador estable propio.
+        "modo": MODO_CLARO,  # Agrupa la variante dentro del modo claro.
+        "nombre": "Niebla",  # Presenta un nombre breve.
+        "descripcion": "Tema claro grisáceo, menos brillante y con contraste suave entre superficies.",  # Explica su diferencia respecto a TecNet Claro.
+        "fondo": "#d7dde4",  # Utiliza gris frío claramente visible como fondo general.
+        "panel": "#eef2f6",  # Utiliza gris muy claro para tarjetas y paneles.
+        "editor": "#f8fafc",  # Evita blanco puro sin perder legibilidad.
+        "superficie": "#c6ced7",  # Define botones y pestañas mediante un gris claro reconocible.
+        "superficie_suave": "#bbc5d0",  # Añade otra capa visual entre controles.
+        "superficie_hover": "#abb7c3",  # Define claramente el hover.
+        "superficie_presionada": "#95a4b3",  # Marca el estado presionado.
+        "fondo_deshabilitado": "#dee3e8",  # Diferencia controles no disponibles.
+        "borde": "#b4bec8",  # Define separadores grises.
+        "borde_fuerte": "#7f8d9d",  # Define contornos claramente visibles.
+        "borde_deshabilitado": "#c3cbd3",  # Define contornos inactivos.
+        "texto": "#252c36",  # Utiliza gris carbón para el contenido principal.
+        "texto_secundario": "#505b68",  # Utiliza gris medio oscuro para explicaciones.
+        "texto_deshabilitado": "#818c98",  # Define contenido no disponible.
+        "texto_inverso": "#ffffff",  # Mantiene blanco sobre el acento.
+        "acento": "#55789f",  # Utiliza azul grisáceo como identidad.
+        "acento_hover": "#42678f",  # Oscurece el acento durante hover.
+        "editor_gutter": "#c3ccd6",  # Define una franja gris específica para números de línea.
+        "editor_linea_activa": "#e8ecf0",  # Define una línea activa extremadamente suave.
+        **SEMANTICOS_CLAROS,  # Utiliza colores semánticos legibles sobre gris claro.
     },
-}  # El catálogo contiene ahora temas completos de ambos modos.
+}  # Centraliza las cinco variantes actuales.
 
 
 def tema_existe(tema_id: str) -> bool:
-    return isinstance(tema_id, str) and tema_id in TEMAS  # Comprueba que el identificador pertenezca realmente al catálogo.
+    return isinstance(tema_id, str) and tema_id in TEMAS  # Acepta exclusivamente identificadores registrados.
 
 
 def modo_existe(modo_id: str) -> bool:
-    return isinstance(modo_id, str) and any(modo["id"] == modo_id for modo in MODOS)  # Comprueba que el modo solicitado se encuentre registrado.
+    return isinstance(modo_id, str) and any(modo["id"] == modo_id for modo in MODOS)  # Comprueba que el modo pertenezca al catálogo.
 
 
 def normalizar_tema(tema_id: str) -> str:
-    return tema_id if tema_existe(tema_id) else TEMA_PREDETERMINADO  # Recupera el tema seguro ante cualquier identificador desconocido.
+    return tema_id if tema_existe(tema_id) else TEMA_PREDETERMINADO  # Recupera TecNet oscuro ante una preferencia inválida.
 
 
 def obtener_tema(tema_id: str) -> dict:
-    return dict(TEMAS[normalizar_tema(tema_id)])  # Devuelve una copia para impedir modificaciones accidentales sobre el catálogo.
+    return dict(TEMAS[normalizar_tema(tema_id)])  # Devuelve una copia para proteger el catálogo global.
 
 
 def obtener_temas_disponibles() -> tuple[dict, ...]:
-    return tuple(dict(tema) for tema in TEMAS.values())  # Entrega copias siguiendo el mismo orden en que fueron declaradas.
+    return tuple(dict(tema) for tema in TEMAS.values())  # Entrega copias siguiendo el orden declarado.
 
 
 def obtener_temas_por_modo(modo: str) -> tuple[dict, ...]:
-    return tuple(dict(tema) for tema in TEMAS.values() if tema["modo"] == modo)  # Filtra exclusivamente las variantes pertenecientes al modo solicitado.
+    return tuple(dict(tema) for tema in TEMAS.values() if tema["modo"] == modo)  # Filtra únicamente las variantes del modo solicitado.
 
 
 def obtener_modos_disponibles() -> tuple[dict, ...]:
-    return tuple(dict(modo) for modo in MODOS)  # Entrega una copia segura de los modos que puede mostrar Configuración.
+    return tuple(dict(modo) for modo in MODOS)  # Entrega una copia segura de los modos disponibles.
 
 
 def modo_del_tema(tema_id: str) -> str:
-    return obtener_tema(tema_id)["modo"]  # Permite reconstruir automáticamente el selector Modo desde una única preferencia persistente.
+    return obtener_tema(tema_id)["modo"]  # Deriva el modo directamente desde una variante válida.
+
+
+def tema_es_claro(tema_id: str) -> bool:
+    return modo_del_tema(tema_id) == MODO_CLARO  # Permite consultar rápidamente si debe utilizarse una apariencia luminosa.
 
 
 def nombre_tema(tema_id: str) -> str:
-    return obtener_tema(tema_id)["nombre"]  # Recupera únicamente el nombre visible de una variante.
+    return obtener_tema(tema_id)["nombre"]  # Recupera solamente el nombre visible de una variante.
