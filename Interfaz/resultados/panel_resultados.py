@@ -313,12 +313,12 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         self.pestanas_salida = QTabWidget()  # Crea las subpestañas que contienen los diferentes resultados.
         self.tab_resumen = self._crear_resumen()  # Construye la vista rápida del análisis.
-        self.tab_analisis = self._crear_tab_analisis()  # Construye la salida léxica y sintáctica.
+        self.tab_analisis = self._crear_tab_analisis()  # Construye la salida léxica, sintáctica y semántica.
         self.tab_vlsm = self._crear_tab_vlsm()  # Construye la tabla VLSM junto con su panel compacto opcional de advertencias.
         self.tab_errores = self._crear_tab_errores()  # Construye la vista completa de errores y advertencias.
 
         self.pestanas_salida.addTab(self.tab_resumen, "Resumen")  # Agrega el resumen.
-        self.pestanas_salida.addTab(self.tab_analisis, "Análisis léxico-sintáctico")  # Agrega la salida técnica.
+        self.pestanas_salida.addTab(self.tab_analisis, "Análisis")  # Reúne las tres fases de análisis implementadas en la Unidad 1.
         self.pestanas_salida.addTab(self.tab_vlsm, "Tabla VLSM")  # Agrega los resultados de subneteo.
         self.pestanas_salida.addTab(self.tab_errores, "Errores / Advertencias")  # Agrega los diagnósticos completos.
 
@@ -490,27 +490,31 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self.estado_resumen.setObjectName("EstadoNeutral")  # Aplica el estilo inicial.
         diseno.addWidget(self.estado_resumen)  # Coloca el estado debajo del título.
 
-        cuadricula = QGridLayout()  # Organiza seis tarjetas de información.
+        cuadricula = QGridLayout()  # Organiza ocho tarjetas de información en dos filas.
         cuadricula.setHorizontalSpacing(10)  # Define la separación horizontal.
         cuadricula.setVerticalSpacing(10)  # Define la separación vertical.
 
         datos_tarjetas = [
             ("tokens", "Tokens reconocidos", "TarjetaTokens", "ValorTokens"),
-            ("bloques", "Bloques sintácticos", "TarjetaBloques", "ValorBloques"),
+            ("bloques_sintacticos", "Bloques sintácticos", "TarjetaBloques", "ValorBloques"),
+            ("bloques_semanticos", "Bloques semánticos", "TarjetaSemanticos", "ValorSemanticos"),
             ("subredes", "Subredes generadas", "TarjetaSubredes", "ValorSubredes"),
             ("errores_lexicos", "Errores léxicos", "TarjetaLexicos", "ValorLexicos"),
             ("errores_sintacticos", "Errores sintácticos", "TarjetaSintacticos", "ValorSintacticos"),
+            ("errores_semanticos", "Errores semánticos", "TarjetaSemanticos", "ValorSemanticos"),
             ("advertencias", "Advertencias", "TarjetaAdvertencias", "ValorAdvertencias"),
-        ]  # Define las seis métricas correspondientes al alcance actual.
+        ]  # Mantiene juntas las métricas de cada fase y deja las advertencias al final.
 
         posiciones = {
-            "tokens": (0, 0, 1, 2),
-            "bloques": (0, 2, 1, 2),
-            "subredes": (0, 4, 1, 2),
-            "errores_lexicos": (1, 0, 1, 2),
-            "errores_sintacticos": (1, 2, 1, 2),
-            "advertencias": (1, 4, 1, 2),
-        }  # Distribuye las tarjetas en dos filas equilibradas.
+            "tokens": (0, 0, 1, 1),
+            "bloques_sintacticos": (0, 1, 1, 1),
+            "bloques_semanticos": (0, 2, 1, 1),
+            "subredes": (0, 3, 1, 1),
+            "errores_lexicos": (1, 0, 1, 1),
+            "errores_sintacticos": (1, 1, 1, 1),
+            "errores_semanticos": (1, 2, 1, 1),
+            "advertencias": (1, 3, 1, 1),
+        }  # Distribuye las ocho tarjetas exactamente en el orden definido para el resumen.
 
         for clave, texto, nombre_tarjeta, nombre_valor in datos_tarjetas:
             tarjeta = QFrame()  # Crea el contenedor visual de la métrica.
@@ -521,6 +525,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             titulo_tarjeta = QLabel(texto)  # Muestra el nombre de la métrica.
             titulo_tarjeta.setObjectName("TituloTarjeta")  # Aplica el formato general de títulos.
             titulo_tarjeta.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Centra el texto.
+            titulo_tarjeta.setWordWrap(True)  # Evita recortes si una ventana más estrecha reduce el ancho de las cuatro columnas.
 
             valor_tarjeta = QLabel("0")  # Inicializa el valor en cero.
             valor_tarjeta.setObjectName(nombre_valor)  # Permite colorear individualmente la métrica.
@@ -533,8 +538,8 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             fila, columna, filas_ocupadas, columnas_ocupadas = posiciones[clave]  # Recupera la ubicación asignada.
             cuadricula.addWidget(tarjeta, fila, columna, filas_ocupadas, columnas_ocupadas)  # Inserta la tarjeta.
 
-        for columna in range(6):
-            cuadricula.setColumnStretch(columna, 1)  # Distribuye uniformemente todo el ancho disponible.
+        for columna in range(4):
+            cuadricula.setColumnStretch(columna, 1)  # Distribuye uniformemente las cuatro columnas.
 
         cuadricula.setRowStretch(0, 1)  # Permite expandir la primera fila.
         cuadricula.setRowStretch(1, 1)  # Permite expandir la segunda fila.
@@ -819,17 +824,22 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         )  # Lleva directamente al fragmento relacionado con la advertencia.
 
     def _mostrar_resumen(self, resultado: ResultadoCompilacion) -> None:
-        diagnosticos = resultado.diagnosticos  # Obtiene los diagnósticos combinados.
+        diagnosticos = resultado.diagnosticos  # Obtiene los diagnósticos combinados de todas las fases.
+        bloques_sintacticos = len(resultado.resultado_sintactico.bloques)  # Cuenta las instrucciones que superaron la gramática aunque después fallen semánticamente.
+        bloques_semanticos = len(resultado.resultado_semantico.bloques_validos) if resultado.resultado_semantico is not None else 0  # Cuenta únicamente los bloques aceptados por la fase semántica.
         errores_lexicos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Léxico" and diagnostico.severidad == "error")  # Cuenta errores léxicos.
         errores_sintacticos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Sintáctico" and diagnostico.severidad == "error")  # Cuenta errores sintácticos.
+        errores_semanticos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Semántico" and diagnostico.severidad == "error")  # Cuenta errores semánticos.
         cantidad_errores = sum(1 for diagnostico in diagnosticos if diagnostico.severidad == "error")  # Cuenta todos los errores actuales.
         cantidad_advertencias = sum(1 for diagnostico in diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta todas las advertencias.
 
         self.tarjetas_resumen["tokens"].setText(str(len(resultado.resultado_lexico.tokens)))  # Actualiza los tokens reconocidos.
-        self.tarjetas_resumen["bloques"].setText(str(len(resultado.bloques_validos)))  # Actualiza los bloques válidos.
-        self.tarjetas_resumen["subredes"].setText(str(len(resultado.subredes_vlsm)))  # Actualiza las subredes.
+        self.tarjetas_resumen["bloques_sintacticos"].setText(str(bloques_sintacticos))  # Actualiza los bloques aceptados por el parser.
+        self.tarjetas_resumen["bloques_semanticos"].setText(str(bloques_semanticos))  # Actualiza los bloques aceptados por la validación semántica.
+        self.tarjetas_resumen["subredes"].setText(str(len(resultado.subredes_vlsm)))  # Actualiza las subredes generadas.
         self.tarjetas_resumen["errores_lexicos"].setText(str(errores_lexicos))  # Actualiza los errores léxicos.
         self.tarjetas_resumen["errores_sintacticos"].setText(str(errores_sintacticos))  # Actualiza los errores sintácticos.
+        self.tarjetas_resumen["errores_semanticos"].setText(str(errores_semanticos))  # Actualiza los errores semánticos.
         self.tarjetas_resumen["advertencias"].setText(str(cantidad_advertencias))  # Actualiza las advertencias.
 
         if cantidad_errores > 0:
@@ -851,9 +861,10 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
             self.estado_resumen.setObjectName("EstadoCorrecto")  # Utiliza verde para compilaciones completamente limpias.
             self.estado_resumen.setText(
                 f"Análisis completo | "
-                f"Bloques válidos: {len(resultado.bloques_validos)} | "
+                f"Bloques sintácticos: {bloques_sintacticos} | "
+                f"Bloques semánticos: {bloques_semanticos} | "
                 f"Subredes generadas: {len(resultado.subredes_vlsm)}"
-            )  # Resume una compilación completamente limpia.
+            )  # Resume una compilación completamente limpia distinguiendo ambas fases.
 
         self.estado_resumen.style().unpolish(self.estado_resumen)  # Retira temporalmente el estilo anterior.
         self.estado_resumen.style().polish(self.estado_resumen)  # Aplica el estilo correspondiente al nuevo estado.
@@ -871,32 +882,60 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         else:
             lineas.append("No se reconocieron tokens.")  # Informa que el lexer no produjo elementos.
 
-        lineas.extend(["", "=== ANÁLISIS SINTÁCTICO ===", ""])  # Separa claramente ambas fases.
+        lineas.extend(["", "=== ANÁLISIS SINTÁCTICO ===", ""])  # Abre la segunda fase del análisis.
 
-        if resultado.bloques_validos:
-            for indice, bloque in enumerate(resultado.bloques_validos, start=1):
+        if resultado.resultado_sintactico.bloques:
+            for indice, bloque in enumerate(resultado.resultado_sintactico.bloques, start=1):
                 nombre = bloque.nombre or "Sin nombre"  # Utiliza una etiqueta comprensible cuando NAME no existe.
-                lineas.append(f"Red #{indice}:")  # Identifica cada bloque válido.
-                lineas.append(f"  IP: {bloque.direccion_ip}")  # Muestra la IP reconocida.
-                lineas.append(f"  Máscara: {bloque.mascara_subred}")  # Muestra la máscara.
+                lineas.append(f"Red #{indice}:")  # Identifica cada bloque aceptado por la gramática.
+                lineas.append(f"  IP: {bloque.direccion_ip}")  # Muestra la IP reconocida por el parser.
+                lineas.append(f"  Máscara: {bloque.mascara_subred}")  # Muestra la máscara reconocida.
                 lineas.append(f"  Hosts requeridos: {bloque.cantidades_hosts}")  # Muestra la lista de hosts.
                 lineas.append(f"  Nombre: {nombre}")  # Muestra el nombre opcional.
                 lineas.append("")  # Separa visualmente cada bloque.
         else:
-            lineas.append("No se encontraron bloques sintácticamente válidos.")  # Informa que ninguna instrucción cumplió la gramática.
+            lineas.append("No se encontraron bloques sintácticamente válidos.")  # Informa que ninguna instrucción superó la gramática.
 
-        cantidad_errores = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad == "error")  # Cuenta errores actuales.
-        cantidad_advertencias = sum(1 for diagnostico in resultado.diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta recomendaciones.
+        lineas.extend(["", "=== ANÁLISIS SEMÁNTICO ===", ""])  # Abre explícitamente la tercera fase implementada en la Unidad 1.
 
-        lineas.append("=== RESUMEN ===")  # Agrega la síntesis final.
+        resultado_semantico = resultado.resultado_semantico  # Recupera una referencia corta a la salida semántica.
+
+        if resultado_semantico is None:
+            lineas.append("El análisis semántico no fue ejecutado.")  # Mantiene compatibilidad con resultados antiguos que todavía no incluyan esta fase.
+        elif resultado_semantico.bloques_validos:
+            for indice, bloque in enumerate(resultado_semantico.bloques_validos, start=1):
+                nombre = bloque.nombre or "Sin nombre"  # Utiliza la misma identificación presentada en la fase sintáctica.
+                lineas.append(f"Red #{indice}:")  # Identifica cada bloque que superó las reglas semánticas.
+                lineas.append(f"  IP: {bloque.direccion_ip}")  # Conserva la dirección validada.
+                lineas.append(f"  Máscara: {bloque.mascara_subred}")  # Conserva el prefijo validado.
+                lineas.append(f"  Hosts requeridos: {bloque.cantidades_hosts}")  # Conserva las cantidades aceptadas por la fase.
+                lineas.append(f"  Nombre: {nombre}")  # Conserva NAME cuando fue utilizado.
+                lineas.append("  Estado: Semánticamente válido")  # Explica por qué el bloque aparece en esta sección.
+                lineas.append("")  # Separa visualmente cada resultado semántico.
+        else:
+            lineas.append("No se encontraron bloques semánticamente válidos.")  # Informa que la fase fue ejecutada pero ningún bloque superó sus reglas.
+
+        diagnosticos = resultado.diagnosticos  # Reutiliza la colección combinada para construir la síntesis final.
+        cantidad_errores = sum(1 for diagnostico in diagnosticos if diagnostico.severidad == "error")  # Cuenta errores actuales.
+        cantidad_advertencias = sum(1 for diagnostico in diagnosticos if diagnostico.severidad in ("warning", "advertencia"))  # Cuenta recomendaciones.
+        errores_lexicos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Léxico" and diagnostico.severidad == "error")  # Separa errores de la primera fase.
+        errores_sintacticos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Sintáctico" and diagnostico.severidad == "error")  # Separa errores del parser.
+        errores_semanticos = sum(1 for diagnostico in diagnosticos if diagnostico.categoria == "Semántico" and diagnostico.severidad == "error")  # Separa errores de significado.
+        bloques_semanticos = len(resultado_semantico.bloques_validos) if resultado_semantico is not None else 0  # Cuenta únicamente los bloques aceptados por semántica.
+
+        lineas.extend(["", "=== RESUMEN ==="])  # Agrega la síntesis después de mostrar las tres fases.
         lineas.append(f"Tokens reconocidos: {len(resultado.resultado_lexico.tokens)}")  # Resume tokens.
-        lineas.append(f"Bloques sintácticamente válidos: {len(resultado.bloques_validos)}")  # Resume bloques.
+        lineas.append(f"Bloques sintácticamente válidos: {len(resultado.resultado_sintactico.bloques)}")  # Resume la salida del parser.
+        lineas.append(f"Bloques semánticamente válidos: {bloques_semanticos}")  # Resume la salida de la tercera fase.
         lineas.append(f"Subredes generadas: {len(resultado.subredes_vlsm)}")  # Resume VLSM.
-        lineas.append(f"Errores encontrados: {cantidad_errores}")  # Resume errores.
+        lineas.append(f"Errores léxicos: {errores_lexicos}")  # Resume problemas de tokenización.
+        lineas.append(f"Errores sintácticos: {errores_sintacticos}")  # Resume problemas gramaticales.
+        lineas.append(f"Errores semánticos: {errores_semanticos}")  # Resume problemas de significado.
+        lineas.append(f"Errores encontrados: {cantidad_errores}")  # Conserva también el total global para posibles errores generales.
         lineas.append(f"Advertencias encontradas: {cantidad_advertencias}")  # Resume advertencias.
-        lineas.append(f"Diagnósticos totales: {len(resultado.diagnosticos)}")  # Conserva el total general.
+        lineas.append(f"Diagnósticos totales: {len(diagnosticos)}")  # Conserva el total general.
 
-        self.texto_analisis.setPlainText("\n".join(lineas))  # Muestra el reporte completo.
+        self.texto_analisis.setPlainText("\n".join(lineas))  # Muestra en una sola vista las tres fases de análisis y su resumen.
 
     def _mostrar_tokens(self, resultado: ResultadoCompilacion) -> None:
         self.tabla_tokens.clearSpans()  # Elimina agrupaciones anteriores.

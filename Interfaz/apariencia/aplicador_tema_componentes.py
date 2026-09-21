@@ -162,6 +162,30 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
         contador = getattr(panel, "contador_advertencias_vlsm", None)  # Recupera el contador compacto.
         if contador is not None: contador.setStyleSheet(f"color: {self.paleta['advertencia']}; font-weight: 700;")  # Evita conservar un color propio del modo oscuro.
 
+        for tarjeta_semantica in panel.findChildren(QFrame, "TarjetaSemanticos"):
+            tarjeta_semantica.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que las nuevas tarjetas semánticas pinten su fondo y contorno.
+            tarjeta_semantica.setStyleSheet(
+                f"""
+                QFrame#TarjetaSemanticos {{
+                    background-color: {self.paleta["panel"]};
+                    border: 1px solid {self.paleta["semantico"]};
+                    border-radius: 8px;
+                }}
+                """
+            )  # Utiliza el violeta semántico del tema para Bloques semánticos y Errores semánticos.
+
+        for valor_semantico in panel.findChildren(QLabel, "ValorSemanticos"):
+            valor_semantico.setStyleSheet(
+                f"""
+                QLabel#ValorSemanticos {{
+                    background-color: transparent;
+                    color: {self.paleta["semantico"]};
+                    font-size: 22pt;
+                    font-weight: bold;
+                }}
+                """
+            )  # Mantiene el contador semántico coherente con la paleta activa.
+
     # ========================================================
     # Diagnósticos
     # ========================================================
@@ -518,123 +542,404 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
     # ========================================================
 
     def _aplicar_ventana_advertencias(self, ventana) -> None:
-        p = self.paleta  # Recupera la paleta vigente.
-        ruta_advertencia = resolver_icono_tema("Advertencia.png", self.tema_id)  # Recupera automáticamente la variante oscura o clara del icono de advertencia.
-        if ruta_advertencia.exists(): ventana.setWindowIcon(QIcon(str(ruta_advertencia)))  # Actualiza también el icono del diálogo.
+        p = self.paleta  # Recupera la paleta vigente para adaptar todos los elementos al tema activo.
 
-        marco = getattr(ventana, "marco", None)  # Recupera la superficie visible.
+        tiene_errores = bool(getattr(ventana, "errores", []))  # Comprueba si la compilación contiene al menos un error bloqueante.
+        nombre_icono = "Error.png" if tiene_errores else "Advertencia.png"  # Da prioridad visual al error cuando ambos tipos existen.
+        ruta_diagnostico = resolver_icono_tema(nombre_icono, self.tema_id)  # Recupera el recurso apropiado desde Comunes, Oscuro o Claro.
+
+        if ruta_diagnostico.exists():
+            ventana.setWindowIcon(QIcon(str(ruta_diagnostico)))  # Sincroniza también el icono utilizado por la ventana independiente.
+
+        marco = getattr(ventana, "marco", None)  # Recupera la superficie exterior visible del diálogo.
+
         if marco is not None:
-            marco.setStyleSheet(f"""
+            marco.setStyleSheet(
+                f"""
                 QFrame#MarcoVentanaAdvertencias {{
                     background-color: {p["fondo"]};
                     border: 1px solid {p["borde_fuerte"]};
                     border-radius: 14px;
                 }}
+                """
+            )  # Mantiene únicamente la estructura exterior; cada tarjeta recibe después su tratamiento individual.
 
+        pestanas = getattr(ventana, "pestanas_diagnosticos", None)  # Recupera las pestañas que seleccionan Errores o Advertencias.
+
+        if pestanas is not None:
+            pestanas.setStyleSheet(
+                """
+                QTabWidget#PestanasDiagnosticosIndependientes {
+                    background-color: transparent;
+                    border: none;
+                }
+
+                QTabWidget#PestanasDiagnosticosIndependientes::pane {
+                    background-color: transparent;
+                    border: none;
+                    top: -1px;
+                }
+
+                QWidget#PaginaDiagnosticosIndependientes {
+                    background-color: transparent;
+                    border: none;
+                }
+                """
+            )  # Elimina completamente el antiguo rectángulo del QTabWidget para que el marco interior sea quien dibuje las esquinas.
+
+        for contenedor in ventana.findChildren(
+            QFrame,
+            "ContenedorDiagnosticosIndependientes",
+        ):
+            contenedor.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Garantiza que el marco pinte realmente su fondo y sus cuatro esquinas.
+
+            contenedor.setStyleSheet(
+                f"""
+                QFrame#ContenedorDiagnosticosIndependientes {{
+                    background-color: {p["fondo"]};
+                    border: 1px solid {p["borde_fuerte"]};
+                    border-top-left-radius: 0px;
+                    border-top-right-radius: 13px;
+                    border-bottom-right-radius: 13px;
+                    border-bottom-left-radius: 13px;
+                }}
+                """
+            )  # Convierte cada pestaña en un contenedor independiente completamente redondeado.
+        
+        # ====================================================
+        # Tarjetas de advertencia
+        # ====================================================
+
+        for tarjeta in ventana.findChildren(QFrame, "TarjetaAdvertenciaIndependiente"):
+            tarjeta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Obliga a Qt a pintar realmente fondo, borde y esquinas redondeadas.
+
+            tarjeta.setStyleSheet(
+                f"""
                 QFrame#TarjetaAdvertenciaIndependiente {{
                     background-color: {p["panel"]};
                     border: 1px solid {p["borde_fuerte"]};
-                    border-radius: 8px;
+                    border-radius: 10px;
                 }}
 
                 QFrame#TarjetaAdvertenciaIndependiente:hover {{
                     background-color: {p["superficie_suave"]};
                     border: 1px solid {p["advertencia"]};
+                    border-radius: 10px;
+                }}
+                """
+            )  # Conserva exactamente el comportamiento amarillo existente de las advertencias.
+
+        # ====================================================
+        # Tarjetas de error
+        # ====================================================
+
+        for tarjeta in ventana.findChildren(QFrame, "TarjetaErrorIndependiente"):
+            tarjeta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Garantiza que la tarjeta de error pinte correctamente su superficie y contorno.
+
+            diagnostico = getattr(tarjeta, "diagnostico", None)  # Recupera el error asociado para determinar su color formal.
+            color_error = color_diagnostico_tema(p, diagnostico).name()  # Utiliza rojo, naranja, violeta u otro color según la categoría real.
+
+            tarjeta.setStyleSheet(
+                f"""
+                QFrame#TarjetaErrorIndependiente {{
+                    background-color: {p["panel"]};
+                    border: 1px solid {p["borde_fuerte"]};
+                    border-radius: 10px;
                 }}
 
-                QFrame#TarjetaAdvertenciaIndependiente QLabel {{
-                    background-color: transparent;
-                    border: none;
-                    border-radius: 0px;
-                    padding: 2px 5px;
+                QFrame#TarjetaErrorIndependiente:hover {{
+                    background-color: {p["superficie_suave"]};
+                    border: 1px solid {color_error};
+                    border-radius: 10px;
                 }}
+                """
+            )  # Mantiene una superficie común y utiliza la categoría del diagnóstico como color de interacción.
 
-                QLabel#CodigoAdvertenciaIndependiente,
-                QLabel#UbicacionAdvertenciaIndependiente,
-                QLabel#TituloCampoAdvertenciaIndependiente,
-                QLabel#TextoAdvertenciaIndependiente {{
-                    border-radius: 6px;
-                    padding: 6px 10px;
-                }}
+            for etiqueta in tarjeta.findChildren(QLabel, "CodigoErrorIndependiente"):
+                etiqueta.setAttribute(
+                    Qt.WidgetAttribute.WA_StyledBackground,
+                    True,
+                )  # Fuerza el fondo del código a respetar realmente las cuatro esquinas.
 
+                etiqueta.setStyleSheet(
+                    f"""
+                    QLabel#CodigoErrorIndependiente {{
+                        background-color: {p["superficie"]};
+                        color: {color_error};
+                        border: 1px solid {color_error};
+                        border-radius: 8px;
+                        padding: 6px 10px;
+                        font-size: 11pt;
+                        font-weight: bold;
+                    }}
+                    """
+                )  # Colorea el código de acuerdo con su categoría formal.
+
+        # ====================================================
+        # Código de advertencias
+        # ====================================================
+
+        for etiqueta in ventana.findChildren(QLabel, "CodigoAdvertenciaIndependiente"):
+            etiqueta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Garantiza que el fondo amarillo conserve las cuatro esquinas redondeadas.
+
+            etiqueta.setStyleSheet(
+                f"""
                 QLabel#CodigoAdvertenciaIndependiente {{
                     background-color: {p["superficie"]};
                     color: {p["advertencia"]};
                     border: 1px solid {p["advertencia"]};
+                    border-radius: 8px;
+                    padding: 6px 10px;
                     font-size: 11pt;
                     font-weight: bold;
                 }}
+                """
+            )  # Mantiene el tratamiento actual de ADV sin modificar su identidad visual.
 
-                QLabel#UbicacionAdvertenciaIndependiente {{
+        # ====================================================
+        # Labels compartidos entre errores y advertencias
+        # ====================================================
+
+        for etiqueta in ventana.findChildren(QLabel, "UbicacionDiagnosticoIndependiente"):
+            etiqueta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Permite dibujar correctamente el fondo redondeado de Línea y columna.
+
+            etiqueta.setStyleSheet(
+                f"""
+                QLabel#UbicacionDiagnosticoIndependiente {{
                     background-color: {p["superficie"]};
                     color: {p["texto_secundario"]};
                     border: 1px solid {p["borde_fuerte"]};
+                    border-radius: 8px;
+                    padding: 6px 10px;
                     font-weight: 600;
                 }}
+                """
+            )  # Recupera el recuadro secundario que existía en Advertencias y lo comparte con Errores.
 
-                QLabel#TituloCampoAdvertenciaIndependiente {{
+        for etiqueta in ventana.findChildren(QLabel, "TituloCampoDiagnosticoIndependiente"):
+            etiqueta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Hace que Mensaje y Solución tengan un fondo realmente redondeado.
+
+            etiqueta.setStyleSheet(
+                f"""
+                QLabel#TituloCampoDiagnosticoIndependiente {{
                     background-color: {p["superficie"]};
                     color: {p["texto"]};
                     border: 1px solid {p["borde"]};
+                    border-radius: 8px;
+                    padding: 6px 10px;
                     font-weight: bold;
                 }}
+                """
+            )  # Mantiene Mensaje y Solución claramente separados del contenido.
 
-                QLabel#TextoAdvertenciaIndependiente {{
+        for etiqueta in ventana.findChildren(QLabel, "TextoDiagnosticoIndependiente"):
+            etiqueta.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Obliga al texto descriptivo a recortar su fondo con las cuatro esquinas.
+
+            etiqueta.setStyleSheet(
+                f"""
+                QLabel#TextoDiagnosticoIndependiente {{
                     background-color: {p["superficie_suave"]};
                     color: {p["texto"]};
                     border: 1px solid {p["borde"]};
+                    border-radius: 8px;
+                    padding: 7px 10px;
+                    font-weight: normal;
                 }}
+                """
+            )  # Recupera el fondo diferenciado del mensaje y la solución sin alterar su contenido.
 
-                QScrollArea#AreaAdvertenciasIndependientes {{
-                    background-color: {p["fondo"]};
+        # ====================================================
+        # Áreas desplazables de ambas pestañas
+        # ====================================================
+
+        for area in ventana.findChildren(
+            QScrollArea,
+            "AreaDiagnosticosIndependientes",
+        ):
+            area.setAttribute(
+                Qt.WidgetAttribute.WA_StyledBackground,
+                True,
+            )  # Permite controlar completamente la superficie del scroll.
+
+            area.setStyleSheet(
+                f"""
+                QScrollArea#AreaDiagnosticosIndependientes {{
+                    background-color: transparent;
                     border: none;
                 }}
 
-                QScrollArea#AreaAdvertenciasIndependientes > QWidget > QWidget {{
-                    background-color: {p["fondo"]};
+                QScrollArea#AreaDiagnosticosIndependientes > QWidget > QWidget {{
+                    background-color: transparent;
+                    border: none;
                 }}
-            """)  # Recupera deliberadamente el aspecto de tarjeta con borde que existía originalmente en el modo oscuro.
 
-        for tarjeta in ventana.findChildren(QFrame, "TarjetaAdvertenciaIndependiente"):
-            tarjeta.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que la tarjeta pinte su contorno aunque el área desplazable tenga un stylesheet propio.
-            tarjeta.setStyleSheet(f"""
-                QFrame#TarjetaAdvertenciaIndependiente {{ background-color: {p["panel"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 8px; }}
-                QFrame#TarjetaAdvertenciaIndependiente:hover {{ background-color: {p["superficie_suave"]}; border: 1px solid {p["advertencia"]}; }}
-            """)  # Aplica el borde directamente sobre cada tarjeta para que sea visible tanto en oscuro como en claro.
+                QScrollBar:vertical {{
+                    background-color: transparent;
+                    width: 10px;
+                    margin: 7px 1px 7px 1px;
+                    border: none;
+                }}
 
-        estilos_labels = {
-            "CodigoAdvertenciaIndependiente": (p["superficie"], p["advertencia"], "bold"),  # Conserva el código destacado mediante el color semántico de advertencia.
-            "UbicacionAdvertenciaIndependiente": (p["superficie"], p["texto_secundario"], "600"),  # Mantiene la ubicación como información secundaria claramente delimitada.
-            "TituloCampoAdvertenciaIndependiente": (p["superficie"], p["texto"], "bold"),  # Presenta Mensaje y Solución como encabezados internos compactos.
-            "TextoAdvertenciaIndependiente": (p["superficie_suave"], p["texto"], "normal"),  # Conserva el contenido sobre una superficie ligeramente diferenciada.
-        }  # Centraliza los cuatro tratamientos internos para evitar reglas inconsistentes entre temas.
-        for nombre, (fondo, color, peso) in estilos_labels.items():
-            for etiqueta in ventana.findChildren(QLabel, nombre):
-                etiqueta.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Fuerza a Qt a recortar el fondo utilizando realmente el radio indicado.
-                etiqueta.setStyleSheet(f"QLabel#{nombre} {{ background-color: {fondo}; color: {color}; border: none; border-radius: 7px; padding: 6px 10px; font-weight: {peso}; }}")  # Aplica el fondo redondeado directamente al QLabel para que una regla heredada no vuelva a cuadrarlo.
+                QScrollBar::handle:vertical {{
+                    background-color: {p["superficie_hover"]};
+                    min-height: 34px;
+                    border: none;
+                    border-radius: 5px;
+                }}
 
-        area = getattr(ventana, "area_desplazamiento", None)  # Recupera el viewport interno.
-        if area is not None: area.viewport().setStyleSheet(f"background-color: {p['fondo']}; border: none;")  # Evita restos de otro tema.
+                QScrollBar::handle:vertical:hover {{
+                    background-color: {p["superficie_presionada"]};
+                }}
 
-        barra = getattr(ventana, "barra_titulo", None)  # Recupera la cabecera.
+                QScrollBar::handle:vertical:pressed {{
+                    background-color: {p["acento"]};
+                }}
+
+                QScrollBar::add-line:vertical,
+                QScrollBar::sub-line:vertical {{
+                    background-color: transparent;
+                    border: none;
+                    height: 0px;
+                }}
+
+                QScrollBar::add-page:vertical,
+                QScrollBar::sub-page:vertical {{
+                    background-color: transparent;
+                    border: none;
+                }}
+                """
+            )  # Elimina flechas y cuadrados de la scrollbar y conserva únicamente una barra vertical redondeada.
+
+            area.viewport().setAutoFillBackground(False)  # Impide que el viewport pinte un rectángulo sobre las esquinas.
+            area.viewport().setStyleSheet(
+                "background-color: transparent; border: none;"
+            )  # Hace completamente transparente la zona de visualización.
+
+            contenido = area.widget()  # Recupera la lista real de tarjetas.
+
+            if contenido is not None:
+                contenido.setAttribute(
+                    Qt.WidgetAttribute.WA_StyledBackground,
+                    True,
+                )  # Permite que el contenido utilice transparencia real.
+
+                contenido.setStyleSheet(
+                    "background-color: transparent; border: none;"
+                )  # Evita cualquier rectángulo interior capaz de tapar el marco redondeado.
+
+        # ====================================================
+        # Barra superior
+        # ====================================================
+
+        barra = getattr(ventana, "barra_titulo", None)  # Recupera la cabecera personalizada.
+
         if barra is not None:
-            contenedor = barra.parentWidget()  # Recupera la superficie exterior.
-            if contenedor is not None: contenedor.setStyleSheet(f"background-color: {p['panel']}; border: none; border-top-left-radius: 13px; border-top-right-radius: 13px;")  # Adapta la cabecera.
+            contenedor = barra.parentWidget()  # Recupera la superficie exterior que rodea la barra.
 
-            barra.setStyleSheet("QWidget#BarraTitulo { background-color: transparent; border: none; } QLabel { background-color: transparent; border: none; } QLabel#TituloBarra { background-color: transparent; border: none; }")  # Mantiene transparentes sus componentes.
-            if ruta_advertencia.exists(): barra.etiqueta_icono.setPixmap(QPixmap(str(ruta_advertencia)).scaled(18, 18, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))  # Adapta el icono pequeño.
+            if contenedor is not None:
+                contenedor.setStyleSheet(
+                    f"""
+                    background-color: {p["panel"]};
+                    border: none;
+                    border-top-left-radius: 13px;
+                    border-top-right-radius: 13px;
+                    """
+                )  # Mantiene la cabecera integrada con el marco exterior.
+
+            barra.setStyleSheet(
+                """
+                QWidget#BarraTitulo {
+                    background-color: transparent;
+                    border: none;
+                }
+
+                QLabel {
+                    background-color: transparent;
+                    border: none;
+                }
+
+                QLabel#TituloBarra {
+                    background-color: transparent;
+                    border: none;
+                }
+                """
+            )  # Evita que los labels de la barra reciban por accidente los fondos utilizados dentro de las tarjetas.
+
+            if ruta_diagnostico.exists():
+                barra.etiqueta_icono.setPixmap(
+                    QPixmap(str(ruta_diagnostico)).scaled(
+                        18,
+                        18,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )  # Muestra Error cuando existe alguno y Advertencia cuando solamente existen avisos.
 
             if barra.boton_cerrar is not None:
-                barra.boton_cerrar.setStyleSheet("""
-                    QPushButton#BotonCerrarAdvertencias { background-color: transparent; border: none; border-top-right-radius: 12px; padding: 0px; }
-                    QPushButton#BotonCerrarAdvertencias:hover { background-color: #c42b1c; border: none; border-top-right-radius: 12px; }
-                    QPushButton#BotonCerrarAdvertencias:pressed { background-color: #a52016; border: none; border-top-right-radius: 12px; }
-                """)  # Conserva el comportamiento rojo de cierre.
+                barra.boton_cerrar.setStyleSheet(
+                    """
+                    QPushButton#BotonCerrarAdvertencias {
+                        background-color: transparent;
+                        border: none;
+                        border-top-right-radius: 12px;
+                        padding: 0px;
+                    }
+
+                    QPushButton#BotonCerrarAdvertencias:hover {
+                        background-color: #c42b1c;
+                        border: none;
+                        border-top-right-radius: 12px;
+                    }
+
+                    QPushButton#BotonCerrarAdvertencias:pressed {
+                        background-color: #a52016;
+                        border: none;
+                        border-top-right-radius: 12px;
+                    }
+                    """
+                )  # Conserva rojo exclusivamente para la acción de cierre.
+
+        # ====================================================
+        # Pie
+        # ====================================================
 
         pie = ventana.findChild(QFrame, "PieVentanaAdvertencias")  # Recupera la región inferior.
-        if pie is not None: pie.setStyleSheet(f"QFrame#PieVentanaAdvertencias {{ background-color: {p['panel']}; border: none; border-top: 1px solid {p['borde_fuerte']}; border-bottom-left-radius: 13px; border-bottom-right-radius: 13px; }}")  # Conserva una separación visible.
 
-        self._aplicar_separadores_un_pixel(ventana)  # Corrige la línea bajo la barra.
+        if pie is not None:
+            pie.setStyleSheet(
+                f"""
+                QFrame#PieVentanaAdvertencias {{
+                    background-color: {p["panel"]};
+                    border: none;
+                    border-top: 1px solid {p["borde_fuerte"]};
+                    border-bottom-left-radius: 13px;
+                    border-bottom-right-radius: 13px;
+                }}
+                """
+            )  # Conserva el pie visualmente unido con la ventana.
+
+        self._aplicar_separadores_un_pixel(ventana)  # Corrige finalmente la línea divisoria bajo la barra.
 
     # ========================================================
     # Selector de Media pantalla
