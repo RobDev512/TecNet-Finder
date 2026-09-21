@@ -14,6 +14,11 @@
 # También detecta palabras reservadas escritas con mayúsculas
 # incorrectas y elementos numéricos unidos directamente a texto.
 #
+# Una dirección IPv4 se reconoce léxicamente por su estructura
+# de cuatro componentes numéricos separados por puntos.
+# La validez numérica de sus octetos se comprueba después en
+# el análisis semántico mediante SEM-007.
+#
 # Esta fase no comprueba todavía la estructura completa de una
 # instrucción; esa responsabilidad pertenece al sintáctico.
 # ============================================================
@@ -26,8 +31,8 @@ from Motor.compilacion.modelos import ResultadoLexico, Token  # Proporciona las 
 
 class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una secuencia ordenada de tokens.
     def __init__(self):  # Prepara una sola vez todos los patrones empleados durante el reconocimiento léxico.
-        octeto = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"  # Reconoce individualmente un octeto IPv4 válido entre 0 y 255.
-        direccion_ip = rf"\b{octeto}\.{octeto}\.{octeto}\.{octeto}\b"  # Construye el patrón utilizado para reconocer una dirección IPv4 completa.
+        octeto = r"(?:0|[1-9]\d*)"  # Reconoce la forma numérica de un octeto sin limitar todavía su valor a 255; esa validación corresponde al análisis semántico.
+        direccion_ip = rf"\b{octeto}\.{octeto}\.{octeto}\.{octeto}\b"  # Reconoce estructuralmente una IPv4 formada por exactamente cuatro componentes numéricos separados por puntos.
         reservada_mayusculas_incorrectas = (  # Agrupa las variantes de palabras reservadas cuya escritura no coincide con la forma oficial.
             r"(?i:\bIP(?=\s|\d|$)|"  # Reconoce cualquier combinación de mayúsculas o minúsculas equivalente con IP.
             r"\bMASK(?=\s|/|$)|"  # Reconoce cualquier combinación equivalente con MASK.
@@ -97,7 +102,7 @@ class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una s
                             longitud=len(texto),  # Permite resaltar visualmente toda la palabra incorrecta.
                             fragmento=texto,  # Conserva el texto original que produjo el diagnóstico.
                         )
-                    )  # Agrega el error sin detener el resto del análisis léxico.
+                    )
 
                     if forma_correcta == "NAME":  # Comprueba si la palabra incorrecta correspondía con NAME.
                         tipo_anterior = "NAME"  # Permite que el identificador posterior no produzca además un LEX-001 innecesario.
@@ -114,7 +119,7 @@ class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una s
                             longitud=len(texto),  # Permite marcar visualmente el fragmento completo.
                             fragmento=texto,  # Guarda exactamente el texto unido que causó el error.
                         )
-                    )  # Incorpora el diagnóstico a la colección de resultados.
+                    )
 
                     break  # Evita interpretar partes internas del mismo lexema como tokens independientes.
 
@@ -132,7 +137,7 @@ class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una s
                                 longitud=len(texto),  # Permite resaltar toda la palabra dentro del editor.
                                 fragmento=texto,  # Conserva el identificador original para mostrarlo en el diagnóstico.
                             )
-                        )  # Registra el error sin convertir el identificador incorrecto en un token válido.
+                        )
 
                     break  # Termina el tratamiento especial del identificador actual.
 
@@ -154,7 +159,7 @@ class AnalizadorLexico:  # Convierte el código fuente de TecNet Finder en una s
                     longitud=len(fragmento),  # Permite resaltar todo el elemento incorrecto.
                     fragmento=fragmento,  # Guarda el texto original que provocó el diagnóstico.
                 )
-            )  # Añade el error genérico sin finalizar prematuramente el análisis.
+            )
             texto_restante = texto_restante[len(fragmento):]  # Descarta el fragmento desconocido para continuar buscando tokens posteriores.
             columna_actual += len(fragmento)  # Mantiene sincronizada la posición después de retirar el elemento inválido.
 

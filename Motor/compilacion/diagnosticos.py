@@ -13,14 +13,14 @@
 # esa información repetida en distintas partes del proyecto.
 #
 # Actualmente se encuentran disponibles los diagnósticos
-# LEX-001 a LEX-004, SIN-001 a SIN-008, SEM-001 a SEM-006,
-# ADV-001 a ADV-008 y GEN-001.
+# LEX-001 a LEX-004, SIN-001 a SIN-008, SEM-001 a SEM-009,
+# ADV-001 a ADV-009 y GEN-001.
 # ============================================================
 
-from dataclasses import dataclass  # Proporciona la estructura utilizada para representar cada diagnóstico de manera organizada.
+from dataclasses import dataclass  # Proporciona la estructura utilizada para representar cada diagnóstico de manera organizada e inmutable.
 
 
-ESTADO_DIAGNOSTICO_DISPONIBLE = "disponible"  # Identifica códigos que la versión actual ya puede producir y comprobar.
+ESTADO_DIAGNOSTICO_DISPONIBLE = "disponible"  # Identifica los códigos que la versión actual ya puede producir y comprobar.
 ESTADO_DIAGNOSTICO_PENDIENTE = "pendiente"  # Reserva un estado común para diagnósticos pertenecientes a etapas futuras.
 
 
@@ -33,7 +33,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Marca este diagnóstico como bloqueante para la parte afectada de la entrada.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Indica que el lexer actual ya puede producir este código.
         "etapa": "Base LyAI",  # Conserva la etapa del proyecto donde se incorporó originalmente.
-    },
+    },  # Finaliza LEX-001.
     "LEX-002": {  # Describe símbolos o fragmentos que no pertenecen al lenguaje.
         "categoria": "Léxico",  # Clasifica el problema dentro del reconocimiento de lexemas.
         "nombre": "Símbolo o fragmento no reconocido",  # Proporciona un título breve para la interfaz.
@@ -42,7 +42,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide considerar completamente correcta la entrada afectada.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla se encuentra implementada.
         "etapa": "Base LyAI",  # Señala que pertenece a la base heredada de Lenguajes y Autómatas I.
-    },
+    },  # Finaliza LEX-002.
     "LEX-003": {  # Describe palabras reservadas escritas con capitalización distinta de la oficial.
         "categoria": "Léxico",  # Mantiene la validación dentro del reconocimiento de tokens.
         "nombre": "Palabra reservada con mayúsculas incorrectas",  # Resume de forma visible el problema.
@@ -51,7 +51,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Considera incorrecta la palabra reservada escrita con otra capitalización.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la validación se encuentra activa.
         "etapa": "Refuerzo LyAII",  # Identifica que esta comprobación fue reforzada durante Lenguajes y Autómatas II.
-    },
+    },  # Finaliza LEX-003.
     "LEX-004": {  # Describe valores numéricos escritos directamente junto con texto.
         "categoria": "Léxico",  # Clasifica el problema antes de la validación gramatical.
         "nombre": "Elemento numérico unido a texto",  # Proporciona un nombre breve para el diagnóstico.
@@ -60,7 +60,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Considera inválido el lexema unido.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla ya forma parte del lexer.
         "etapa": "Refuerzo LyAII",  # Registra que esta comprobación pertenece al refuerzo actual del compilador.
-    },
+    },  # Finaliza LEX-004.
     "SIN-001": {  # Describe una dirección IPv4 incompleta o estructuralmente incorrecta después de IP.
         "categoria": "Sintáctico",  # Relaciona este código con la validación gramatical.
         "nombre": "Dirección IP incompleta o mal formada",  # Proporciona el título utilizado en los resultados.
@@ -69,7 +69,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide construir correctamente el bloque afectado.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el parser puede producir este diagnóstico.
         "etapa": "Base LyAI",  # Registra su origen dentro de la versión base.
-    },
+    },  # Finaliza SIN-001.
     "SIN-002": {  # Describe la ausencia de MASK después de una dirección IP.
         "categoria": "Sintáctico",  # Mantiene el problema dentro de la estructura de la instrucción.
         "nombre": "Falta la palabra reservada MASK",  # Resume el token obligatorio que no apareció.
@@ -78,7 +78,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Marca el bloque como sintácticamente incorrecto.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la ausencia de MASK se detecta actualmente.
         "etapa": "Base LyAI",  # Conserva la etapa histórica del diagnóstico.
-    },
+    },  # Finaliza SIN-002.
     "SIN-003": {  # Describe la ausencia o forma incorrecta de la máscara CIDR.
         "categoria": "Sintáctico",  # Clasifica el problema dentro del parser.
         "nombre": "Máscara CIDR inválida o incompleta",  # Resume el elemento esperado después de MASK.
@@ -87,7 +87,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide aceptar el bloque afectado.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla ya está implementada.
         "etapa": "Base LyAI",  # Registra que forma parte de la base histórica del proyecto.
-    },
+    },  # Finaliza SIN-003.
     "SIN-004": {  # Describe HOSTS sin al menos una cantidad posterior.
         "categoria": "Sintáctico",  # Mantiene el diagnóstico dentro de la estructura gramatical.
         "nombre": "Falta cantidad de hosts",  # Resume el elemento ausente.
@@ -96,7 +96,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide considerar completa la instrucción.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el parser detecta actualmente este caso.
         "etapa": "Base LyAI",  # Conserva la etapa histórica del código.
-    },
+    },  # Finaliza SIN-004.
     "SIN-005": {  # Describe una lista HOSTS cuya continuación después de coma está incompleta.
         "categoria": "Sintáctico",  # Clasifica el problema dentro de la estructura de la lista.
         "nombre": "Lista de hosts mal formada",  # Resume el error mostrado en la interfaz.
@@ -105,7 +105,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Marca como incorrecta la construcción de la lista.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que esta validación forma parte del parser actual.
         "etapa": "Base LyAI",  # Conserva su procedencia dentro de la versión base.
-    },
+    },  # Finaliza SIN-005.
     "SIN-006": {  # Describe NAME sin un identificador posterior.
         "categoria": "Sintáctico",  # Relaciona el problema con la parte opcional de la gramática.
         "nombre": "Nombre de red incompleto",  # Resume el problema para la interfaz.
@@ -114,7 +114,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Considera incompleta la instrucción cuando NAME sí fue escrito.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el caso se detecta actualmente.
         "etapa": "Base LyAI",  # Mantiene la clasificación histórica de la regla.
-    },
+    },  # Finaliza SIN-006.
     "SIN-007": {  # Describe la repetición exacta de una instrucción ya aceptada.
         "categoria": "Sintáctico",  # Se mantiene en el parser porque depende de bloques estructuralmente completos.
         "nombre": "Instrucción duplicada",  # Proporciona un título directo para el usuario.
@@ -123,7 +123,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Evita conservar dos veces el mismo bloque como válido.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el parser actual realiza esta comprobación.
         "etapa": "Base LyAI",  # Conserva la procedencia del código dentro del proyecto.
-    },
+    },  # Finaliza SIN-007.
     "SIN-008": {  # Describe tokens existentes que aparecen en un orden distinto de la gramática.
         "categoria": "Sintáctico",  # Relaciona directamente el problema con la secuencia esperada.
         "nombre": "Orden incorrecto de tokens",  # Resume la condición detectada.
@@ -132,16 +132,16 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide aceptar una instrucción cuya secuencia es incorrecta.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la recuperación sintáctica actual ya produce este código.
         "etapa": "Base LyAI",  # Conserva la clasificación del diagnóstico en la base del proyecto.
-    },
+    },  # Finaliza SIN-008.
     "SEM-001": {  # Describe una máscara CIDR válida sintácticamente pero fuera del rango aceptado por TecNet Finder.
         "categoria": "Semántico",  # Relaciona la validación con el significado de la máscara.
         "nombre": "Máscara fuera de rango",  # Proporciona un título breve para el diagnóstico.
         "descripcion": "La máscara CIDR existe sintácticamente, pero está fuera del rango permitido.",  # Explica por qué el parser pudo aceptarla y el semántico no.
         "solucion": "Usa una máscara entre /8 y /30. Ejemplo: MASK /24.",  # Muestra el intervalo permitido por las reglas actuales.
         "severidad": "error",  # Impide utilizar el bloque para el cálculo VLSM.
-        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla forma parte de U1.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla forma parte de Unidad 1.
         "etapa": "U1",  # Identifica la unidad donde fue incorporado el análisis semántico.
-    },
+    },  # Finaliza SEM-001.
     "SEM-002": {  # Describe una IP que no corresponde con la dirección inicial de la red indicada por su máscara.
         "categoria": "Semántico",  # Clasifica el problema dentro del significado conjunto de IP y máscara.
         "nombre": "IP base no es dirección de red",  # Resume la inconsistencia encontrada.
@@ -150,7 +150,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Evita generar VLSM desde una dirección de host utilizada como base.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la validación ya está implementada.
         "etapa": "U1",  # Registra que pertenece al análisis semántico de Unidad 1.
-    },
+    },  # Finaliza SEM-002.
     "SEM-003": {  # Describe cantidades HOSTS que no representan una solicitud positiva.
         "categoria": "Semántico",  # La forma NUMBER es válida pero su valor no posee significado permitido.
         "nombre": "Cantidad de hosts no válida",  # Resume el problema encontrado.
@@ -159,7 +159,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide calcular una subred para cantidades no positivas.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el semántico ya verifica esta condición.
         "etapa": "U1",  # Conserva la unidad en la que se agregó.
-    },
+    },  # Finaliza SEM-003.
     "SEM-004": {  # Describe solicitudes VLSM cuyo espacio conjunto supera la red base.
         "categoria": "Semántico",  # Relaciona el problema con la capacidad real disponible.
         "nombre": "Hosts no caben en la red base",  # Resume el conflicto de capacidad.
@@ -168,7 +168,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Evita producir resultados parciales que excedan el espacio disponible.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el cálculo previo de capacidad está activo.
         "etapa": "U1",  # Identifica el diagnóstico como parte del trabajo semántico de Unidad 1.
-    },
+    },  # Finaliza SEM-004.
     "SEM-005": {  # Describe una solicitud individual que necesita más espacio que toda la red base.
         "categoria": "Semántico",  # Clasifica el conflicto dentro del significado y capacidad de la red.
         "nombre": "Subred individual demasiado grande",  # Resume el problema de una solicitud concreta.
@@ -177,7 +177,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide intentar generar una subred imposible dentro de la red proporcionada.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla se evalúa actualmente.
         "etapa": "U1",  # Conserva la etapa académica correspondiente.
-    },
+    },  # Finaliza SEM-005.
     "SEM-006": {  # Describe dos redes base válidas individualmente cuyos rangos se cruzan.
         "categoria": "Semántico",  # Relaciona el problema con la interacción entre varios bloques.
         "nombre": "Redes base traslapadas",  # Proporciona el título visible del conflicto.
@@ -186,16 +186,43 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Impide aceptar el bloque posterior que invade una red anterior.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la comparación entre redes ya forma parte del semántico.
         "etapa": "U1",  # Mantiene la referencia con la unidad donde fue implementado.
-    },
+    },  # Finaliza SEM-006.
+    "SEM-007": {  # Describe una IPv4 completa cuyos componentes numéricos no pertenecen todos al intervalo permitido.
+        "categoria": "Semántico",  # Clasifica el problema dentro del significado numérico de la dirección.
+        "nombre": "Octeto IPv4 fuera de rango",  # Resume de forma visible la nueva validación.
+        "descripcion": "La dirección posee cuatro componentes numéricos, pero uno o más octetos se encuentran fuera del rango permitido de IPv4.",  # Distingue este problema de una dirección estructuralmente incompleta.
+        "solucion": "Corrige cada octeto para que su valor se encuentre entre 0 y 255. Ejemplo: 192.168.1.0.",  # Explica directamente el intervalo permitido.
+        "severidad": "error",  # Impide utilizar una dirección que no pueda existir dentro de IPv4.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-007 puede producirse actualmente.
+        "etapa": "U1",  # Registra esta validación dentro del cierre reforzado de Unidad 1.
+    },  # Finaliza SEM-007.
+    "SEM-008": {  # Describe una declaración posterior que representa exactamente una red base previamente utilizada.
+        "categoria": "Semántico",  # Clasifica la repetición según el significado del espacio IPv4 declarado.
+        "nombre": "Red base ya declarada",  # Resume que el mismo espacio IPv4 intenta definirse nuevamente.
+        "descripcion": "Una red base ya utilizada anteriormente fue declarada nuevamente con otros datos.",  # Distingue esta situación de una instrucción completamente idéntica detectada por SIN-007.
+        "solucion": "Utiliza una red base diferente o modifica la declaración existente en lugar de volver a definir el mismo espacio IPv4.",  # Indica cómo evitar dos definiciones del mismo espacio.
+        "severidad": "error",  # Impide conservar simultáneamente dos declaraciones que representan exactamente la misma red.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-008 forma parte del comportamiento actual.
+        "etapa": "U1",  # Registra esta validación dentro del cierre reforzado de Unidad 1.
+    },  # Finaliza SEM-008.
+    "SEM-009": {  # Describe la reutilización de una misma dirección base mediante máscaras diferentes.
+        "categoria": "Semántico",  # Clasifica el problema dentro de la relación existente entre varias declaraciones.
+        "nombre": "IP base reutilizada con otra máscara",  # Resume el conflicto específico sin confundirlo con un traslape genérico.
+        "descripcion": "La misma dirección de red fue declarada nuevamente utilizando una máscara diferente, provocando espacios IPv4 incompatibles.",  # Explica por qué ambas declaraciones entran en conflicto.
+        "solucion": "Utiliza otra dirección base o conserva una sola definición de esa dirección con la máscara adecuada.",  # Indica las principales correcciones disponibles.
+        "severidad": "error",  # Impide aceptar simultáneamente las dos declaraciones incompatibles.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que SEM-009 puede producirse actualmente.
+        "etapa": "U1",  # Registra esta validación dentro del cierre reforzado de Unidad 1.
+    },  # Finaliza SEM-009.
     "ADV-001": {  # Informa que existen errores pero al menos un bloque reconocido puede continuar.
         "categoria": "Advertencia",  # Identifica este diagnóstico como una recomendación no bloqueante.
         "nombre": "Procesamiento parcial",  # Resume que únicamente una parte de la entrada podrá procesarse.
         "descripcion": "Hay errores, pero también existen bloques válidos que pueden procesarse.",  # Explica la situación general de recuperación.
-        "solucion": "Revisa las líneas con error. El sistema continuará únicamente con bloques válidos.",  # Aclara qué hará TecNet Finder mientras existen problemas.
+        "solucion": "Revisa las líneas con error. El sistema continuará únicamente con bloques válidos.",  # Aclara qué hará TecNet Finder mientras existan problemas.
         "severidad": "advertencia",  # Evita tratar esta información como otro error adicional.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el flujo puede producir actualmente esta advertencia.
         "etapa": "Base LyAI",  # Conserva su procedencia dentro del comportamiento histórico.
-    },
+    },  # Finaliza ADV-001.
     "ADV-002": {  # Informa que una palabra reservada está pegada directamente con su valor.
         "categoria": "Advertencia",  # Mantiene válida la instrucción aunque recomienda mejorar su escritura.
         "nombre": "Palabra reservada pegada al valor",  # Resume la condición detectada.
@@ -204,7 +231,7 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "advertencia",  # Confirma que la situación no invalida el bloque.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Indica que esta comprobación ya está implementada.
         "etapa": "Base LyAI",  # Conserva su clasificación histórica.
-    },
+    },  # Finaliza ADV-002.
     "ADV-003": {  # Informa que distintas instrucciones comparten el mismo nombre.
         "categoria": "Advertencia",  # Considera válida la repetición pero potencialmente confusa.
         "nombre": "Nombre de red repetido",  # Resume el problema de identificación encontrado.
@@ -213,25 +240,25 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "advertencia",  # No bloquea ninguna de las instrucciones afectadas.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que se comprueban actualmente nombres repetidos.
         "etapa": "Base LyAI",  # Mantiene la etapa histórica de la regla.
-    },
+    },  # Finaliza ADV-003.
     "ADV-004": {  # Informa que una misma instrucción solicita varias veces la misma cantidad de hosts.
         "categoria": "Advertencia",  # Mantiene válida la lista porque la repetición puede ser intencional.
         "nombre": "Hosts repetidos",  # Resume la situación encontrada.
         "descripcion": "La lista de hosts contiene cantidades repetidas dentro de la misma instrucción.",  # Explica exactamente la condición de la advertencia.
-        "solucion": "Revisa si los hosts repetidos fueron intencionales. Si no, elimina o corrige los valores duplicados.",  # Recomienda verificar la intención antes de cambiar los datos.
+        "solucion": "Revisa si los hosts repetidos fueron intencionales. Si no, elimina o corrige los valores duplicados.",  # Recomienda verificar la intención antes de modificar los datos.
         "severidad": "advertencia",  # No impide generar todas las subredes solicitadas.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el comportamiento ya está activo.
         "etapa": "Base LyAI",  # Conserva su clasificación dentro de la base histórica.
-    },
+    },  # Finaliza ADV-004.
     "ADV-005": {  # Informa que la red base es mucho mayor de lo requerido por las solicitudes VLSM.
         "categoria": "Advertencia",  # Considera válida la red aunque pueda desaprovechar demasiado espacio.
         "nombre": "Red base sobredimensionada",  # Resume el problema de dimensionamiento.
         "descripcion": "La red base dispone de al menos dieciséis veces la capacidad realmente requerida por las solicitudes VLSM.",  # Expresa el umbral exacto utilizado actualmente.
         "solucion": "Considera utilizar una máscara base más específica para aprovechar mejor el espacio de direcciones disponible.",  # Sugiere reducir el tamaño innecesario de la red.
         "severidad": "advertencia",  # Mantiene completamente válido el cálculo.
-        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que esta regla semánticamente informada ya está implementada.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que esta regla ya está implementada.
         "etapa": "U1",  # Identifica que esta advertencia se incorporó durante Unidad 1.
-    },
+    },  # Finaliza ADV-005.
     "ADV-006": {  # Informa que NAME utiliza una palabra demasiado general para identificar claramente la red.
         "categoria": "Advertencia",  # La elección del nombre no afecta la validez formal.
         "nombre": "Nombre de red genérico",  # Resume la recomendación mostrada al usuario.
@@ -240,16 +267,16 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "advertencia",  # Mantiene el bloque disponible para VLSM.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la comparación con nombres genéricos está activa.
         "etapa": "Base LyAI",  # Conserva la etapa histórica asociada.
-    },
+    },  # Finaliza ADV-006.
     "ADV-007": {  # Informa que una instrucción válida no utilizó la sección opcional NAME.
         "categoria": "Advertencia",  # Mantiene NAME como parte opcional de la gramática.
-        "nombre": "Nombre de red no especificado",  # Resume la recomendación.
+        "nombre": "Nombre de red no especificado",  # Resume la recomendación mostrada al usuario.
         "descripcion": "La instrucción no incluye un nombre para identificar la red.",  # Explica la ausencia detectada.
         "solucion": "Agrega NAME seguido de un identificador para facilitar la lectura de resultados y reportes.",  # Recomienda agregar información descriptiva sin volverla obligatoria.
         "severidad": "advertencia",  # No afecta la validez del bloque.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la advertencia se encuentra disponible.
         "etapa": "Base LyAI",  # Mantiene su clasificación dentro de la base anterior.
-    },
+    },  # Finaliza ADV-007.
     "ADV-008": {  # Informa que HOSTS no fue escrito siguiendo el orden descendente utilizado internamente por VLSM.
         "categoria": "Advertencia",  # La calculadora puede ordenar las cantidades sin invalidar la entrada.
         "nombre": "Hosts fuera del orden recomendado",  # Resume el detalle encontrado.
@@ -258,7 +285,16 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "advertencia",  # Conserva completamente válida la solicitud.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que la regla ya está activa.
         "etapa": "Refuerzo LyAII",  # Identifica que esta recomendación se agregó durante el refuerzo actual.
-    },
+    },  # Finaliza ADV-008.
+    "ADV-009": {  # Informa que una red válida se encuentra dentro de o se superpone con un espacio IPv4 destinado a un uso especial.
+        "categoria": "Advertencia",  # Mantiene la situación como información adicional y nunca como error semántico.
+        "nombre": "Rango IPv4 de uso especial",  # Resume el motivo principal de la advertencia.
+        "descripcion": "La red base coincide o se superpone con un rango IPv4 destinado a un uso especial.",  # Explica por qué conviene revisar el espacio elegido antes de utilizarlo en una red real.
+        "solucion": "Verifica que el rango especial corresponda con el propósito de la red. TecNet Finder permitirá continuar con el cálculo VLSM.",  # Aclara que la recomendación no restringe ninguna capacidad del programa.
+        "severidad": "advertencia",  # Garantiza que la red permanezca disponible para el cálculo.
+        "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que ADV-009 puede producirse actualmente.
+        "etapa": "U1",  # Registra esta recomendación dentro del cierre reforzado de Unidad 1.
+    },  # Finaliza ADV-009.
     "GEN-001": {  # Proporciona un diagnóstico de respaldo para fallos que todavía no poseen una categoría más específica.
         "categoria": "General",  # Distingue este código de las fases formales del compilador.
         "nombre": "Error no clasificado",  # Proporciona un título general para la interfaz.
@@ -267,73 +303,63 @@ CATALOGO_DIAGNOSTICOS = {  # Centraliza toda la información descriptiva utiliza
         "severidad": "error",  # Mantiene estos fallos controlados como errores bloqueantes.
         "estado": ESTADO_DIAGNOSTICO_DISPONIBLE,  # Confirma que el código puede utilizarse actualmente.
         "etapa": "Base LyAI",  # Conserva su origen dentro de la infraestructura base.
-    },
-}
+    },  # Finaliza GEN-001.
+}  # Finaliza el catálogo central de diagnósticos disponible para toda la aplicación.
 
 
-@dataclass(frozen=True)  # Evita modificar accidentalmente un diagnóstico después de haber sido generado.
-class Diagnostico:  # Representa de manera estructurada un error o una advertencia producida por TecNet Finder.
-    codigo: str  # Conserva el identificador oficial, por ejemplo LEX-002, SEM-004 o ADV-008.
+@dataclass(frozen=True)  # Evita modificar accidentalmente un diagnóstico después de haber sido construido.
+class Diagnostico:  # Representa estructuradamente un error o una advertencia producida por TecNet Finder.
+    codigo: str  # Conserva el identificador oficial del diagnóstico.
     categoria: str  # Guarda la fase o clasificación visible asociada con el diagnóstico.
-    severidad: str  # Indica si el elemento corresponde con un error o una advertencia.
-    mensaje: str  # Conserva la explicación concreta generada para la situación encontrada.
+    severidad: str  # Indica si el elemento corresponde con un error bloqueante o una advertencia.
+    mensaje: str  # Conserva la explicación concreta generada para esta aparición del diagnóstico.
     linea: int | None = None  # Guarda la línea relacionada con el problema cuando existe una ubicación precisa.
     columna: int | None = None  # Guarda la posición horizontal donde comienza el fragmento relacionado.
     longitud: int = 1  # Indica cuántos caracteres deben resaltarse dentro del editor.
     fragmento: str = ""  # Conserva exactamente la parte del código fuente asociada con el diagnóstico.
-    solucion: str = ""  # Guarda la recomendación central obtenida desde el catálogo.
+    solucion: str = ""  # Guarda la recomendación central recuperada automáticamente desde el catálogo.
 
 
 def obtener_informacion_diagnostico(codigo: str) -> dict:  # Recupera la definición completa correspondiente con un código concreto.
-    return CATALOGO_DIAGNOSTICOS.get(codigo, CATALOGO_DIAGNOSTICOS["GEN-001"])  # Utiliza GEN-001 como respaldo cuando el identificador solicitado no está registrado.
+    return CATALOGO_DIAGNOSTICOS.get(codigo, CATALOGO_DIAGNOSTICOS["GEN-001"])  # Utiliza GEN-001 como respaldo cuando el identificador solicitado no se encuentra registrado.
 
 
-def obtener_catalogo_diagnosticos() -> list[tuple[str, dict]]:  # Entrega todas las definiciones respetando el orden declarado en el catálogo.
-    return list(CATALOGO_DIAGNOSTICOS.items())  # Convierte el diccionario central en una colección fácil de recorrer desde la interfaz.
+def obtener_catalogo_diagnosticos() -> list[tuple[str, dict]]:  # Entrega todas las definiciones respetando exactamente el orden declarado en el catálogo.
+    return list(CATALOGO_DIAGNOSTICOS.items())  # Convierte el diccionario central en una colección sencilla de recorrer desde otros componentes.
 
 
-def codigo_diagnostico_disponible(codigo: str) -> bool:  # Indica si un código pertenece al comportamiento evaluable de la versión actual.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca la definición exacta sin utilizar el respaldo GEN-001.
-    return bool(informacion and informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE)  # Devuelve verdadero solamente cuando el código existe y está marcado como disponible.
+def codigo_diagnostico_disponible(codigo: str) -> bool:  # Indica si un código pertenece actualmente al comportamiento evaluable de TecNet Finder.
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca exclusivamente la definición exacta sin recurrir al diagnóstico genérico.
+    return bool(informacion and informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE)  # Devuelve verdadero solamente cuando el código existe y se encuentra disponible.
 
 
-def codigo_diagnostico_es_error(codigo: str) -> bool:  # Permite distinguir códigos bloqueantes de las advertencias informativas.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Recupera la definición real del identificador solicitado.
-    return bool(informacion and informacion["severidad"] == "error")  # Devuelve verdadero exclusivamente para diagnósticos registrados con severidad de error.
+def codigo_diagnostico_es_error(codigo: str) -> bool:  # Permite distinguir códigos bloqueantes de advertencias informativas.
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Recupera la definición real correspondiente con el identificador solicitado.
+    return bool(informacion and informacion["severidad"] == "error")  # Devuelve verdadero exclusivamente para diagnósticos cuya severidad registrada sea error.
 
 
-def obtener_codigos_diagnosticos_disponibles() -> list[str]:  # Construye la lista de códigos que pueden producirse y comprobarse actualmente.
-    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE]  # Filtra el catálogo conservando únicamente las entradas marcadas como disponibles.
+def obtener_codigos_diagnosticos_disponibles() -> list[str]:  # Construye la lista completa de códigos que pueden producirse actualmente.
+    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE]  # Filtra el catálogo conservando solamente las entradas marcadas como disponibles.
 
 
-def obtener_codigos_diagnosticos_pendientes() -> list[str]:  # Construye la lista reservada para diagnósticos pertenecientes a fases futuras.
-    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_PENDIENTE]  # Filtra únicamente códigos cuyo estado todavía sea pendiente.
+def obtener_codigos_diagnosticos_pendientes() -> list[str]:  # Construye la lista reservada para diagnósticos pertenecientes a etapas futuras.
+    return [codigo for codigo, informacion in CATALOGO_DIAGNOSTICOS.items() if informacion["estado"] == ESTADO_DIAGNOSTICO_PENDIENTE]  # Filtra exclusivamente los códigos cuyo estado todavía se encuentra pendiente.
 
 
-def texto_estado_diagnostico(codigo: str) -> str:  # Convierte el estado interno de un diagnóstico en texto adecuado para mostrar al usuario.
-    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca exclusivamente la definición exacta del código recibido.
+def texto_estado_diagnostico(codigo: str) -> str:  # Convierte el estado interno de un diagnóstico en texto apropiado para mostrar al usuario.
+    informacion = CATALOGO_DIAGNOSTICOS.get(codigo)  # Busca exclusivamente la definición exacta del identificador recibido.
 
-    if informacion is None:  # Comprueba si el identificador no pertenece al catálogo actual.
-        return "No registrado"  # Informa claramente que TecNet Finder no conoce ese código.
+    if informacion is None:  # Comprueba si el código solicitado no pertenece al catálogo actual.
+        return "No registrado"  # Informa claramente que TecNet Finder no conoce ese identificador.
 
-    if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE:  # Comprueba si el diagnóstico forma parte del comportamiento actual.
-        return "Disponible"  # Devuelve un texto breve apropiado para la interfaz.
+    if informacion["estado"] == ESTADO_DIAGNOSTICO_DISPONIBLE:  # Comprueba si el diagnóstico forma parte del comportamiento habilitado.
+        return "Disponible"  # Devuelve el texto breve utilizado para representar un código activo.
 
-    etapa = informacion.get("etapa", "").strip()  # Recupera la etapa futura asociada con un código pendiente cuando se encuentra definida.
-    return f"Pendiente {etapa}" if etapa else "Pendiente"  # Añade la etapa solamente cuando existe información útil para mostrar.
+    etapa = informacion.get("etapa", "").strip()  # Recupera la etapa futura asociada cuando existe información adicional registrada.
+    return f"Pendiente {etapa}" if etapa else "Pendiente"  # Añade la etapa solamente cuando resulta útil para describir el estado pendiente.
 
 
-def crear_diagnostico(codigo: str, mensaje: str, linea: int | None = None, columna: int | None = None, longitud: int = 1, fragmento: str = "", severidad: str | None = None) -> Diagnostico:  # Construye un diagnóstico concreto utilizando la información común almacenada en el catálogo.
-    informacion = obtener_informacion_diagnostico(codigo)  # Recupera categoría, solución y severidad predeterminada correspondientes al código.
-    severidad_final = severidad or informacion["severidad"]  # Permite sustituir la severidad solamente cuando el llamador necesita indicarlo explícitamente.
-    return Diagnostico(
-        codigo=codigo,  # Conserva el identificador específico solicitado por la fase que produjo el problema.
-        categoria=informacion["categoria"],  # Obtiene automáticamente la categoría común definida en el catálogo.
-        severidad=severidad_final,  # Utiliza la severidad indicada o la predeterminada correspondiente con el código.
-        mensaje=mensaje,  # Conserva la explicación concreta producida para esta aparición del diagnóstico.
-        linea=linea,  # Guarda la línea de origen cuando la fase logró determinarla.
-        columna=columna,  # Guarda la columna de origen cuando existe una posición precisa.
-        longitud=max(longitud, 1),  # Garantiza que cualquier resaltado visible tenga al menos un carácter de longitud.
-        fragmento=fragmento,  # Conserva el texto exacto relacionado con esta aparición concreta.
-        solucion=informacion["solucion"],  # Reutiliza la solución centralizada correspondiente con el código.
-    )
+def crear_diagnostico(codigo: str, mensaje: str, linea: int | None = None, columna: int | None = None, longitud: int = 1, fragmento: str = "", severidad: str | None = None) -> Diagnostico:  # Construye un diagnóstico concreto reutilizando automáticamente los metadatos registrados en el catálogo.
+    informacion = obtener_informacion_diagnostico(codigo)  # Recupera categoría, solución y severidad predeterminada correspondientes con el código solicitado.
+    severidad_final = severidad or informacion["severidad"]  # Permite sustituir la severidad solamente cuando un llamador necesita indicarlo explícitamente.
+    return Diagnostico(codigo=codigo, categoria=informacion["categoria"], severidad=severidad_final, mensaje=mensaje, linea=linea, columna=columna, longitud=max(longitud, 1), fragmento=fragmento, solucion=informacion["solucion"])  # Construye y devuelve el diagnóstico completo utilizando los datos específicos y la información centralizada.
