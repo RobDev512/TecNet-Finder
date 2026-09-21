@@ -17,6 +17,8 @@
 # - Uso de la solución oficial como respaldo.
 # - División de grupos grandes en varios lotes.
 # - Inclusión del contexto formal dentro del prompt.
+# - Tratamiento no bloqueante de advertencias.
+# - Rechazo de ejemplos engañosos para ADV-009.
 # ============================================================
 
 from AsistenteIA.diagnosticos.explicador_diagnosticos import ExplicadorDiagnosticos  # Importa la capa encargada de convertir respuestas estructuradas del modelo en soluciones visuales.
@@ -52,6 +54,20 @@ def _diagnostico(numero: int = 0) -> Diagnostico:  # Construye un diagnóstico S
         fragmento="HOSTS",  # Representa el token encontrado donde debía aparecer MASK.
         solucion="Coloca MASK después de la IP. Ejemplo: IP 192.168.1.0 MASK /24.",  # Proporciona la solución oficial que siempre debe permanecer disponible.
     )  # Devuelve una estructura equivalente con las que recibe realmente el explicador desde el compilador.
+
+
+def _diagnostico_adv_009() -> Diagnostico:  # Construye la advertencia de rango IPv4 especial utilizada para comprobar el caso observado manualmente.
+    return Diagnostico(
+        codigo="ADV-009",  # Utiliza exactamente la advertencia destinada a rangos IPv4 de uso especial.
+        categoria="Advertencia",  # Conserva la categoría visible registrada por el catálogo oficial.
+        severidad="advertencia",  # Confirma que el caso es informativo y no bloquea el cálculo VLSM.
+        mensaje="En la línea 1, la red 169.254.10.0/24 coincide o se superpone con el rango IPv4 especial 169.254.0.0/16, utilizado para direcciones de enlace local.",  # Simula el contenido relevante producido por la detección real.
+        linea=1,  # Relaciona la advertencia con la primera línea del ejemplo.
+        columna=3,  # Sitúa el fragmento sobre la dirección IP original.
+        longitud=len("169.254.10.0"),  # Utiliza la misma longitud que tendría el token IP_ADDRESS real.
+        fragmento="169.254.10.0",  # Conserva la dirección exacta que no debe reutilizarse como supuesto ejemplo corregido.
+        solucion="Verifica que el rango especial corresponda con el propósito de la red. TecNet Finder permitirá continuar con el cálculo VLSM.",  # Reutiliza el sentido de la solución oficial sin convertir la advertencia en error.
+    )  # Devuelve una advertencia representativa del fallo que se desea evitar.
 
 
 def prueba_explicador_construye_solucion_mejorada_sin_modificar_diagnostico():  # Comprueba que la IA complemente la solución visual sin sobrescribir el diagnóstico oficial.
@@ -145,6 +161,64 @@ def prueba_explicador_utiliza_solucion_oficial_si_modelo_omite_correccion():  # 
     soluciones = explicador.mejorar_soluciones([diagnostico])  # Procesa la respuesta incompleta.
     clave = explicador.clave_diagnostico(diagnostico)  # Recupera la clave correspondiente con el diagnóstico mejorado.
     assert "Corrección: Coloca MASK después de la IP." in soluciones[clave]  # Confirma que la solución oficial se utilice automáticamente cuando la IA omite la corrección.
+
+
+def prueba_explicador_adv_009_descarta_ejemplo_que_repite_la_ip_advertida():  # Comprueba que el caso observado no vuelva a presentar la misma red como una supuesta alternativa corregida.
+    diagnostico = _diagnostico_adv_009()  # Prepara la advertencia de enlace local que originó el problema real.
+    motor = MotorSimulado(
+        [
+            {
+                "soluciones": [
+                    {
+                        "indice": 0,  # Relaciona correctamente la respuesta con ADV-009.
+                        "explicacion": "La red pertenece al espacio de enlace local y puede ser intencional.",  # Mantiene una explicación válida que sí debe conservarse.
+                        "correccion": "Si el uso es intencional puedes conservarla; si buscabas una red ordinaria, elige otro espacio apropiado.",  # Proporciona una corrección condicional coherente con una advertencia.
+                        "ejemplo": "169.254.10.0/24",  # Reproduce deliberadamente el fallo observado para comprobar que el filtro lo retire.
+                    }
+                ]
+            }
+        ]
+    )  # Simula una respuesta parcialmente útil cuyo ejemplo no representa ninguna corrección real.
+    explicador = ExplicadorDiagnosticos(motor=motor)  # Ejecuta la validación mediante el motor controlado.
+    soluciones = explicador.mejorar_soluciones([diagnostico])  # Procesa la advertencia y la respuesta engañosa.
+    clave = explicador.clave_diagnostico(diagnostico)  # Recupera la identidad con la que debe almacenarse el resultado válido.
+    assert "Explicación: La red pertenece al espacio de enlace local" in soluciones[clave]  # Confirma que la explicación útil se conserve.
+    assert "Corrección: Si el uso es intencional puedes conservarla" in soluciones[clave]  # Confirma que la corrección condicional también permanezca visible.
+    assert "Ejemplo:" not in soluciones[clave]  # Comprueba que únicamente el ejemplo inútil sea descartado en lugar de perder toda la mejora.
+
+
+def prueba_explicador_adv_009_acepta_ejemplo_realmente_diferente():  # Comprueba que el filtro específico no elimine alternativas válidas producidas para ADV-009.
+    diagnostico = _diagnostico_adv_009()  # Reutiliza la misma dirección especial como referencia original.
+    motor = MotorSimulado(
+        [
+            {
+                "soluciones": [
+                    {
+                        "indice": 0,  # Relaciona la respuesta con el único diagnóstico solicitado.
+                        "explicacion": "La dirección está dentro de un rango reservado para enlace local.",  # Proporciona una explicación breve y coherente.
+                        "correccion": "Conserva el rango si lo necesitas para enlace local; para una red privada ordinaria usa un espacio privado apropiado.",  # Mantiene explícita la elección del usuario.
+                        "ejemplo": "192.168.10.0/24",  # Utiliza una red diferente para demostrar una alternativa realmente distinta.
+                    }
+                ]
+            }
+        ]
+    )  # Prepara una respuesta que sí cumple las condiciones de ADV-009.
+    explicador = ExplicadorDiagnosticos(motor=motor)  # Crea la capa de validación con el motor simulado.
+    soluciones = explicador.mejorar_soluciones([diagnostico])  # Procesa la respuesta completamente válida.
+    clave = explicador.clave_diagnostico(diagnostico)  # Recupera la identidad exacta del diagnóstico.
+    assert "Ejemplo: 192.168.10.0/24" in soluciones[clave]  # Confirma que una alternativa realmente distinta no sea eliminada por el filtro.
+
+
+def prueba_explicador_prompt_distingue_advertencias_y_adv_009():  # Comprueba que el modelo reciba instrucciones explícitas para no convertir advertencias en errores obligatorios.
+    diagnostico = _diagnostico_adv_009()  # Prepara el caso que necesita la orientación más específica.
+    motor = MotorSimulado([{"soluciones": []}])  # Basta una respuesta vacía porque esta prueba inspecciona exclusivamente el prompt construido.
+    explicador = ExplicadorDiagnosticos(motor=motor)  # Utiliza el motor simulado para capturar la solicitud enviada.
+    explicador.mejorar_soluciones([diagnostico])  # Fuerza la construcción y envío del prompt correspondiente con ADV-009.
+    prompt = motor.prompts[0]  # Recupera exactamente el texto entregado al motor.
+    assert '"severidad": "advertencia"' in prompt  # Confirma que la severidad oficial forme parte del contexto estructurado.
+    assert "una advertencia es informativa" in prompt  # Verifica que el modelo reciba la diferencia general entre errores y advertencias.
+    assert "Para ADV-009" in prompt  # Comprueba que exista una regla adicional dedicada al caso de rangos especiales.
+    assert "una red diferente de la advertida" in prompt  # Confirma que el prompt prohíba reutilizar la misma red como supuesto ejemplo corregido.
 
 
 def prueba_explicador_divide_entradas_grandes_en_lotes():  # Comprueba que una colección mayor que el tamaño máximo se reparta entre varias consultas controladas.

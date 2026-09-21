@@ -11,6 +11,11 @@
 # La IA no crea diagnósticos, no modifica su severidad y no decide
 # si una instrucción es válida. Las respuestas se validan antes de
 # mostrarse y se conserva una caché para evitar consultas repetidas.
+#
+# Las advertencias reciben contexto adicional para evitar que una
+# recomendación opcional sea presentada como una corrección
+# obligatoria. ADV-009 incorpora además una validación específica
+# para impedir ejemplos que repitan la misma dirección advertida.
 # ============================================================
 
 import json  # Permite proporcionar al modelo los diagnósticos mediante una estructura inequívoca.
@@ -104,6 +109,7 @@ class ExplicadorDiagnosticos:  # Convierte soluciones oficiales en explicaciones
             if indice in resultados:
                 continue  # Conserva solamente la primera respuesta válida para evitar ambigüedades.
 
+            diagnostico = diagnosticos[indice]  # Recupera el diagnóstico oficial antes de validar los campos generados por la IA.
             explicacion = self._normalizar_texto(elemento.get("explicacion"), 520)  # Limita la explicación a una extensión apropiada para la tabla.
             correccion = self._normalizar_texto(elemento.get("correccion"), 520)  # Limita también la propuesta de corrección.
             ejemplo = self._normalizar_texto(elemento.get("ejemplo"), 300)  # Permite un ejemplo breve cuando realmente aporta claridad.
@@ -112,15 +118,18 @@ class ExplicadorDiagnosticos:  # Convierte soluciones oficiales en explicaciones
                 continue  # Exige que la IA aporte al menos una explicación útil del problema detectado.
 
             if not correccion:
-                correccion = diagnosticos[indice].solucion.strip()  # Recupera la solución oficial cuando el modelo omitió una corrección utilizable.
+                correccion = diagnostico.solucion.strip()  # Recupera la solución oficial cuando el modelo omitió una corrección utilizable.
 
             if not correccion:
                 continue  # Evita sustituir una celda por una explicación que no indique cómo resolver el problema.
 
+            if ejemplo and not self._ejemplo_valido(diagnostico, ejemplo):
+                ejemplo = ""  # Descarta únicamente el ejemplo engañoso y conserva la explicación y corrección que sí resultaron utilizables.
+
             texto = f"Explicación: {explicacion}\n\nCorrección: {correccion}"  # Presenta una estructura uniforme sin depender del estilo elegido por el modelo.
 
             if ejemplo:
-                texto += f"\n\nEjemplo: {ejemplo}"  # Añade el ejemplo solamente cuando fue proporcionado como texto válido.
+                texto += f"\n\nEjemplo: {ejemplo}"  # Añade el ejemplo solamente cuando fue proporcionado como texto válido y no contradice las reglas adicionales.
 
             resultados[indice] = texto  # Registra la solución final sin modificar el objeto Diagnostico original.
 
@@ -135,11 +144,13 @@ class ExplicadorDiagnosticos:  # Convierte soluciones oficiales en explicaciones
                     "indice": indice,
                     "codigo": diagnostico.codigo,
                     "categoria": diagnostico.categoria,
+                    "severidad": diagnostico.severidad,
                     "mensaje": diagnostico.mensaje,
                     "fragmento": diagnostico.fragmento,
                     "solucion_oficial": diagnostico.solucion,
+                    "orientacion": self._orientacion_diagnostico(diagnostico),
                 }
-            )  # Entrega al modelo la misma información que TecNet Finder ya determinó oficialmente.
+            )  # Entrega al modelo la información oficial y una orientación adicional que depende únicamente del tipo de diagnóstico.
 
         datos = json.dumps(elementos, ensure_ascii=False, indent=2)  # Conserva acentos y separa claramente cada diagnóstico dentro del prompt.
 
@@ -150,13 +161,44 @@ class ExplicadorDiagnosticos:  # Convierte soluciones oficiales en explicaciones
             "no contradigas la solución oficial y no inventes reglas nuevas.\n\n"
             "El lenguaje de TecNet Finder utiliza esta estructura:\n"
             "IP <IP_ADDRESS> MASK <SUBNET_MASK> HOSTS <NUMBER>[,<NUMBER>...] [NAME <IDENTIFIER>]\n\n"
+            "Distingue siempre la severidad recibida. Un error puede requerir una corrección para continuar, "
+            "pero una advertencia es informativa y puede describir una situación intencional que sigue siendo válida.\n"
+            "Cuando el diagnóstico sea una advertencia, no presentes una única modificación como obligatoria: "
+            "explica cuándo puede conservarse la entrada y cuándo tendría sentido cambiarla.\n"
+            "Si incluyes un ejemplo como alternativa corregida, debe ser realmente diferente del fragmento que originó "
+            "la advertencia y debe ilustrar la recomendación descrita; no repitas el mismo valor problemático como supuesto ejemplo corregido.\n"
+            "Para ADV-009, aclara expresamente que el rango especial puede conservarse si su uso fue intencional. "
+            "Si el usuario buscaba una red ordinaria, sugiere utilizar un espacio apropiado para ese propósito y usa, si das ejemplo, una red diferente de la advertida.\n\n"
             "Para cada elemento recibido devuelve una explicación breve en español, una corrección clara "
             "coherente con la solución oficial y, solo cuando sea útil, un ejemplo corto.\n"
             "No uses Markdown, listas con viñetas ni texto fuera del JSON.\n\n"
             "Responde exactamente con este esquema:\n"
             '{"soluciones":[{"indice":0,"explicacion":"...","correccion":"...","ejemplo":"..."}]}\n\n'
             f"Diagnósticos:\n{datos}"
-        )  # Define límites estrictos para que la IA actúe únicamente como capa explicativa.
+        )  # Define límites estrictos para que la IA actúe únicamente como capa explicativa y respete la diferencia entre errores y advertencias.
+
+    @staticmethod
+    def _orientacion_diagnostico(diagnostico: Diagnostico) -> str:
+        if diagnostico.codigo == "ADV-009":
+            return "Advertencia no bloqueante. Si el rango especial fue elegido intencionalmente puede conservarse; si se buscaba una red ordinaria, conviene elegir otro espacio apropiado. Cualquier ejemplo alternativo debe usar una red diferente."  # Añade contexto específico para evitar que el modelo trate un rango especial como un error obligatorio.
+
+        if diagnostico.severidad == "advertencia":
+            return "Advertencia no bloqueante. La entrada puede ser válida e intencional; explica la recomendación como una opción de revisión y no como una corrección obligatoria."  # Mantiene el comportamiento general de las advertencias coherente con su severidad oficial.
+
+        return "Error bloqueante. Explica la causa y una forma concreta de corregirla sin cambiar las reglas oficiales del compilador."  # Proporciona una orientación mínima para errores sin inventar información adicional.
+
+    @staticmethod
+    def _ejemplo_valido(diagnostico: Diagnostico, ejemplo: str) -> bool:
+        if diagnostico.codigo != "ADV-009":
+            return True  # Mantiene sin restricciones adicionales los ejemplos de diagnósticos que no presentan el problema observado.
+
+        fragmento = "".join(diagnostico.fragmento.casefold().split())  # Normaliza la dirección advertida para compararla aunque existan diferencias de espacios o mayúsculas.
+        ejemplo_normalizado = "".join(ejemplo.casefold().split())  # Normaliza del mismo modo el ejemplo producido por la IA.
+
+        if not fragmento:
+            return True  # Evita descartar ejemplos cuando el diagnóstico no posee un fragmento concreto con el cual compararlos.
+
+        return fragmento not in ejemplo_normalizado  # Rechaza ejemplos que vuelvan a utilizar exactamente la misma dirección IPv4 que originó ADV-009.
 
     def _normalizar_texto(self, valor, limite: int) -> str:
         if not isinstance(valor, str):
