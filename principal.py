@@ -27,7 +27,7 @@ from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA 
 from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Administra el servidor privado utilizado por las funciones locales de IA.
 from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Recupera las preferencias persistentes relacionadas con las funciones de asistencia.
 from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
-from Interfaz.configuracion.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
+from Interfaz.configuracion.control_configuracion_idioma import ControlConfiguracionIdioma  # Conecta Configuración y sincroniza además el idioma confirmado con la ventana principal.
 from Interfaz.ventanas.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
 
@@ -124,14 +124,14 @@ def iniciar_aplicacion() -> int:  # Construye todos los componentes globales y m
         asistencia_disponible = gestor_ollama.iniciar()  # Inicia Ollama únicamente cuando existe el componente y alguna función realmente lo necesita.
 
     ventana = VentanaPrincipal()  # Crea la interfaz principal después de preparar las dependencias globales.
-    ventana.control_configuracion = ControlConfiguracion(
+    ventana.control_configuracion = ControlConfiguracionIdioma(
         ventana=ventana,
         gestor_ollama=gestor_ollama,
         componente_ia=componente_ia,
         preferencias_ia=preferencias_ia,
         asistencia_disponible_inicial=asistencia_disponible,
         preferencias_aplicacion=preferencias_aplicacion,
-    )  # Comparte con Configuración exactamente las mismas instancias utilizadas durante el inicio.
+    )  # Comparte las dependencias existentes y añade sincronización del idioma confirmado.
 
     def atender_nueva_instancia() -> None:  # Atiende solicitudes enviadas por otras ejecuciones que intentaron abrir TecNet Finder.
         while servidor_instancia.hasPendingConnections():
