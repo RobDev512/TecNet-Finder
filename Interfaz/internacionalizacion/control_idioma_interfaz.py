@@ -19,6 +19,7 @@
 
 from PySide6.QtWidgets import QLabel, QPushButton, QTabWidget  # Permite localizar y actualizar controles ya construidos.
 
+from Interfaz.internacionalizacion.traductor_diagnosticos import TraductorDiagnosticos  # Traduce únicamente la representación visual de diagnósticos.
 from Motor.internacionalizacion.gestor_traducciones import GestorTraducciones  # Resuelve las claves del idioma activo.
 
 
@@ -26,6 +27,7 @@ class ControlIdiomaInterfaz:
     def __init__(self, ventana):
         self.ventana = ventana  # Conserva la ventana principal cuyos textos serán actualizados.
         self.gestor = GestorTraducciones("es")  # Parte de un estado seguro y después recibe la preferencia confirmada.
+        self.traductor_diagnosticos = TraductorDiagnosticos(self.gestor)  # Comparte el mismo idioma activo sin modificar los objetos formales del compilador.
         self.etiqueta_entrada = self._buscar_etiqueta_entrada()  # Conserva una referencia estable antes de que su texto deje de estar en español.
         self.etiqueta_titulo_resumen = None  # Conserva el encabezado principal del resumen.
         self.titulos_tarjetas_resumen = {}  # Relaciona cada métrica con su etiqueta visible.
@@ -233,6 +235,23 @@ class ControlIdiomaInterfaz:
 
         self._establecer_ayuda(panel.boton_copiar_analisis, "resultados.copiar_analisis")
         self._establecer_ayuda(panel.boton_copiar_diagnosticos, "resultados.copiar_diagnosticos")
+        self._aplicar_advertencias_compactas()  # Traduce Mensaje y Solución sin mover ni modificar el panel compacto de VLSM.
+
+    def _aplicar_advertencias_compactas(self) -> None:
+        panel = self.ventana.panel_resultados
+        for fila, diagnostico in enumerate(panel.advertencias_compactas_actuales):
+            if fila >= panel.tabla_advertencias_vlsm.rowCount():
+                break
+            mensaje = panel.tabla_advertencias_vlsm.item(fila, 1)
+            solucion = panel.tabla_advertencias_vlsm.item(fila, 2)
+            if mensaje is not None:
+                texto = self.traductor_diagnosticos.mensaje(diagnostico)
+                mensaje.setText(texto)
+                mensaje.setToolTip(texto)
+            if solucion is not None:
+                texto = self.traductor_diagnosticos.solucion_diagnostico(diagnostico)
+                solucion.setText(texto)
+                solucion.setToolTip(texto)
 
     def _aplicar_resultados_internos(self) -> None:
         self._aplicar_resumen()  # Traduce título, tarjetas y estado de la vista Resumen.
@@ -503,4 +522,172 @@ class ControlIdiomaInterfaz:
                 self._t("diagnosticos.descripcion"),
                 self._t("diagnosticos.solucion_sugerida"),
             ]
+        )
+
+        # Detectados: los objetos oficiales permanecen intactos; solo cambia lo visible.
+        for fila, diagnostico in enumerate(panel.diagnosticos_actuales):
+            if fila >= panel.tabla_detectados.rowCount():
+                break
+
+            categoria = panel.tabla_detectados.item(fila, 1)
+            mensaje = panel.tabla_detectados.item(fila, 2)
+            solucion = panel.tabla_detectados.item(fila, 5)
+            codigo = panel.tabla_detectados.item(fila, 0)
+
+            if categoria is not None:
+                texto_categoria = self.traductor_diagnosticos.categoria(diagnostico.categoria)
+                categoria.setText(texto_categoria)
+                categoria.setToolTip(texto_categoria)
+
+            if mensaje is not None:
+                texto_mensaje = self.traductor_diagnosticos.mensaje(diagnostico)
+                mensaje.setText(texto_mensaje)
+                mensaje.setToolTip(texto_mensaje)
+
+            if solucion is not None:
+                texto_solucion = self.traductor_diagnosticos.solucion_diagnostico(diagnostico)
+                solucion.setText(texto_solucion)
+                solucion.setToolTip(self._t("diagnosticos.solucion_oficial_ayuda", solucion=texto_solucion))
+
+            if codigo is not None:
+                codigo.setToolTip(
+                    self._t(
+                        "diagnosticos.codigo.ayuda",
+                        codigo=diagnostico.codigo,
+                    )
+                )
+
+        panel.tabla_detectados.resizeRowsToContents()
+
+        # Catálogo: código y colores siguen siendo los oficiales; nombre, estado,
+        # descripción y solución se resuelven según el idioma de interfaz.
+        for fila in range(panel.tabla_catalogo.rowCount()):
+            elemento_codigo = panel.tabla_catalogo.item(fila, 0)
+            if elemento_codigo is None:
+                continue
+            codigo = elemento_codigo.text().strip()
+            informacion = __import__("Motor.compilacion.diagnosticos", fromlist=["obtener_informacion_diagnostico"]).obtener_informacion_diagnostico(codigo)
+            valores = [
+                codigo,
+                self.traductor_diagnosticos.categoria(informacion["categoria"]),
+                self.traductor_diagnosticos.estado(codigo),
+                self.traductor_diagnosticos.nombre(codigo),
+                self.traductor_diagnosticos.descripcion(codigo),
+                self.traductor_diagnosticos.solucion(codigo),
+            ]
+            for columna, valor in enumerate(valores):
+                elemento = panel.tabla_catalogo.item(fila, columna)
+                if elemento is not None:
+                    elemento.setText(valor)
+                    elemento.setToolTip(valor)
+
+        panel.tabla_catalogo.resizeRowsToContents()
+
+    def aplicar_ventana_diagnosticos(self, ventana) -> None:
+        # Traduce una VentanaAdvertencias ya construida. Se evita modificar la
+        # clase histórica para mantener compatibilidad con todas sus integraciones.
+        from Interfaz.ventanas.ventana_advertencias import TarjetaDiagnosticoInteractiva
+
+        titulo_ventana = self._t("diagnosticos.ventana.titulo")
+        ventana.setWindowTitle(titulo_ventana)
+        ventana.barra_titulo.etiqueta_titulo.setText(titulo_ventana)
+
+        if ventana.barra_titulo.boton_cerrar is not None:
+            ventana.barra_titulo.boton_cerrar.setToolTip(self._t("comun.cerrar"))
+            ventana.barra_titulo.boton_cerrar.setAccessibleName(self._t("comun.cerrar"))
+
+        titulos = ventana.findChildren(QLabel, "TituloConfiguracion")
+        if titulos:
+            titulos[0].setText(self._t("diagnosticos.ventana.detectados"))
+
+        descripciones = ventana.findChildren(QLabel, "DescripcionConfiguracion")
+        if descripciones:
+            descripciones[0].setText(
+                self._t(
+                    "diagnosticos.ventana.descripcion",
+                    errores=len(ventana.errores),
+                    advertencias=len(ventana.advertencias),
+                )
+            )
+
+        if ventana.pestana_errores is not None:
+            indice = ventana.pestanas_diagnosticos.indexOf(ventana.pestana_errores)
+            if indice >= 0:
+                ventana.pestanas_diagnosticos.setTabText(
+                    indice,
+                    self._t("diagnosticos.ventana.errores", cantidad=len(ventana.errores)),
+                )
+
+        if ventana.pestana_advertencias is not None:
+            indice = ventana.pestanas_diagnosticos.indexOf(ventana.pestana_advertencias)
+            if indice >= 0:
+                ventana.pestanas_diagnosticos.setTabText(
+                    indice,
+                    self._t("diagnosticos.ventana.advertencias", cantidad=len(ventana.advertencias)),
+                )
+
+        ventana.boton_aceptar.setText(self._t("comun.aceptar"))
+
+        for tarjeta in ventana.findChildren(TarjetaDiagnosticoInteractiva):
+            diagnostico = tarjeta.diagnostico
+            if diagnostico.linea is not None:
+                tarjeta.setToolTip(self._t("diagnosticos.ventana.doble_clic"))
+            else:
+                tarjeta.setToolTip(self._t("diagnosticos.ventana.sin_ubicacion_ayuda"))
+
+            codigos = [
+                etiqueta
+                for etiqueta in tarjeta.findChildren(QLabel)
+                if etiqueta.objectName() in ("CodigoErrorIndependiente", "CodigoAdvertenciaIndependiente")
+            ]
+            if codigos:
+                codigos[0].setText(
+                    f"{diagnostico.codigo} · {self.traductor_diagnosticos.categoria(diagnostico.categoria)}"
+                )
+
+            ubicaciones = tarjeta.findChildren(QLabel, "UbicacionDiagnosticoIndependiente")
+            if ubicaciones:
+                if diagnostico.linea is None:
+                    texto_ubicacion = self._t("diagnosticos.ubicacion.no_especificada")
+                elif diagnostico.columna is None:
+                    texto_ubicacion = self._t("diagnosticos.ubicacion.linea", linea=diagnostico.linea)
+                else:
+                    texto_ubicacion = self._t(
+                        "diagnosticos.ubicacion.linea_columna",
+                        linea=diagnostico.linea,
+                        columna=diagnostico.columna,
+                    )
+                ubicaciones[0].setText(texto_ubicacion)
+
+            encabezados = tarjeta.findChildren(QLabel, "TituloCampoDiagnosticoIndependiente")
+            if len(encabezados) >= 2:
+                encabezados[0].setText(self._t("diagnosticos.mensaje"))
+                encabezados[1].setText(self._t("diagnosticos.solucion"))
+
+            textos = tarjeta.findChildren(QLabel, "TextoDiagnosticoIndependiente")
+            if len(textos) >= 2:
+                textos[0].setText(self.traductor_diagnosticos.mensaje(diagnostico))
+                textos[1].setText(self.traductor_diagnosticos.solucion_diagnostico(diagnostico))
+
+    def aplicar_boton_reabrir_diagnosticos(self, boton, diagnosticos: list) -> None:
+        if boton is None:
+            return
+
+        boton.setAccessibleName(self._t("diagnosticos.reabrir"))
+        if not diagnosticos:
+            boton.setToolTip(self._t("diagnosticos.reabrir"))
+            return
+
+        errores = sum(1 for diagnostico in diagnosticos if diagnostico.severidad == "error")
+        advertencias = sum(
+            1
+            for diagnostico in diagnosticos
+            if diagnostico.severidad in ("warning", "advertencia")
+        )
+        boton.setToolTip(
+            self._t(
+                "diagnosticos.reabrir.resumen",
+                errores=errores,
+                advertencias=advertencias,
+            )
         )
