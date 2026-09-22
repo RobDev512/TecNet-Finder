@@ -34,6 +34,7 @@ from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  
 from Motor.configuracion.preferencias_configuracion_temporales import PreferenciasConfiguracionTemporales  # Mantiene una copia temporal de las preferencias generales.
 from Motor.configuracion.preferencias_tema import PreferenciasTema  # Administra la selección real del tema.
 from Motor.configuracion.preferencias_tema_temporales import PreferenciasTemaTemporales  # Mantiene una copia temporal del tema.
+from Motor.internacionalizacion.gestor_traducciones import GestorTraducciones  # Resuelve los textos visibles según la preferencia confirmada.
 
 
 class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Configuración.
@@ -62,10 +63,12 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         self.preferencias_tema = preferencias_tema or PreferenciasTema()  # Conserva la configuración real de tema.
         self.preferencias_tema_temporales = PreferenciasTemaTemporales(self.preferencias_tema)  # Crea la copia temporal específica del tema.
         self.preferencias_ia = preferencias_ia  # Conserva las preferencias reales de IA.
+        self.gestor_traducciones = GestorTraducciones(self.preferencias_aplicacion.idioma_interfaz())  # Recupera el idioma confirmado antes de construir cualquier texto visible.
         self.claves_secciones = []  # Relaciona cada sección lateral con una clave estable.
+        self.claves_texto_secciones = []  # Conserva las claves de traducción utilizadas por la navegación lateral.
 
         self.setObjectName("VentanaConfiguracion")  # Identifica el diálogo dentro de los estilos.
-        self.setWindowTitle("Configuración")  # Conserva un título reconocible por Windows.
+        self.setWindowTitle(self._t("configuracion.titulo"))  # Mantiene el título nativo sincronizado con el idioma confirmado.
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)  # Sustituye la barra nativa por BarraTitulo.
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)  # Permite mantener esquinas exteriores transparentes.
         self.setFixedSize(850, 770)  # Conserva las dimensiones actuales.
@@ -91,6 +94,9 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         if padre is not None: self.setWindowIcon(padre.windowIcon())  # Reutiliza el icono oficial de TecNet Finder.
         self._construir_interfaz(gestor_ollama, componente_ia, preferencias_ia, asistencia_disponible_inicial)  # Construye todas las secciones.
         self._actualizar_estado_botones()  # Mantiene Aplicar desactivado inicialmente.
+
+    def _t(self, clave: str, **variables) -> str:
+        return self.gestor_traducciones.traducir(clave, **variables)  # Abrevia la resolución de textos dentro de Configuración.
 
     def _ruta_icono(self) -> Path:
         return ruta_icono_oscuro("Engrane.png")  # Recupera el engrane inicial desde la nueva categoría de iconos oscuros.
@@ -124,7 +130,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         diseno_barra = QVBoxLayout(contenedor_barra)  # Aloja BarraTitulo.
         diseno_barra.setContentsMargins(0, 0, 0, 0)  # Permite ocupar toda la región.
         diseno_barra.setSpacing(0)  # Elimina separación.
-        self.barra_titulo = BarraTitulo(ventana=self, ruta_icono=self._ruta_icono(), titulo="Configuración", mostrar_configuracion=False, mostrar_minimizar=False, mostrar_pantalla_completa=False, mostrar_cerrar=True, permitir_arrastre=True)  # Construye la barra personalizada.
+        self.barra_titulo = BarraTitulo(ventana=self, ruta_icono=self._ruta_icono(), titulo=self._t("configuracion.titulo"), mostrar_configuracion=False, mostrar_minimizar=False, mostrar_pantalla_completa=False, mostrar_cerrar=True, permitir_arrastre=True)  # Construye la barra personalizada.
         self.barra_titulo.setStyleSheet("QWidget#BarraTitulo { background-color: transparent; border: none; } QLabel { background-color: transparent; border: none; } QLabel#TituloBarra { background-color: transparent; }")  # Mantiene transparente el contenido interno.
         if self.barra_titulo.boton_cerrar is not None:
             self.barra_titulo.boton_cerrar.setObjectName("BotonCerrarConfiguracion")  # Identifica la X propia de este diálogo.
@@ -157,16 +163,16 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         contenedor_contenido.setLayout(contenido)  # Asigna el diseño horizontal.
         diseno_general.addWidget(contenedor_contenido, 1)  # Hace que el contenido ocupe el espacio restante.
 
-        self.panel_ventana = PanelConfiguracionVentana(self.preferencias_temporales, self.preferencias_tema_temporales, self)  # Construye Ventana y apariencia con ambas copias temporales.
-        self._agregar_seccion("Ventana y apariencia", self.panel_ventana, PreferenciasAplicacion.SECCION_VENTANA)  # Registra la primera categoría.
+        self.panel_ventana = PanelConfiguracionVentana(self.preferencias_temporales, self.preferencias_tema_temporales, self, gestor_traducciones=self.gestor_traducciones)  # Construye Ventana y apariencia compartiendo el mismo idioma.
+        self._agregar_seccion("configuracion.seccion.ventana", self.panel_ventana, PreferenciasAplicacion.SECCION_VENTANA)  # Registra la primera categoría.
         self.panel_ventana.configuracion_modificada.connect(self._actualizar_estado_botones)  # Detecta cualquier modificación pendiente.
 
         self.panel_editor = PanelConfiguracionEditor(self.preferencias_temporales, self)  # Construye la categoría Editor.
-        self._agregar_seccion("Editor", self.panel_editor, PreferenciasAplicacion.SECCION_EDITOR)  # Registra la segunda categoría.
+        self._agregar_seccion("configuracion.seccion.editor", self.panel_editor, PreferenciasAplicacion.SECCION_EDITOR)  # Registra la segunda categoría.
         self.panel_editor.configuracion_modificada.connect(self._actualizar_estado_botones)  # Detecta modificaciones de editor.
 
         self.panel_resultados = PanelConfiguracionResultados(self.preferencias_temporales, self)  # Construye Resultados y navegación.
-        self._agregar_seccion("Resultados y navegación", self.panel_resultados, PreferenciasAplicacion.SECCION_RESULTADOS)  # Registra la tercera categoría.
+        self._agregar_seccion("configuracion.seccion.resultados", self.panel_resultados, PreferenciasAplicacion.SECCION_RESULTADOS)  # Registra la tercera categoría.
         self.panel_resultados.navegacion_errores_cambiada.connect(self._actualizar_estado_botones)  # Detecta cambios de navegación.
         self.panel_resultados.navegacion_vlsm_cambiada.connect(self._actualizar_estado_botones)  # Detecta cambios hacia VLSM.
         self.panel_resultados.advertencias_vlsm_cambiadas.connect(self._actualizar_estado_botones)  # Detecta cambios de avisos compactos.
@@ -174,7 +180,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         self.panel_resultados.cerrar_ventana_al_navegar_cambiado.connect(self._actualizar_estado_botones)  # Detecta cambios del doble clic.
 
         self.panel_ia = PanelConfiguracionIADiferida(gestor_ollama, componente_ia, preferencias_ia, asistencia_disponible_inicial, self)  # Construye Asistencia de IA.
-        self._agregar_seccion("Asistencia de IA", self.panel_ia, PreferenciasAplicacion.SECCION_IA)  # Registra la última categoría.
+        self._agregar_seccion("configuracion.seccion.ia", self.panel_ia, PreferenciasAplicacion.SECCION_IA)  # Registra la última categoría.
         self.panel_ia.configuracion_modificada.connect(self._actualizar_estado_botones)  # Detecta preferencias pendientes de IA.
         self.panel_ia.autocompletado_cambiado.connect(self.autocompletado_ia_cambiado.emit)  # Reenvía el estado efectivo de autocompletado.
         self.panel_ia.diagnosticos_ia_cambiados.connect(self.diagnosticos_ia_cambiados.emit)  # Reenvía el estado efectivo de diagnósticos.
@@ -191,23 +197,27 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         diseno_pie.setContentsMargins(16, 10, 16, 10)  # Mantiene separación exterior.
         diseno_pie.setSpacing(10)  # Separa las acciones.
         diseno_pie.addStretch()  # Empuja las acciones hacia la derecha.
-        self.boton_aplicar = QPushButton("Aplicar")  # Confirma sin cerrar.
+        self.boton_aplicar = QPushButton(self._t("comun.aplicar"))  # Confirma sin cerrar.
         self.boton_aplicar.clicked.connect(self._aplicar_desde_boton)  # Ejecuta el guardado.
         diseno_pie.addWidget(self.boton_aplicar)  # Añade Aplicar.
-        self.boton_aceptar = QPushButton("Aceptar")  # Confirma y cierra.
+        self.boton_aceptar = QPushButton(self._t("comun.aceptar"))  # Confirma y cierra.
         self.boton_aceptar.setObjectName("BotonPrincipal")  # Mantiene Aceptar como acción principal.
         self.boton_aceptar.clicked.connect(self._aceptar_cambios)  # Ejecuta el guardado antes de cerrar.
         diseno_pie.addWidget(self.boton_aceptar)  # Añade Aceptar.
-        self.boton_cancelar = QPushButton("Cancelar")  # Descarta los cambios pendientes.
+        self.boton_cancelar = QPushButton(self._t("comun.cancelar"))  # Descarta los cambios pendientes.
         self.boton_cancelar.clicked.connect(self._cancelar_cambios)  # Cierra sin persistir las copias.
         diseno_pie.addWidget(self.boton_cancelar)  # Añade Cancelar.
         diseno_general.addWidget(pie)  # Coloca finalmente el pie.
 
-    def _agregar_seccion(self, nombre: str, panel, clave: str) -> None:
+        self._aplicar_idioma_visual(self.preferencias_aplicacion.idioma_interfaz())  # Reafirma todos los textos después de construir la interfaz completa.
+
+    def _agregar_seccion(self, clave_texto: str, panel, clave: str) -> None:
+        nombre = self._t(clave_texto)  # Resuelve el texto visible desde una clave estable.
         elemento = QListWidgetItem(nombre)  # Crea el elemento visible dentro de la navegación.
         elemento.setToolTip(nombre)  # Permite consultar el texto completo.
         self.lista_secciones.addItem(elemento)  # Añade la categoría.
         self.claves_secciones.append(clave)  # Conserva su identificador estable.
+        self.claves_texto_secciones.append(clave_texto)  # Conserva la clave necesaria para retraducir la navegación.
         area = QScrollArea()  # Crea una región desplazable.
         area.setObjectName("AreaDesplazamientoConfiguracion")  # Permite identificarla en estilos.
         area.setFrameShape(QFrame.Shape.NoFrame)  # Evita un borde adicional.
@@ -217,6 +227,34 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         area.setStyleSheet("QScrollArea#AreaDesplazamientoConfiguracion { background-color: #1e1e2e; border: none; } QScrollArea#AreaDesplazamientoConfiguracion > QWidget > QWidget { background-color: #1e1e2e; }")  # Integra visualmente el área.
         area.setWidget(panel)  # Coloca la categoría real dentro del scroll.
         self.paneles.addWidget(area)  # Registra el panel siguiendo el mismo orden.
+
+    def _aplicar_idioma_visual(self, idioma: str) -> bool:
+        if not self.gestor_traducciones.establecer_idioma(idioma):
+            return False  # Conserva los textos actuales ante un código inesperado.
+
+        titulo = self._t("configuracion.titulo")  # Resuelve una sola vez el título compartido.
+        self.setWindowTitle(titulo)  # Actualiza también el título reconocido por Windows.
+        self.barra_titulo.etiqueta_titulo.setText(titulo)  # Actualiza la barra personalizada visible.
+
+        if self.barra_titulo.boton_cerrar is not None:
+            texto_cerrar = self._t("comun.cerrar")  # Recupera el nombre de la acción de cierre.
+            self.barra_titulo.boton_cerrar.setToolTip(texto_cerrar)  # Traduce la ayuda de la X.
+            self.barra_titulo.boton_cerrar.setAccessibleName(texto_cerrar)  # Traduce también su nombre accesible.
+
+        for indice, clave_texto in enumerate(self.claves_texto_secciones):
+            if indice >= self.lista_secciones.count():
+                break  # Protege una diferencia excepcional entre ambas colecciones.
+            texto = self._t(clave_texto)  # Resuelve la categoría correspondiente.
+            elemento = self.lista_secciones.item(indice)  # Recupera la fila ya existente.
+            elemento.setText(texto)  # Actualiza el texto visible.
+            elemento.setToolTip(texto)  # Mantiene el tooltip sincronizado.
+
+        self.boton_aplicar.setText(self._t("comun.aplicar"))  # Traduce la acción Aplicar.
+        self.boton_aceptar.setText(self._t("comun.aceptar"))  # Traduce la acción principal.
+        self.boton_cancelar.setText(self._t("comun.cancelar"))  # Traduce la acción Cancelar.
+        self.panel_ventana.aplicar_idioma(idioma)  # Traduce también la primera categoría completa.
+
+        return True  # Confirma que la actualización visual terminó correctamente.
 
     def _obtener_indice_inicial(self) -> int:
         if not self.preferencias_aplicacion.recordar_seccion_configuracion(): return 0  # Abre siempre la primera categoría cuando esta comodidad está desactivada.
@@ -303,6 +341,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
 
         cambios_apariencia = aplicados.get("Ventana y apariencia", [])  # Recupera exclusivamente las preferencias visuales confirmadas.
         if any(nombre in cambios_apariencia for nombre in ("Tema de la aplicación", "Familia de fuente de la interfaz", "Tamaño base de la interfaz")): self.apariencia_cambiada.emit()  # Solicita una actualización global cuando cambia tema o tipografía.
+        if "Idioma de la interfaz" in cambios_apariencia: self._aplicar_idioma_visual(self.preferencias_aplicacion.idioma_interfaz())  # Reaplica en caliente los textos solamente después de guardar correctamente el idioma.
 
         if cambios_antes.get("Editor"):  # Comprueba si existía alguna modificación relacionada con el editor.
             self.ajuste_linea_editor_cambiado.emit(self.preferencias_aplicacion.ajuste_linea_editor_activado())  # Sincroniza ajuste de línea.
@@ -329,7 +368,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         errores.extend(errores_ia)  # Une todos los posibles fallos.
         self._actualizar_estado_botones()  # Recalcula Aplicar.
         if mostrar_resumen and aplicados: self._mostrar_resumen_cambios(aplicados)  # Presenta los cambios confirmados.
-        if errores: QMessageBox.warning(self, "Configuración", "Algunos cambios no pudieron aplicarse:\n\n" + "\n".join(f"• {error}" for error in errores))  # Informa cualquier fallo.
+        if errores: QMessageBox.warning(self, self._t("configuracion.titulo"), self._t("configuracion.error.aplicar") + "\n\n" + "\n".join(f"• {error}" for error in errores))  # Informa cualquier fallo.
         return not errores, bool(aplicados)  # Informa el resultado global.
 
     def _aplicar_desde_boton(self) -> None:
@@ -352,13 +391,13 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         cantidad = sum(len(elementos) for elementos in cambios.values())  # Cuenta todas las preferencias confirmadas.
         secciones = len(cambios)  # Cuenta las categorías afectadas.
         dialogo = QMessageBox(self)  # Crea el cuadro informativo.
-        dialogo.setWindowTitle("Cambios aplicados")  # Identifica el resultado.
+        dialogo.setWindowTitle(self._t("configuracion.resumen.titulo"))  # Identifica el resultado en el idioma vigente.
         dialogo.setIcon(QMessageBox.Icon.Information)  # Utiliza el icono convencional.
-        dialogo.setText(f"Se aplicaron {cantidad} {'cambio' if cantidad == 1 else 'cambios'} en {secciones} {'sección' if secciones == 1 else 'secciones'}.")  # Construye el resumen numérico.
-        dialogo.setInformativeText("\n\n".join(seccion + ":\n" + "\n".join(f"• {elemento}" for elemento in elementos) for seccion, elementos in cambios.items()))  # Organiza los detalles por categoría.
+        dialogo.setText(self._t("configuracion.resumen.texto", cantidad=cantidad, secciones=secciones))  # Presenta un resumen neutro respecto al singular y plural.
+        dialogo.setInformativeText("\n\n".join(seccion + ":\n" + "\n".join(f"• {elemento}" for elemento in elementos) for seccion, elementos in cambios.items()))  # Los nombres internos se internacionalizarán cuando se traduzcan las categorías restantes.
         dialogo.setStandardButtons(QMessageBox.StandardButton.Ok)  # Mantiene una única acción.
         boton = dialogo.button(QMessageBox.StandardButton.Ok)  # Recupera el botón generado.
-        if boton is not None: boton.setText("Aceptar"); boton.setObjectName("BotonPrincipal")  # Mantiene el cuadro completamente en español y con la acción principal.
+        if boton is not None: boton.setText(self._t("comun.aceptar")); boton.setObjectName("BotonPrincipal")  # Traduce la acción principal y conserva su estilo.
         dialogo.exec()  # Presenta el resumen.
 
     def _actualizar_operacion(self, en_curso: bool) -> None:

@@ -26,6 +26,7 @@ from Interfaz.configuracion.selector_fuentes import SelectorFuentes  # Proporcio
 from Motor.configuracion.catalogo_idiomas import idiomas_disponibles  # Proporciona los seis idiomas admitidos y sus nombres visibles.
 from Motor.configuracion.catalogo_temas import modo_del_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo  # Proporciona modos y variantes visuales.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores compartidos.
+from Motor.internacionalizacion.gestor_traducciones import GestorTraducciones  # Resuelve los textos visibles según el idioma confirmado.
 
 
 class BotonCasillaVentana(QPushButton):  # Representa una casilla coherente con las demás categorías de Configuración.
@@ -47,27 +48,62 @@ class BotonCasillaVentana(QPushButton):  # Representa una casilla coherente con 
         self.update()  # Solicita el redibujado inmediato.
 
 
-class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana, tema y tipografía general.
+class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana, tema, idioma y tipografía general.
     configuracion_modificada = Signal()  # Informa que existe al menos una modificación temporal.
 
-    def __init__(self, preferencias_aplicacion, preferencias_tema, padre=None):
+    def __init__(self, preferencias_aplicacion, preferencias_tema, padre=None, gestor_traducciones: GestorTraducciones | None = None):
         super().__init__(padre)  # Vincula el panel con Configuración.
         self.preferencias_aplicacion = preferencias_aplicacion  # Conserva la copia temporal de preferencias generales.
         self.preferencias_tema = preferencias_tema  # Conserva la copia temporal específica del tema.
+        self.gestor_traducciones = gestor_traducciones or GestorTraducciones(self.preferencias_aplicacion.idioma_interfaz())  # Comparte el idioma confirmado de la ventana o crea uno compatible.
+        self._textos_traducibles: list[tuple[QWidget, str]] = []  # Conserva controles cuyo texto debe poder actualizarse en caliente.
+        self._tooltips_traducibles: list[tuple[QWidget, str]] = []  # Conserva ayudas contextuales traducibles.
+        self._accesibles_traducibles: list[tuple[QWidget, str]] = []  # Conserva descripciones de accesibilidad traducibles.
         tema_actual = self.preferencias_tema.tema()  # Recupera la variante utilizada al abrir Configuración.
         self._ultima_variante_por_modo = {modo_del_tema(tema_actual): tema_actual}  # Recuerda la última variante visitada de cada modo durante esta sesión.
         self._construir_interfaz()  # Construye todos los controles.
 
-    def _crear_tarjeta(self, titulo: str, descripcion: str) -> tuple[QFrame, QVBoxLayout]:
+    def _t(self, clave: str) -> str:
+        return self.gestor_traducciones.traducir(clave)  # Abrevia la resolución de textos dentro del panel.
+
+    def _registrar_texto(self, widget: QWidget, clave: str):
+        self._textos_traducibles.append((widget, clave))  # Conserva la relación estable entre widget y clave.
+        widget.setText(self._t(clave))  # Aplica inmediatamente el idioma vigente.
+        return widget  # Permite construir y registrar en una sola expresión.
+
+    def _registrar_tooltip(self, widget: QWidget, clave: str) -> None:
+        self._tooltips_traducibles.append((widget, clave))  # Conserva la ayuda para futuras actualizaciones.
+        widget.setToolTip(self._t(clave))  # Aplica la ayuda correspondiente al idioma vigente.
+
+    def _registrar_accesible(self, widget: QWidget, clave: str) -> None:
+        self._accesibles_traducibles.append((widget, clave))  # Conserva la descripción accesible.
+        widget.setAccessibleName(self._t(clave))  # Sincroniza accesibilidad con el idioma visible.
+
+    def aplicar_idioma(self, idioma: str) -> bool:
+        if not self.gestor_traducciones.establecer_idioma(idioma):
+            return False  # Mantiene intacta la interfaz si el código no pertenece al catálogo permitido.
+
+        for widget, clave in self._textos_traducibles:
+            widget.setText(self._t(clave))  # Actualiza cada texto estático registrado.
+
+        for widget, clave in self._tooltips_traducibles:
+            widget.setToolTip(self._t(clave))  # Actualiza cada ayuda contextual registrada.
+
+        for widget, clave in self._accesibles_traducibles:
+            widget.setAccessibleName(self._t(clave))  # Actualiza también las descripciones accesibles.
+
+        return True  # Confirma que la traducción visual fue reaplicada.
+
+    def _crear_tarjeta(self, clave_titulo: str, clave_descripcion: str) -> tuple[QFrame, QVBoxLayout]:
         tarjeta = QFrame()  # Crea una superficie visual reutilizable.
         tarjeta.setObjectName("TarjetaConfiguracion")  # Reutiliza el estilo común.
         diseno = QVBoxLayout(tarjeta)  # Organiza verticalmente su contenido.
         diseno.setContentsMargins(22, 16, 22, 16)  # Mantiene padding uniforme.
         diseno.setSpacing(9)  # Conserva una separación compacta.
-        subtitulo = QLabel(titulo)  # Presenta el nombre de la tarjeta.
+        subtitulo = self._registrar_texto(QLabel(), clave_titulo)  # Presenta el nombre traducible de la tarjeta.
         subtitulo.setObjectName("SubtituloConfiguracion")  # Utiliza el estilo interno.
         subtitulo.setContentsMargins(4, 0, 4, 0)  # Mantiene alineación lateral.
-        descripcion_widget = QLabel(descripcion)  # Presenta una breve explicación.
+        descripcion_widget = self._registrar_texto(QLabel(), clave_descripcion)  # Presenta una explicación traducible.
         descripcion_widget.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario.
         descripcion_widget.setContentsMargins(4, 2, 4, 2)  # Mantiene separación interior.
         descripcion_widget.setWordWrap(True)  # Permite adaptar el texto.
@@ -75,13 +111,16 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         diseno.addWidget(descripcion_widget)  # Añade después la explicación.
         return tarjeta, diseno  # Entrega tarjeta y layout para completar su contenido.
 
-    def _crear_fila_casilla(self, casilla: QPushButton, texto: str, ayuda: str = "") -> QHBoxLayout:
+    def _crear_fila_casilla(self, casilla: QPushButton, clave_texto: str, clave_ayuda: str = "") -> QHBoxLayout:
         fila = QHBoxLayout()  # Organiza horizontalmente casilla y descripción.
         fila.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación general.
         fila.setSpacing(9)  # Separa ambos elementos.
-        etiqueta = QLabel(texto)  # Presenta el nombre visible de la opción.
+        etiqueta = self._registrar_texto(QLabel(), clave_texto)  # Presenta el nombre traducible de la opción.
         etiqueta.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
-        if ayuda: casilla.setToolTip(ayuda); etiqueta.setToolTip(ayuda)  # Comparte la ayuda contextual.
+        self._registrar_accesible(casilla, clave_texto)  # Mantiene la casilla accesible en el idioma actual.
+        if clave_ayuda:
+            self._registrar_tooltip(casilla, clave_ayuda)  # Comparte la ayuda contextual con la casilla.
+            self._registrar_tooltip(etiqueta, clave_ayuda)  # Comparte la misma ayuda con la etiqueta.
         fila.addWidget(casilla)  # Coloca primero la casilla.
         fila.addWidget(etiqueta)  # Coloca después la descripción.
         fila.addStretch()  # Mantiene el conjunto alineado a la izquierda.
@@ -92,42 +131,42 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         diseno.setContentsMargins(24, 22, 24, 22)  # Mantiene los márgenes existentes.
         diseno.setSpacing(14)  # Conserva separación uniforme.
 
-        titulo = QLabel("Ventana y apariencia")  # Presenta el nombre de la categoría.
+        titulo = self._registrar_texto(QLabel(), "configuracion.ventana.titulo")  # Presenta el nombre traducible de la categoría.
         titulo.setObjectName("TituloConfiguracion")  # Reutiliza el encabezado principal.
         titulo.setContentsMargins(4, 0, 4, 0)  # Mantiene alineación lateral.
-        descripcion = QLabel("Personaliza cómo inicia TecNet Finder, su tema visual, el idioma y la tipografía utilizada por la interfaz.")  # Resume el propósito actualizado.
+        descripcion = self._registrar_texto(QLabel(), "configuracion.ventana.descripcion")  # Resume el propósito actualizado.
         descripcion.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario.
         descripcion.setContentsMargins(4, 0, 4, 0)  # Mantiene la misma alineación.
         descripcion.setWordWrap(True)  # Permite adaptar la explicación.
         diseno.addWidget(titulo)  # Añade el encabezado.
         diseno.addWidget(descripcion)  # Añade su explicación.
 
-        tarjeta_inicio, diseno_inicio = self._crear_tarjeta("Inicio de TecNet Finder", "Define el estado utilizado al abrir TecNet Finder cuando no se está recuperando un estado anterior.")  # Construye la primera tarjeta.
-        self.casilla_iniciar_maximizado = BotonCasillaVentana("Iniciar TecNet Finder maximizado", self)  # Crea la preferencia.
+        tarjeta_inicio, diseno_inicio = self._crear_tarjeta("configuracion.ventana.inicio.titulo", "configuracion.ventana.inicio.descripcion")  # Construye la primera tarjeta.
+        self.casilla_iniciar_maximizado = BotonCasillaVentana(self._t("configuracion.ventana.inicio.maximizado"), self)  # Crea la preferencia.
         self.casilla_iniciar_maximizado.setChecked(self.preferencias_aplicacion.iniciar_maximizado())  # Recupera el valor temporal.
         self.casilla_iniciar_maximizado.toggled.connect(self._cambiar_iniciar_maximizado)  # Registra modificaciones.
-        diseno_inicio.addLayout(self._crear_fila_casilla(self.casilla_iniciar_maximizado, "Iniciar TecNet Finder maximizado", "Cuando no exista un estado anterior para recuperar, TecNet Finder iniciará ocupando toda el área disponible."))  # Añade la opción.
+        diseno_inicio.addLayout(self._crear_fila_casilla(self.casilla_iniciar_maximizado, "configuracion.ventana.inicio.maximizado", "configuracion.ventana.inicio.maximizado.ayuda"))  # Añade la opción.
         diseno.addWidget(tarjeta_inicio)  # Incorpora la primera tarjeta.
 
-        tarjeta_estado, diseno_estado = self._crear_tarjeta("Estado entre sesiones", "Permite recuperar si TecNet Finder estaba maximizado o en modo ventana cuando terminó la sesión anterior.")  # Construye la segunda tarjeta.
-        self.casilla_recordar_estado = BotonCasillaVentana("Recordar el estado de la ventana al cerrar", self)  # Crea la preferencia.
+        tarjeta_estado, diseno_estado = self._crear_tarjeta("configuracion.ventana.estado.titulo", "configuracion.ventana.estado.descripcion")  # Construye la segunda tarjeta.
+        self.casilla_recordar_estado = BotonCasillaVentana(self._t("configuracion.ventana.estado.recordar"), self)  # Crea la preferencia.
         self.casilla_recordar_estado.setChecked(self.preferencias_aplicacion.recordar_estado_ventana())  # Recupera el valor temporal.
         self.casilla_recordar_estado.toggled.connect(self._cambiar_recordar_estado)  # Registra modificaciones.
-        diseno_estado.addLayout(self._crear_fila_casilla(self.casilla_recordar_estado, "Recordar el estado de la ventana al cerrar", "Media pantalla y pantalla completa continúan siendo estados temporales y no se recuperan entre ejecuciones."))  # Añade la opción.
+        diseno_estado.addLayout(self._crear_fila_casilla(self.casilla_recordar_estado, "configuracion.ventana.estado.recordar", "configuracion.ventana.estado.recordar.ayuda"))  # Añade la opción.
         diseno.addWidget(tarjeta_estado)  # Incorpora la tarjeta.
 
         # ====================================================
         # Tema de la aplicación
         # ====================================================
 
-        tarjeta_tema, diseno_tema = self._crear_tarjeta("Tema de la aplicación", "Selecciona primero un modo y después una variante. Los colores de errores, advertencias y demás diagnósticos conservan siempre su significado.")  # Construye la tarjeta completa de apariencia.
+        tarjeta_tema, diseno_tema = self._crear_tarjeta("configuracion.ventana.tema.titulo", "configuracion.ventana.tema.descripcion")  # Construye la tarjeta completa de apariencia.
         tema_actual = self.preferencias_tema.tema()  # Recupera la variante temporal actual.
         modo_actual = modo_del_tema(tema_actual)  # Obtiene automáticamente el modo correspondiente.
 
         fila_modo = QHBoxLayout()  # Organiza la selección de modo.
         fila_modo.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
         fila_modo.setSpacing(10)  # Separa etiqueta y selector.
-        etiqueta_modo = QLabel("Modo:")  # Identifica la primera selección.
+        etiqueta_modo = self._registrar_texto(QLabel(), "configuracion.ventana.tema.modo")  # Identifica la primera selección.
         etiqueta_modo.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
         self.selector_modo = SelectorDesplegableConfiguracion(self)  # Utiliza el selector personalizado para una lista pequeña.
         self.selector_modo.setFixedWidth(220)  # Mantiene un ancho cómodo.
@@ -142,7 +181,7 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         fila_variante = QHBoxLayout()  # Organiza la selección de variante.
         fila_variante.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
         fila_variante.setSpacing(10)  # Separa etiqueta y selector.
-        etiqueta_variante = QLabel("Variante:")  # Identifica la segunda selección.
+        etiqueta_variante = self._registrar_texto(QLabel(), "configuracion.ventana.tema.variante")  # Identifica la segunda selección.
         etiqueta_variante.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
         self.selector_variante = SelectorDesplegableConfiguracion(self)  # Utiliza el mismo control reutilizable.
         self.selector_variante.setFixedWidth(260)  # Reserva espacio suficiente para nombres futuros.
@@ -165,11 +204,11 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         # Idioma de la interfaz
         # ====================================================
 
-        tarjeta_idioma, diseno_idioma = self._crear_tarjeta("Idioma de la interfaz", "Selecciona el idioma utilizado por los textos de TecNet Finder. Las palabras reservadas IP, MASK, HOSTS y NAME permanecen sin cambios.")  # Construye la tarjeta dedicada al idioma.
+        tarjeta_idioma, diseno_idioma = self._crear_tarjeta("configuracion.ventana.idioma.titulo", "configuracion.ventana.idioma.descripcion")  # Construye la tarjeta dedicada al idioma.
         fila_idioma = QHBoxLayout()  # Organiza etiqueta y selector.
         fila_idioma.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación de las demás preferencias.
         fila_idioma.setSpacing(10)  # Separa ambos controles.
-        etiqueta_idioma = QLabel("Idioma:")  # Identifica la selección.
+        etiqueta_idioma = self._registrar_texto(QLabel(), "configuracion.ventana.idioma.etiqueta")  # Identifica la selección.
         etiqueta_idioma.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
         self.selector_idioma = SelectorDesplegableConfiguracion(self)  # Utiliza el selector personalizado ya probado.
         self.selector_idioma.setFixedWidth(260)  # Reserva espacio para los nombres nativos de los seis idiomas.
@@ -186,11 +225,11 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         # Tipografía general
         # ====================================================
 
-        tarjeta_tipografia, diseno_tipografia = self._crear_tarjeta("Tipografía de la interfaz", "Cambia la fuente utilizada por la interfaz general. El editor conserva su propia configuración independiente.")  # Construye la tarjeta de tipografía.
+        tarjeta_tipografia, diseno_tipografia = self._crear_tarjeta("configuracion.ventana.tipografia.titulo", "configuracion.ventana.tipografia.descripcion")  # Construye la tarjeta de tipografía.
         fila_familia = QHBoxLayout()  # Organiza la familia global.
         fila_familia.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
         fila_familia.setSpacing(10)  # Separa los controles.
-        etiqueta_familia = QLabel("Familia de fuente:")  # Identifica la preferencia.
+        etiqueta_familia = self._registrar_texto(QLabel(), "configuracion.ventana.tipografia.familia")  # Identifica la preferencia.
         etiqueta_familia.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
         self.selector_fuente_interfaz = SelectorFuentes(self)  # Utiliza el selector buscable.
         self.selector_fuente_interfaz.setFixedWidth(300)  # Mantiene espacio suficiente para nombres largos.
@@ -204,7 +243,7 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         fila_tamano = QHBoxLayout()  # Organiza el tamaño base.
         fila_tamano.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación.
         fila_tamano.setSpacing(10)  # Separa los controles.
-        etiqueta_tamano = QLabel("Tamaño base:")  # Identifica la preferencia.
+        etiqueta_tamano = self._registrar_texto(QLabel(), "configuracion.ventana.tipografia.tamano")  # Identifica la preferencia.
         etiqueta_tamano.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
         self.selector_tamano_interfaz = CampoNumeroConfiguracion(self)  # Utiliza el campo numérico propio.
         self.selector_tamano_interfaz.setRange(PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MINIMO, PreferenciasAplicacion.TAMANO_FUENTE_INTERFAZ_MAXIMO)  # Limita la selección a valores seguros.
@@ -218,11 +257,11 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         diseno_tipografia.addLayout(fila_tamano)  # Añade la segunda fila.
         diseno.addWidget(tarjeta_tipografia)  # Incorpora la tarjeta.
 
-        tarjeta_configuracion, diseno_configuracion = self._crear_tarjeta("Ventana de Configuración", "Permite regresar directamente a la última categoría que estabas consultando cuando vuelvas a abrir Configuración.")  # Construye la última tarjeta.
-        self.casilla_recordar_seccion = BotonCasillaVentana("Abrir Configuración en la última sección visitada", self)  # Crea la preferencia.
+        tarjeta_configuracion, diseno_configuracion = self._crear_tarjeta("configuracion.ventana.configuracion.titulo", "configuracion.ventana.configuracion.descripcion")  # Construye la última tarjeta.
+        self.casilla_recordar_seccion = BotonCasillaVentana(self._t("configuracion.ventana.configuracion.recordar"), self)  # Crea la preferencia.
         self.casilla_recordar_seccion.setChecked(self.preferencias_aplicacion.recordar_seccion_configuracion())  # Recupera el valor temporal.
         self.casilla_recordar_seccion.toggled.connect(self._cambiar_recordar_seccion)  # Registra modificaciones.
-        diseno_configuracion.addLayout(self._crear_fila_casilla(self.casilla_recordar_seccion, "Abrir Configuración en la última sección visitada"))  # Añade la opción.
+        diseno_configuracion.addLayout(self._crear_fila_casilla(self.casilla_recordar_seccion, "configuracion.ventana.configuracion.recordar"))  # Añade la opción.
         diseno.addWidget(tarjeta_configuracion)  # Incorpora la tarjeta.
         diseno.addStretch()  # Mantiene todas las tarjetas agrupadas arriba.
 
@@ -253,7 +292,7 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
             self.configuracion_modificada.emit()  # Solicita reevaluar Aplicar.
 
     def _actualizar_descripcion_tema(self, tema_id: str) -> None:
-        self.etiqueta_descripcion_tema.setText(obtener_tema(tema_id)["descripcion"])  # Presenta la descripción centralizada de la variante.
+        self.etiqueta_descripcion_tema.setText(obtener_tema(tema_id)["descripcion"])  # La descripción de variantes se internacionalizará junto con el catálogo de temas en un bloque posterior.
 
     def _cambiar_iniciar_maximizado(self, activado: bool) -> None:
         if self.preferencias_aplicacion.establecer_iniciar_maximizado(activado): self.configuracion_modificada.emit(); return  # Conserva temporalmente la decisión.

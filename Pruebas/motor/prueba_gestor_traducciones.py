@@ -99,3 +99,35 @@ def prueba_recursos_reales_incluyen_los_seis_catalogos():
 def prueba_respaldo_real_funciona_desde_ingles():
     gestor = GestorTraducciones("en")
     assert gestor.traducir("prueba.respaldo") == "Texto disponible solamente en español."
+
+
+def prueba_catalogos_reales_contienen_textos_visibles_de_configuracion():
+    claves_requeridas = {
+        "configuracion.titulo",
+        "configuracion.seccion.ventana",
+        "configuracion.seccion.editor",
+        "configuracion.seccion.resultados",
+        "configuracion.seccion.ia",
+        "configuracion.ventana.titulo",
+        "configuracion.ventana.idioma.titulo",
+        "configuracion.ventana.tipografia.titulo",
+        "configuracion.ventana.configuracion.recordar",
+        "configuracion.resumen.titulo",
+        "configuracion.resumen.texto",
+        "configuracion.error.aplicar",
+    }  # Define el mínimo que este bloque necesita traducido directamente en cada catálogo.
+
+    gestor = GestorTraducciones("es")
+    for codigo in ("es", "en", "pt", "fr", "de", "la"):
+        ruta = gestor.ruta_catalogos / f"{codigo}.json"
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        assert claves_requeridas.issubset(datos.keys())  # Impide que el respaldo español oculte accidentalmente una traducción faltante.
+
+
+def prueba_configuracion_ingles_resuelve_textos_visibles():
+    gestor = GestorTraducciones("en")
+    assert gestor.traducir("configuracion.titulo") == "Settings"
+    assert gestor.traducir("configuracion.seccion.ventana") == "Window and appearance"
+    assert gestor.traducir("configuracion.ventana.idioma.titulo") == "Interface language"
+    assert gestor.traducir("comun.aplicar") == "Apply"
+    assert gestor.traducir("comun.cancelar") == "Cancel"
