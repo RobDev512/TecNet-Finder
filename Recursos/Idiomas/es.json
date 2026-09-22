@@ -1,0 +1,11 @@
+{
+    "aplicacion.nombre": "TecNet Finder",
+    "comun.aceptar": "Aceptar",
+    "comun.cancelar": "Cancelar",
+    "comun.aplicar": "Aplicar",
+    "comun.cerrar": "Cerrar",
+    "configuracion.idioma": "Idioma",
+    "configuracion.idioma.descripcion": "Selecciona el idioma de la interfaz.",
+    "prueba.saludo": "Hola, {nombre}.",
+    "prueba.respaldo": "Texto disponible solamente en español."
+}

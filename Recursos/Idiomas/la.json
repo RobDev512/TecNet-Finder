@@ -1,0 +1,10 @@
+{
+    "aplicacion.nombre": "TecNet Finder",
+    "comun.aceptar": "Accipe",
+    "comun.cancelar": "Abroga",
+    "comun.aplicar": "Adhibe",
+    "comun.cerrar": "Claude",
+    "configuracion.idioma": "Lingua",
+    "configuracion.idioma.descripcion": "Linguam interfaciei elige.",
+    "prueba.saludo": "Salve, {nombre}."
+}

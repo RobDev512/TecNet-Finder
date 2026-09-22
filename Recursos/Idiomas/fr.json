@@ -1,0 +1,10 @@
+{
+    "aplicacion.nombre": "TecNet Finder",
+    "comun.aceptar": "Accepter",
+    "comun.cancelar": "Annuler",
+    "comun.aplicar": "Appliquer",
+    "comun.cerrar": "Fermer",
+    "configuracion.idioma": "Langue",
+    "configuracion.idioma.descripcion": "Sélectionnez la langue de l’interface.",
+    "prueba.saludo": "Bonjour, {nombre}."
+}
