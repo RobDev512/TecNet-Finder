@@ -948,7 +948,8 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
     def _aplicar_selector_media_pantalla(self, selector) -> None:
         p = self.paleta  # Recupera la paleta vigente.
         selector.setStyleSheet(f"""
-            QFrame#SelectorMediaPantalla {{ background-color: {p["panel"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 12px; }}
+            QFrame#SelectorMediaPantalla {{ background-color: transparent; border: none; }}
+            QFrame#PanelSelectorMediaPantalla {{ background-color: {p["panel"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 14px; }}
             QWidget#ContenedorTarjetasMediaPantalla {{ background-color: transparent; border: none; }}
             QFrame#TarjetaMediaPantalla {{ background-color: {p["fondo"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 10px; }}
             QFrame#TarjetaMediaPantalla:hover {{ background-color: {p["superficie_suave"]}; border: 1px solid {p["acento"]}; }}
@@ -956,12 +957,11 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
             QFrame#PrevisualizacionMediaPantalla {{ background-color: {p["editor"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 8px; }}
             QFrame#MitadMediaPantallaActiva {{ background-color: {p["acento"]}; border: none; border-radius: 6px; }}
             QFrame#MitadMediaPantallaInactiva {{ background-color: {p["superficie"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 6px; }}
+            QFrame#ContenedorVistaPreviaAccionVentana {{ background-color: transparent; border: none; }}
+            QFrame#VentanaModoVentanaPreview {{ background-color: {p["acento"]}; border: none; border-radius: 6px; }}
+            QFrame#VentanaMaximizadaPreview {{ background-color: {p["acento"]}; border: none; border-radius: 6px; }}
             QLabel#TituloTarjetaMediaPantalla {{ color: {p["texto"]}; background-color: transparent; border: none; font-weight: 600; }}
-            QPushButton#BotonMaximizarDesdeSelector {{ background-color: {p["superficie"]}; color: {p["texto"]}; border: 1px solid {p["borde_fuerte"]}; border-radius: 8px; padding: 7px 12px; font-weight: 600; }}
-            QPushButton#BotonMaximizarDesdeSelector:hover {{ background-color: {p["superficie_hover"]}; color: {p["texto"]}; border: 1px solid {p["acento"]}; }}
-            QPushButton#BotonMaximizarDesdeSelector:pressed {{ background-color: {p["superficie_presionada"]}; border: 1px solid {p["semantico"]}; }}
-            QPushButton#BotonMaximizarDesdeSelector:disabled {{ background-color: {p["fondo_deshabilitado"]}; color: {p["texto_deshabilitado"]}; border: 1px solid {p["borde_deshabilitado"]}; }}
-        """)  # Mantiene completamente tematizado el selector de Snap.
+        """)  # Mantiene transparente la ventana exterior y pinta únicamente un panel interno con esquinas suaves y antialiasing.
 
     def _aplicar_separadores_un_pixel(self, ventana: QWidget) -> None:
         for marco in ventana.findChildren(QFrame):

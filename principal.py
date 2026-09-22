@@ -12,7 +12,7 @@
 #
 # También aplica el estado inicial elegido para la ventana
 # principal y puede recordar entre ejecuciones si TecNet Finder
-# se cerró maximizado o utilizando una ventana convencional.
+# se cerró maximizado o utilizando Modo ventana.
 #
 # Media pantalla y pantalla completa se consideran estados
 # temporales y nunca se restauran automáticamente al iniciar.
@@ -26,8 +26,8 @@ from PySide6.QtWidgets import QApplication, QMessageBox  # Proporciona la aplica
 from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite saber si el componente opcional de inteligencia artificial está instalado.
 from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Administra el servidor privado utilizado por las funciones locales de IA.
 from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Recupera las preferencias persistentes relacionadas con las funciones de asistencia.
-from Interfaz.configuracion.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
 from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
+from Interfaz.configuracion.control_configuracion import ControlConfiguracion  # Conecta la ventana de Configuración con los componentes principales de la aplicación.
 from Interfaz.ventanas.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
 
@@ -39,8 +39,10 @@ MENSAJE_ACTIVAR_VENTANA = b"ACTIVAR"  # Indica a la instancia existente que otra
 def _avisar_instancia_existente() -> bool:  # Intenta contactar una ejecución existente antes de crear una nueva aplicación.
     conexion = QLocalSocket()  # Crea una conexión local temporal destinada únicamente a comunicarse con la primera instancia.
     conexion.connectToServer(NOMBRE_SERVIDOR_INSTANCIA)  # Busca el servidor reservado por la aplicación que ya se encuentra abierta.
+
     if not conexion.waitForConnected(250):
         return False  # Informa que no existe una instancia accesible y permite continuar con el inicio normal.
+
     conexion.write(MENSAJE_ACTIVAR_VENTANA)  # Solicita que la ventana ya existente vuelva a mostrarse o tome el foco.
     conexion.flush()  # Envía inmediatamente los datos pendientes de la conexión local.
     conexion.waitForBytesWritten(250)  # Da un margen breve para que el mensaje alcance la instancia principal.
@@ -48,41 +50,31 @@ def _avisar_instancia_existente() -> bool:  # Intenta contactar una ejecución e
     return True  # Informa que sí existía otra instancia y evita crear una segunda ventana.
 
 
-def _mostrar_ventana_normal_centrada(aplicacion: QApplication, ventana: VentanaPrincipal) -> None:  # Muestra TecNet Finder como ventana normal centrada en la pantalla principal.
+def _mostrar_ventana_normal_centrada(aplicacion: QApplication, ventana: VentanaPrincipal) -> None:  # Recupera el estado persistente "normal" como el nuevo Modo ventana.
     pantalla = aplicacion.primaryScreen()  # Utiliza el monitor principal como referencia segura durante el inicio.
-    if pantalla is None:
-        ventana.resize(1280, 760)  # Mantiene un tamaño convencional si Qt todavía no puede identificar ninguna pantalla.
-        ventana.show()  # Muestra igualmente la aplicación para no impedir su inicio por falta temporal de información del monitor.
-        return
-
-    area = pantalla.availableGeometry()  # Recupera el espacio disponible del monitor excluyendo elementos como la barra de tareas.
-    ancho = min(1280, area.width())  # Limita inicialmente el ancho para evitar superar pantallas pequeñas.
-    ancho = max(min(area.width() // 2, area.width()), ancho)  # Conserva como mínimo aproximadamente media pantalla cuando existe espacio suficiente.
-    alto = min(760, area.height())  # Limita la altura para impedir que la ventana sobrepase verticalmente el monitor.
-    ventana.resize(ancho, alto)  # Aplica el tamaño calculado antes de centrar la ventana.
-
-    posicion_x = area.x() + max(0, (area.width() - ancho) // 2)  # Calcula la posición horizontal necesaria para centrar TecNet Finder.
-    posicion_y = area.y() + max(0, (area.height() - alto) // 2)  # Calcula la posición vertical necesaria para centrar TecNet Finder.
-    ventana.move(posicion_x, posicion_y)  # Coloca la ventana dentro del área realmente utilizable del monitor.
-    ventana.show()  # Inicia TecNet Finder en estado convencional y no maximizado.
+    ventana.preparar_modo_ventana_inicial(pantalla)  # Sincroniza estado, tamaño fijo, posición y arrastre antes del primer fotograma.
+    ventana.show()  # Muestra TecNet Finder ya identificado correctamente como Modo ventana.
 
 
 def _mostrar_ventana_segun_preferencias(aplicacion: QApplication, ventana: VentanaPrincipal, preferencias: PreferenciasAplicacion) -> None:  # Decide el estado inicial utilizando las preferencias persistentes.
     estado_recordado = None  # Comienza sin asumir que existe un estado anterior que deba restaurarse.
+
     if preferencias.recordar_estado_ventana():
-        estado_recordado = preferencias.ultimo_estado_ventana()  # Recupera solamente los estados persistentes permitidos: normal o maximizada.
+        estado_recordado = preferencias.ultimo_estado_ventana()  # Recupera solamente los estados persistentes permitidos: Modo ventana o maximizada.
 
     if estado_recordado == PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA:
         ventana.showMaximized()  # Restaura una sesión anterior que terminó con la ventana maximizada.
         return
+
     if estado_recordado == PreferenciasAplicacion.ESTADO_VENTANA_NORMAL:
-        _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Restaura una sesión anterior que terminó utilizando una ventana convencional.
+        _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Restaura una sesión anterior que terminó utilizando Modo ventana.
         return
+
     if preferencias.iniciar_maximizado():
         ventana.showMaximized()  # Utiliza la preferencia inicial histórica cuando todavía no existe un estado anterior recordado.
         return
 
-    _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Utiliza una ventana convencional cuando el usuario desactivó el inicio maximizado.
+    _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Utiliza Modo ventana cuando el usuario desactivó el inicio maximizado.
 
 
 def _guardar_estado_final_ventana(ventana: VentanaPrincipal, preferencias: PreferenciasAplicacion) -> None:  # Conserva un estado seguro que podrá restaurarse durante la siguiente ejecución.
@@ -92,11 +84,13 @@ def _guardar_estado_final_ventana(ventana: VentanaPrincipal, preferencias: Prefe
     if ventana.en_pantalla_completa:
         estado = PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA if ventana.modo_antes_pantalla_completa == "maximizado" else PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Recupera el modo existente antes de entrar temporalmente a pantalla completa.
     elif ventana.en_media_pantalla:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Considera Media pantalla como una disposición temporal derivada de una ventana normal.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Considera Media pantalla como una disposición temporal derivada de Modo ventana.
+    elif ventana.en_modo_ventana:
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Conserva explícitamente que la siguiente sesión debe iniciar nuevamente en Modo ventana.
     elif ventana.isMaximized():
         estado = PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA  # Conserva que TecNet Finder terminó la sesión en estado maximizado.
     else:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Trata cualquier otro estado convencional como una ventana normal.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Trata cualquier otra geometría convencional como Modo ventana al próximo inicio.
 
     preferencias.establecer_ultimo_estado_ventana(estado)  # Guarda únicamente un estado que pueda restaurarse de forma segura en el próximo inicio.
 
@@ -116,6 +110,7 @@ def iniciar_aplicacion() -> int:  # Construye todos los componentes globales y m
     if not servidor_instancia.listen(NOMBRE_SERVIDOR_INSTANCIA):
         if _avisar_instancia_existente():
             return 0  # Reintenta contactar otra instancia por si apareció durante la inicialización.
+
         QMessageBox.critical(None, "TecNet Finder", "No fue posible reservar el identificador de instancia única de TecNet Finder.")  # Informa que la protección de instancia única no pudo establecerse.
         return 1  # Finaliza con error porque continuar podría permitir ejecuciones duplicadas.
 
@@ -141,13 +136,18 @@ def iniciar_aplicacion() -> int:  # Construye todos los componentes globales y m
     def atender_nueva_instancia() -> None:  # Atiende solicitudes enviadas por otras ejecuciones que intentaron abrir TecNet Finder.
         while servidor_instancia.hasPendingConnections():
             conexion = servidor_instancia.nextPendingConnection()  # Recupera la siguiente conexión pendiente recibida por el servidor local.
+
             if conexion is None:
                 break  # Abandona el ciclo si Qt no pudo proporcionar una conexión válida.
+
             if conexion.bytesAvailable() == 0:
                 conexion.waitForReadyRead(150)  # Espera brevemente cuando el mensaje todavía no ha llegado por completo.
+
             mensaje = bytes(conexion.readAll())  # Recupera el contenido enviado por la instancia secundaria.
+
             if mensaje == MENSAJE_ACTIVAR_VENTANA:
                 ventana.activar_desde_instancia_secundaria()  # Recupera o enfoca la ventana principal en lugar de crear una segunda.
+
             conexion.disconnectFromServer()  # Cierra la conexión después de atender la solicitud.
             conexion.deleteLater()  # Delega a Qt la liberación segura del objeto asociado con la conexión.
 
