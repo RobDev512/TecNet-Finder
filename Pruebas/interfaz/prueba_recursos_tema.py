@@ -35,16 +35,16 @@ def prueba_temas_oscuros_no_utilizan_iconos_claros():
 
 def prueba_resolvedor_prefiere_variante_clara(monkeypatch, tmp_path):
     oscuro, claro, _comunes = _preparar_carpetas(monkeypatch, tmp_path)  # Prepara una estructura temporal equivalente con la real.
-    (oscuro / "Pegar.png").write_bytes(b"oscuro")  # Crea la versión oscura del mismo recurso.
-    esperado = claro / "Pegar.png"; esperado.write_bytes(b"claro")  # Crea y conserva la variante clara esperada.
-    assert recursos_tema.resolver_icono_tema("Pegar.png", TEMA_CLARO_TECNET) == esperado  # Comprueba que el modo claro tenga prioridad sobre su propia carpeta.
+    (oscuro / "Pantalla_completa.png").write_bytes(b"oscuro")  # Crea una versión oscura de un recurso temático real.
+    esperado = claro / "Pantalla_completa.png"; esperado.write_bytes(b"claro")  # Crea y conserva la variante clara esperada.
+    assert recursos_tema.resolver_icono_tema("Pantalla_completa.png", TEMA_CLARO_TECNET) == esperado  # Comprueba que el modo claro tenga prioridad sobre su propia carpeta.
 
 
 def prueba_resolvedor_prefiere_variante_oscura(monkeypatch, tmp_path):
     oscuro, claro, _comunes = _preparar_carpetas(monkeypatch, tmp_path)  # Prepara las tres categorías temporales.
-    esperado = oscuro / "Pegar.png"; esperado.write_bytes(b"oscuro")  # Crea y conserva la variante oscura esperada.
-    (claro / "Pegar.png").write_bytes(b"claro")  # Crea también una alternativa clara que no debe tener prioridad.
-    assert recursos_tema.resolver_icono_tema("Pegar.png", TEMA_OSCURO_TECNET) == esperado  # Comprueba que un tema oscuro utilice primero Oscuro.
+    esperado = oscuro / "Pantalla_completa.png"; esperado.write_bytes(b"oscuro")  # Crea y conserva la variante oscura esperada.
+    (claro / "Pantalla_completa.png").write_bytes(b"claro")  # Crea también una alternativa clara que no debe tener prioridad.
+    assert recursos_tema.resolver_icono_tema("Pantalla_completa.png", TEMA_OSCURO_TECNET) == esperado  # Comprueba que un tema oscuro utilice primero Oscuro.
 
 
 def prueba_resolvedor_prioriza_recurso_comun(monkeypatch, tmp_path):

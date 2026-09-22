@@ -9,7 +9,7 @@
 # Permite modificar:
 #
 # - Ajuste automático de líneas.
-# - Visibilidad de Pegar y Ejemplos.
+# - Visibilidad de Ampliar y Ejemplos.
 # - Familia de fuente.
 # - Tamaño de fuente.
 # - Ancho visual de tabulación.
@@ -165,11 +165,11 @@ class PanelConfiguracionEditor(QWidget):
         fila_botones.setSpacing(9)  # Separa casilla y texto.
 
         self.casilla_botones_rapidos = BotonCasillaEditor(
-            "Mostrar los botones rápidos Pegar y Ejemplos",
+            "Mostrar los botones rápidos Ampliar y Ejemplos",
             self,
         )  # Crea la preferencia de visibilidad.
 
-        etiqueta_botones = QLabel("Mostrar los botones rápidos Pegar y Ejemplos")  # Presenta el nombre.
+        etiqueta_botones = QLabel("Mostrar los botones rápidos Ampliar y Ejemplos")  # Presenta el nombre.
         etiqueta_botones.setObjectName("TextoConfiguracion")  # Mantiene el estilo común.
 
         self.casilla_botones_rapidos.setChecked(

@@ -65,7 +65,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.gestor_ejemplos = GestorEjemplos()  # Prepara el lector reutilizable de casos almacenados en Ejemplos.
         self.control_autocompletado = ControlAutocompletado(self)  # Prepara el asistente asíncrono asociado exclusivamente con este editor.
         self.area_numeros_linea = AreaNumerosLinea(self)  # Crea el área lateral donde se dibujarán los números.
-        self.boton_pegar = QPushButton(self)  # Crea el botón de pegado como hijo fijo del editor completo.
+        self.boton_ampliar = QPushButton(self)  # Crea el botón flotante destinado a ampliar y restaurar el área de edición.
         self.boton_ejemplos = QPushButton(self)  # Crea el segundo botón flotante destinado al selector de ejemplos.
 
         self._configurar_botones_flotantes()  # Prepara ambos controles pequeños mediante los recursos existentes.
@@ -93,11 +93,11 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         QTimer.singleShot(0, self._posicionar_botones_flotantes)  # Coloca los controles cuando Qt ya conoce las dimensiones reales del editor.
 
     def _configurar_botones_flotantes(self) -> None:
-        self._configurar_boton_flotante(self.boton_pegar, "Pegar.png", "Pegar comando desde el portapapeles")  # Prepara el primer control utilizando el icono de pegado.
+        self._configurar_boton_flotante(self.boton_ampliar, "Pantalla_completa.png", "Ampliar editor")  # Prepara el primer control como acceso visual al modo de edición ampliado.
         self._configurar_boton_flotante(self.boton_ejemplos, "Ejemplos.png", "Abrir selector de ejemplos")  # Prepara el segundo control utilizando el recurso de ejemplos.
 
-        self.boton_pegar.clicked.connect(self._pegar_desde_portapapeles)  # Inserta contenido del sistema mediante el primer botón.
         self.boton_ejemplos.clicked.connect(self._abrir_selector_ejemplos)  # Abre la herramienta heredada mediante el segundo botón.
+
 
     def _configurar_boton_flotante(self, boton: QPushButton, nombre_icono: str, ayuda: str) -> None:
         boton.setObjectName("BotonFlotanteEditor")  # Permite identificarlos como controles propios del editor.
@@ -106,6 +106,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         boton.setIconSize(QSize(18, 18))  # Reduce los PNG originales a una dimensión apropiada para la interfaz.
         boton.setToolTip(ayuda)  # Explica la acción únicamente cuando el usuario deja el cursor encima.
         boton.setAccessibleName(ayuda)  # Conserva una descripción textual aunque el control no muestre letras.
+        boton.setProperty("recurso_tema", nombre_icono)  # Declara el recurso lógico para que el gestor pueda sustituirlo al cambiar de tema.
         boton.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Evita retirar permanentemente el foco del área de edición.
         boton.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que el elemento puede pulsarse.
         boton.setStyleSheet("padding: 0px;")  # Evita que el padding general reduzca innecesariamente el icono.
@@ -121,21 +122,15 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
     def _posicionar_botones_flotantes(self, *_argumentos) -> None:
         geometria_viewport = self.viewport().geometry()  # Obtiene la región de texto excluyendo automáticamente la scrollbar.
         margen = 6  # Mantiene una pequeña separación respecto a los bordes internos.
-        separacion = 6  # Define el espacio vertical entre Pegar y Ejemplos.
-        x = geometria_viewport.right() - self.boton_pegar.width() - margen + 1  # Calcula una única posición horizontal justo antes del límite del área visible.
-        y_pegar = geometria_viewport.top() + margen  # Coloca Pegar como primera acción en la esquina superior.
-        y_ejemplos = y_pegar + self.boton_pegar.height() + separacion  # Coloca Ejemplos inmediatamente debajo manteniendo el mismo eje vertical.
+        separacion = 6  # Define el espacio vertical entre Ampliar y Ejemplos.
+        x = geometria_viewport.right() - self.boton_ampliar.width() - margen + 1  # Calcula una única posición horizontal justo antes del límite del área visible.
+        y_ampliar = geometria_viewport.top() + margen  # Coloca Ampliar como primera acción en la esquina superior.
+        y_ejemplos = y_ampliar + self.boton_ampliar.height() + separacion  # Coloca Ejemplos inmediatamente debajo manteniendo el mismo eje vertical.
 
-        self.boton_pegar.move(max(x, 0), max(y_pegar, 0))  # Aplica la posición fija correspondiente al primer control.
+        self.boton_ampliar.move(max(x, 0), max(y_ampliar, 0))  # Aplica la posición fija correspondiente al primer control.
         self.boton_ejemplos.move(max(x, 0), max(y_ejemplos, 0))  # Aplica la posición fija correspondiente al segundo control.
-        self.boton_pegar.raise_()  # Mantiene Pegar por encima del resto de los hijos del editor.
+        self.boton_ampliar.raise_()  # Mantiene Ampliar por encima del resto de los hijos del editor.
         self.boton_ejemplos.raise_()  # Mantiene también Ejemplos completamente visible.
-
-    def _pegar_desde_portapapeles(self) -> None:
-        if self.canPaste():
-            self.paste()  # Inserta el texto en la posición actual o sustituye cualquier selección existente.
-
-        self.setFocus()  # Devuelve inmediatamente el foco al editor para continuar escribiendo.
 
     def _abrir_selector_ejemplos(self) -> None:
         ejemplos_validos, ejemplos_invalidos = self.gestor_ejemplos.cargar_ejemplos()  # Recupera ambas categorías mediante el componente independiente de Motor.
@@ -198,6 +193,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
 
         if boton_pulsado is boton_cancelar:
             return None
+
 
         return None  # Trata cualquier cierre alternativo de la ventana como una cancelación segura.
 

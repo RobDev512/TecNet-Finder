@@ -159,7 +159,7 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
         self.editor_codigo.ejemplos_insertados.connect(self._limpiar_resultados_conservando_entrada)  # Descarta resultados obsoletos después de insertar ejemplos.
         self.barra_titulo.actualizar_estado_media_pantalla(False, self.lado_media_pantalla)  # Inicializa el selector sin ninguna mitad activa.
         self.barra_titulo.actualizar_estado_modo_ventana(False)  # Inicializa también el nuevo modo como inactivo.
-        self._configurar_boton_ampliar_editor()  # Sustituye la acción redundante de Pegar por un modo de edición ampliado.
+        self._configurar_boton_ampliar_editor()  # Conecta el control flotante propio del editor con el modo de edición ampliado.
 
     def _construir_encabezado(self, diseno_principal: QVBoxLayout) -> None:  # Construye el logotipo y textos superiores.
         encabezado = QHBoxLayout()  # Organiza horizontalmente imagen y títulos.
@@ -185,15 +185,10 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
         encabezado.addStretch()  # Mantiene todo el conjunto alineado hacia la izquierda.
         diseno_principal.addLayout(encabezado)  # Inserta el encabezado dentro del contenido.
 
-    def _configurar_boton_ampliar_editor(self) -> None:  # Reutiliza el antiguo botón Pegar como control para ampliar y restaurar el editor.
-        boton = self.editor_codigo.boton_pegar  # Conserva el atributo histórico para no romper Configuración ni el gestor de temas.
-        try:
-            boton.clicked.disconnect()  # Retira la acción de pegado porque el menú contextual ya cubre esa necesidad.
-        except (RuntimeError, TypeError):
-            pass  # Mantiene el inicio seguro aunque Qt no encuentre una conexión previa.
-
-        boton.setToolTip("Ampliar editor")  # Explica la nueva función disponible.
-        boton.setAccessibleName("Ampliar editor")  # Actualiza también la descripción accesible.
+    def _configurar_boton_ampliar_editor(self) -> None:  # Conecta el botón flotante de ampliación con la distribución principal.
+        boton = self.editor_codigo.boton_ampliar  # Recupera el control creado directamente para esta función por EditorCodigo.
+        boton.setToolTip("Ampliar editor")  # Explica la función disponible.
+        boton.setAccessibleName("Ampliar editor")  # Mantiene sincronizada la descripción accesible.
         boton.setProperty("recurso_tema", "Pantalla_completa.png")  # Declara el icono de ampliación para el tema activo.
         boton.clicked.connect(self.alternar_editor_ampliado)  # Permite entrar y salir del modo con el mismo control.
 
@@ -239,7 +234,7 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
         self.diseno_contenido.setContentsMargins(4, 4, 4, 4) if ampliar else self.diseno_contenido.setContentsMargins(14, 10, 14, 14)  # Aprovecha casi todo el área disponible sin tocar la barra superior.
         self.diseno_contenido.setSpacing(2 if ampliar else 9)  # Reduce espacios vacíos durante la edición ampliada.
 
-        boton_ampliar = self.editor_codigo.boton_pegar  # Recupera el mismo control flotante reutilizado.
+        boton_ampliar = self.editor_codigo.boton_ampliar  # Recupera el control flotante de ampliación.
         nombre_icono = "Salir_pantalla_completa.png" if ampliar else "Pantalla_completa.png"  # Representa visualmente la acción siguiente.
         ayuda = "Restaurar vista" if ampliar else "Ampliar editor"  # Explica qué ocurrirá al pulsar nuevamente.
         boton_ampliar.setProperty("recurso_tema", nombre_icono)  # Permite que el gestor seleccione la variante clara u oscura.

@@ -264,7 +264,7 @@ class ControlConfiguracion(QObject):  # Coordina Configuración sin intervenir e
         )  # Aplica el modo seleccionado.
 
     def _aplicar_botones_rapidos_editor(self, visibles: bool) -> None:
-        self.ventana.editor_codigo.boton_pegar.setVisible(bool(visibles))  # Actualiza Pegar.
+        self.ventana.editor_codigo.boton_ampliar.setVisible(bool(visibles))  # Actualiza Ampliar.
         self.ventana.editor_codigo.boton_ejemplos.setVisible(bool(visibles))  # Actualiza Ejemplos.
 
         if visibles:

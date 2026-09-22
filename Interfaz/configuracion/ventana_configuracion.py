@@ -39,7 +39,7 @@ from Motor.configuracion.preferencias_tema_temporales import PreferenciasTemaTem
 class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Configuración.
     apariencia_cambiada = Signal()  # Solicita reaplicar tema y tipografía después de confirmar cualquiera de ellos.
     ajuste_linea_editor_cambiado = Signal(bool)  # Comunica el ajuste de línea confirmado.
-    botones_rapidos_editor_cambiados = Signal(bool)  # Comunica la visibilidad de Pegar y Ejemplos.
+    botones_rapidos_editor_cambiados = Signal(bool)  # Comunica la visibilidad de Ampliar y Ejemplos.
     familia_fuente_editor_cambiada = Signal(str)  # Comunica la familia tipográfica confirmada del editor.
     tamano_fuente_editor_cambiado = Signal(int)  # Comunica el tamaño confirmado del editor.
     espacios_tabulacion_editor_cambiados = Signal(int)  # Comunica el ancho visual confirmado de Tab.
@@ -241,7 +241,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
             ],
             "Editor": [
                 (self.preferencias_temporales.ajuste_linea_editor_activado(), self.preferencias_aplicacion.ajuste_linea_editor_activado(), "Ajuste automático de líneas largas"),
-                (self.preferencias_temporales.botones_rapidos_editor_visibles(), self.preferencias_aplicacion.botones_rapidos_editor_visibles(), "Botones rápidos Pegar y Ejemplos"),
+                (self.preferencias_temporales.botones_rapidos_editor_visibles(), self.preferencias_aplicacion.botones_rapidos_editor_visibles(), "Botones rápidos Ampliar y Ejemplos"),
                 (self.preferencias_temporales.familia_fuente_editor(), self.preferencias_aplicacion.familia_fuente_editor(), "Familia de fuente del editor"),
                 (self.preferencias_temporales.tamano_fuente_editor(), self.preferencias_aplicacion.tamano_fuente_editor(), "Tamaño de fuente del editor"),
                 (self.preferencias_temporales.espacios_tabulacion_editor(), self.preferencias_aplicacion.espacios_tabulacion_editor(), "Ancho de tabulación"),

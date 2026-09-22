@@ -238,10 +238,7 @@ class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.
             barra = getattr(ventana, "barra_titulo", None)  # Recupera una barra personalizada solamente cuando la ventana dispone de ella.
             if barra is not None: self._aplicar_iconos_barra(barra, tema_id, bool(getattr(ventana, "en_pantalla_completa", False)))  # Sincroniza inmediatamente todos los estados gráficos de la barra.
 
-        editor = self.ventana.editor_codigo  # Recupera el editor principal donde viven los accesos rápidos.
-        self._establecer_icono_simple(editor.boton_pegar, "Pegar.png", tema_id)  # Aplica automáticamente Pegar oscuro o claro según la variante activa.
-        self._establecer_icono_simple(editor.boton_ejemplos, "Ejemplos.png", tema_id)  # Aplica automáticamente Ejemplos oscuro o claro según la variante activa.
-        self._aplicar_recursos_declarados(self.ventana, tema_id)  # Atiende botones auxiliares que hayan declarado un recurso mediante su propiedad temática.
+        self._aplicar_recursos_declarados(self.ventana, tema_id)  # Atiende botones auxiliares que hayan declarado su recurso mediante una propiedad temática.
 
     def _aplicar_recursos_declarados(self, raiz: QWidget, tema_id: str) -> None:
         botones = [raiz] if isinstance(raiz, QPushButton) else []  # Incluye la propia raíz únicamente cuando también representa un botón.
@@ -252,10 +249,6 @@ class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.
             if not isinstance(nombre, str) or not nombre: continue  # Omite botones convencionales que no participan en el sistema temático.
             ruta = resolver_icono_tema(nombre, tema_id)  # Resuelve el recurso sin depender de la estructura física desde el llamador.
             if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Sustituye únicamente el gráfico cuando existe realmente un archivo disponible.
-
-    def _establecer_icono_simple(self, boton, nombre_archivo: str, tema_id: str) -> None:
-        ruta = resolver_icono_tema(nombre_archivo, tema_id)  # Obtiene la variante correspondiente mediante el resolvedor central.
-        if ruta.exists(): boton.setIcon(QIcon(str(ruta)))  # Mantiene intacto el botón cuando por alguna razón no existe el recurso solicitado.
 
     def _aplicar_iconos_barra(self, barra, tema_id: str, pantalla_completa: bool) -> None:
         def normal(nombre_archivo: str):
@@ -274,7 +267,7 @@ class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.
             barra.boton_pantalla_completa.establecer_iconos(normal(nombre_normal), hover(nombre_hover), hover(nombre_hover))  # Mantiene normal y hover sincronizados con el estado real de la ventana.
 
         if barra.boton_cerrar is not None: barra.boton_cerrar.establecer_iconos(normal("Cerrar.png"), hover("Cerrar_activo.png"), hover("Cerrar_activo.png"))  # Utiliza Cerrar_activo sobre el fondo rojo tanto en oscuro como en claro.
-    
+
 
     # ========================================================
     # Ventanas creadas posteriormente

@@ -36,7 +36,7 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
     # ========================================================
 
     CLAVE_AJUSTE_LINEA_EDITOR = "ajuste_linea_editor"  # Guarda el ajuste automático de líneas.
-    CLAVE_BOTONES_RAPIDOS_EDITOR = "mostrar_botones_rapidos_editor"  # Guarda la visibilidad de Pegar y Ejemplos.
+    CLAVE_BOTONES_RAPIDOS_EDITOR = "mostrar_botones_rapidos_editor"  # Guarda la visibilidad de Ampliar y Ejemplos.
     CLAVE_FAMILIA_FUENTE_EDITOR = "familia_fuente_editor"  # Guarda la tipografía elegida para escribir código.
     CLAVE_TAMANO_FUENTE_EDITOR = "tamano_fuente_editor"  # Guarda el tamaño del texto del editor.
     CLAVE_ESPACIOS_TABULACION_EDITOR = "espacios_tabulacion_editor"  # Guarda el ancho visual de una tabulación.
@@ -177,7 +177,7 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
         return self._guardar_valor(self.CLAVE_AJUSTE_LINEA_EDITOR, bool(activado))  # Persiste la nueva decisión.
 
     def botones_rapidos_editor_visibles(self) -> bool:
-        valor = self._leer_preferencias().get(self.CLAVE_BOTONES_RAPIDOS_EDITOR, True)  # Recupera la visibilidad de Pegar y Ejemplos.
+        valor = self._leer_preferencias().get(self.CLAVE_BOTONES_RAPIDOS_EDITOR, True)  # Recupera la visibilidad de Ampliar y Ejemplos.
         return valor if isinstance(valor, bool) else True  # Mantiene ambos visibles ante información inválida.
 
     def establecer_botones_rapidos_editor_visibles(self, visibles: bool) -> bool:
