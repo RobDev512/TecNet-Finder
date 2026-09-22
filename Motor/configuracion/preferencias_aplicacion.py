@@ -16,6 +16,8 @@ import json  # Permite almacenar las preferencias mediante un archivo estructura
 import os  # Permite consultar LocalAppData proporcionado por Windows.
 from pathlib import Path  # Permite construir rutas independientes del usuario.
 
+from Motor.configuracion.catalogo_idiomas import IDIOMA_PREDETERMINADO, normalizar_codigo_idioma  # Centraliza los códigos admitidos y el respaldo de idioma.
+
 
 class PreferenciasAplicacion:  # Centraliza todas las preferencias generales persistentes.
 
@@ -30,6 +32,7 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
     CLAVE_ULTIMA_SECCION_CONFIGURACION = "ultima_seccion_configuracion"  # Guarda la última categoría visitada.
     CLAVE_FAMILIA_FUENTE_INTERFAZ = "familia_fuente_interfaz"  # Guarda la familia tipográfica utilizada por la interfaz general.
     CLAVE_TAMANO_FUENTE_INTERFAZ = "tamano_fuente_interfaz"  # Guarda el tamaño base utilizado por la interfaz general.
+    CLAVE_IDIOMA_INTERFAZ = "idioma_interfaz"  # Guarda únicamente el código base del idioma elegido para la interfaz.
 
     # ========================================================
     # Claves del Editor
@@ -164,6 +167,17 @@ class PreferenciasAplicacion:  # Centraliza todas las preferencias generales per
         if not self.TAMANO_FUENTE_INTERFAZ_MINIMO <= tamano <= self.TAMANO_FUENTE_INTERFAZ_MAXIMO:  # Comprueba el intervalo permitido.
             return False  # Evita tamaños capaces de romper innecesariamente la interfaz.
         return self._guardar_valor(self.CLAVE_TAMANO_FUENTE_INTERFAZ, tamano)  # Persiste el tamaño base seleccionado.
+
+    def idioma_interfaz(self) -> str:
+        valor = self._leer_preferencias().get(self.CLAVE_IDIOMA_INTERFAZ, IDIOMA_PREDETERMINADO)  # Recupera la selección persistente o español en una instalación nueva.
+        codigo = normalizar_codigo_idioma(valor)  # Reduce variantes regionales y valida el código almacenado.
+        return codigo or IDIOMA_PREDETERMINADO  # Utiliza español si el archivo contiene un idioma desconocido.
+
+    def establecer_idioma_interfaz(self, idioma: str) -> bool:
+        codigo = normalizar_codigo_idioma(idioma)  # Normaliza entradas como EN-us o pt_BR antes de persistirlas.
+        if codigo is None:
+            return False  # Rechaza idiomas que TecNet Finder todavía no ofrece.
+        return self._guardar_valor(self.CLAVE_IDIOMA_INTERFAZ, codigo)  # Conserva únicamente el código base estable.
 
     # ========================================================
     # Editor

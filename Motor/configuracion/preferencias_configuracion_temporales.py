@@ -11,6 +11,7 @@
 # las preferencias reales; Cancelar simplemente descarta la copia.
 # ============================================================
 
+from Motor.configuracion.catalogo_idiomas import normalizar_codigo_idioma  # Reutiliza las mismas reglas de idioma sin escribir todavía en disco.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona los valores reales y reglas compartidas.
 
 
@@ -26,6 +27,7 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
         self._recordar_seccion_configuracion = self.preferencias_reales.recordar_seccion_configuracion()  # Copia la recuperación de categoría.
         self._familia_fuente_interfaz = self.preferencias_reales.familia_fuente_interfaz()  # Copia la tipografía general de la interfaz.
         self._tamano_fuente_interfaz = self.preferencias_reales.tamano_fuente_interfaz()  # Copia el tamaño base de la interfaz.
+        self._idioma_interfaz = self.preferencias_reales.idioma_interfaz()  # Copia el idioma real sin aplicarlo todavía a la interfaz.
 
         self._ajuste_linea_editor = self.preferencias_reales.ajuste_linea_editor_activado()  # Copia el ajuste de líneas.
         self._botones_rapidos_editor = self.preferencias_reales.botones_rapidos_editor_visibles()  # Copia la visibilidad de controles rápidos.
@@ -83,6 +85,16 @@ class PreferenciasConfiguracionTemporales:  # Representa las preferencias todav�
             return False  # Rechaza valores capaces de romper la interfaz.
         self._tamano_fuente_interfaz = tamano  # Conserva temporalmente el nuevo tamaño.
         return True  # Confirma el cambio.
+
+    def idioma_interfaz(self) -> str:
+        return self._idioma_interfaz  # Devuelve el código temporal todavía no confirmado.
+
+    def establecer_idioma_interfaz(self, idioma: str) -> bool:
+        codigo = normalizar_codigo_idioma(idioma)  # Aplica exactamente las mismas reglas utilizadas por la preferencia persistente.
+        if codigo is None:
+            return False  # Rechaza selecciones fuera del catálogo sin alterar la copia actual.
+        self._idioma_interfaz = codigo  # Conserva exclusivamente el código base dentro de esta sesión.
+        return True  # Confirma el cambio temporal.
 
     # ========================================================
     # Editor
