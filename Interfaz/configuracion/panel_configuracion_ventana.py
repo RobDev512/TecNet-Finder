@@ -11,6 +11,7 @@
 # - Recuperación del estado entre sesiones.
 # - Modo visual: oscuro o claro.
 # - Variante perteneciente al modo seleccionado.
+# - Idioma de la interfaz.
 # - Tipografía general.
 # - Última categoría visitada de Configuración.
 #
@@ -22,6 +23,7 @@ from PySide6.QtCore import Qt, Signal  # Permite configurar controles y comunica
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes visuales necesarios.
 from Interfaz.configuracion.controles_configuracion import CampoNumeroConfiguracion, SelectorDesplegableConfiguracion  # Proporciona los controles personalizados generales.
 from Interfaz.configuracion.selector_fuentes import SelectorFuentes  # Proporciona búsqueda especializada de familias tipográficas.
+from Motor.configuracion.catalogo_idiomas import idiomas_disponibles  # Proporciona los seis idiomas admitidos y sus nombres visibles.
 from Motor.configuracion.catalogo_temas import modo_del_tema, obtener_modos_disponibles, obtener_tema, obtener_temas_por_modo  # Proporciona modos y variantes visuales.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Proporciona límites y valores compartidos.
 
@@ -93,7 +95,7 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         titulo = QLabel("Ventana y apariencia")  # Presenta el nombre de la categoría.
         titulo.setObjectName("TituloConfiguracion")  # Reutiliza el encabezado principal.
         titulo.setContentsMargins(4, 0, 4, 0)  # Mantiene alineación lateral.
-        descripcion = QLabel("Personaliza cómo inicia TecNet Finder, su tema visual y la tipografía utilizada por la interfaz.")  # Resume el propósito actualizado.
+        descripcion = QLabel("Personaliza cómo inicia TecNet Finder, su tema visual, el idioma y la tipografía utilizada por la interfaz.")  # Resume el propósito actualizado.
         descripcion.setObjectName("DescripcionConfiguracion")  # Utiliza el estilo secundario.
         descripcion.setContentsMargins(4, 0, 4, 0)  # Mantiene la misma alineación.
         descripcion.setWordWrap(True)  # Permite adaptar la explicación.
@@ -158,6 +160,27 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
         diseno_tema.addWidget(self.etiqueta_descripcion_tema)  # Coloca la explicación debajo de los selectores.
         self._actualizar_descripcion_tema(tema_actual)  # Presenta la descripción inicial.
         diseno.addWidget(tarjeta_tema)  # Incorpora la tarjeta completa.
+
+        # ====================================================
+        # Idioma de la interfaz
+        # ====================================================
+
+        tarjeta_idioma, diseno_idioma = self._crear_tarjeta("Idioma de la interfaz", "Selecciona el idioma utilizado por los textos de TecNet Finder. Las palabras reservadas IP, MASK, HOSTS y NAME permanecen sin cambios.")  # Construye la tarjeta dedicada al idioma.
+        fila_idioma = QHBoxLayout()  # Organiza etiqueta y selector.
+        fila_idioma.setContentsMargins(4, 2, 4, 2)  # Mantiene la alineación de las demás preferencias.
+        fila_idioma.setSpacing(10)  # Separa ambos controles.
+        etiqueta_idioma = QLabel("Idioma:")  # Identifica la selección.
+        etiqueta_idioma.setObjectName("TextoConfiguracion")  # Reutiliza el estilo común.
+        self.selector_idioma = SelectorDesplegableConfiguracion(self)  # Utiliza el selector personalizado ya probado.
+        self.selector_idioma.setFixedWidth(260)  # Reserva espacio para los nombres nativos de los seis idiomas.
+        for codigo, nombre in idiomas_disponibles(): self.selector_idioma.agregar_opcion(nombre, codigo)  # Conserva un valor interno estable independiente del texto visible.
+        self.selector_idioma.establecer_valor(self.preferencias_aplicacion.idioma_interfaz())  # Recupera la selección temporal actual.
+        self.selector_idioma.valor_cambiado.connect(self._cambiar_idioma_interfaz)  # Registra solamente selecciones realizadas por el usuario.
+        fila_idioma.addWidget(etiqueta_idioma)  # Coloca la etiqueta.
+        fila_idioma.addWidget(self.selector_idioma)  # Coloca el selector.
+        fila_idioma.addStretch()  # Mantiene el conjunto alineado a la izquierda.
+        diseno_idioma.addLayout(fila_idioma)  # Añade la selección a la tarjeta.
+        diseno.addWidget(tarjeta_idioma)  # Incorpora la preferencia de idioma dentro de Ventana y apariencia.
 
         # ====================================================
         # Tipografía general
@@ -249,6 +272,9 @@ class PanelConfiguracionVentana(QWidget):  # Agrupa las preferencias de ventana,
 
     def _cambiar_tamano_fuente_interfaz(self, tamano: int) -> None:
         if self.preferencias_aplicacion.establecer_tamano_fuente_interfaz(tamano): self.configuracion_modificada.emit()  # Conserva temporalmente el tamaño.
+
+    def _cambiar_idioma_interfaz(self, idioma: str) -> None:
+        if self.preferencias_aplicacion.establecer_idioma_interfaz(str(idioma)): self.configuracion_modificada.emit()  # Conserva temporalmente el idioma seleccionado hasta Aplicar o Aceptar.
 
     def _restaurar_casilla(self, casilla: BotonCasillaVentana, valor: bool) -> None:
         casilla.blockSignals(True)  # Evita ejecutar nuevamente la modificación mientras se restaura.

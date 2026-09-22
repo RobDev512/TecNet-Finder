@@ -237,6 +237,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
                 (self.preferencias_tema_temporales.tema(), self.preferencias_tema.tema(), "Tema de la aplicación"),
                 (self.preferencias_temporales.familia_fuente_interfaz(), self.preferencias_aplicacion.familia_fuente_interfaz(), "Familia de fuente de la interfaz"),
                 (self.preferencias_temporales.tamano_fuente_interfaz(), self.preferencias_aplicacion.tamano_fuente_interfaz(), "Tamaño base de la interfaz"),
+                (self.preferencias_temporales.idioma_interfaz(), self.preferencias_aplicacion.idioma_interfaz(), "Idioma de la interfaz"),
                 (self.preferencias_temporales.recordar_seccion_configuracion(), self.preferencias_aplicacion.recordar_seccion_configuracion(), "Abrir Configuración en la última sección visitada"),
             ],
             "Editor": [
@@ -276,6 +277,7 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         self.preferencias_tema.establecer_tema(self.preferencias_tema_temporales.tema())  # Confirma el tema seleccionado.
         self.preferencias_aplicacion.establecer_familia_fuente_interfaz(self.preferencias_temporales.familia_fuente_interfaz())  # Confirma la familia general.
         self.preferencias_aplicacion.establecer_tamano_fuente_interfaz(self.preferencias_temporales.tamano_fuente_interfaz())  # Confirma el tamaño general.
+        self.preferencias_aplicacion.establecer_idioma_interfaz(self.preferencias_temporales.idioma_interfaz())  # Confirma el idioma de interfaz seleccionado.
         self.preferencias_aplicacion.establecer_recordar_seccion_configuracion(self.preferencias_temporales.recordar_seccion_configuracion())  # Confirma la recuperación de categoría.
         self.preferencias_aplicacion.establecer_ajuste_linea_editor_activado(self.preferencias_temporales.ajuste_linea_editor_activado())  # Confirma el ajuste de línea.
         self.preferencias_aplicacion.establecer_botones_rapidos_editor_visibles(self.preferencias_temporales.botones_rapidos_editor_visibles())  # Confirma los accesos rápidos.
