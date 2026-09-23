@@ -17,13 +17,18 @@
 from PySide6.QtCore import QTimer  # Permite esperar a que Configuración termine de persistir antes de releer el idioma.
 
 from Interfaz.configuracion.control_configuracion import ControlConfiguracion
+from Interfaz.internacionalizacion.control_dialogos_secundarios import ControlDialogosSecundarios
 from Interfaz.internacionalizacion.control_idioma_interfaz import ControlIdiomaInterfaz
 
 
 class ControlConfiguracionIdioma(ControlConfiguracion):
     def __init__(self, *argumentos, **palabras_clave):
         super().__init__(*argumentos, **palabras_clave)  # Conserva íntegro el controlador estable.
-        self.control_idioma_interfaz = ControlIdiomaInterfaz(self.ventana)  # Añade únicamente la capa visual de internacionalización.
+        self.control_idioma_interfaz = ControlIdiomaInterfaz(self.ventana)  # Añade la capa visual principal de internacionalización.
+        self.control_dialogos_secundarios = ControlDialogosSecundarios(
+            self.ventana,
+            self.preferencias_aplicacion,
+        )  # Sustituye únicamente las interacciones secundarias que todavía conservaban textos fijos en español.
         self._aplicar_idioma_principal()  # Recupera el idioma confirmado desde el propio arranque.
 
         self.ventana.panel_resultados.boton_analizar.clicked.connect(self._programar_reaplicacion_idioma)  # Retraduce resultados dinámicos después de compilar.
@@ -55,7 +60,9 @@ class ControlConfiguracionIdioma(ControlConfiguracion):
         QTimer.singleShot(0, self._aplicar_idioma_principal)  # Espera a que la acción original haya terminado de modificar estado o preferencias.
 
     def _aplicar_idioma_principal(self) -> None:
-        self.control_idioma_interfaz.aplicar(self.preferencias_aplicacion.idioma_interfaz())  # Utiliza siempre el idioma real, nunca la copia temporal.
+        idioma = self.preferencias_aplicacion.idioma_interfaz()  # Recupera una sola vez la preferencia confirmada.
+        self.control_idioma_interfaz.aplicar(idioma)  # Actualiza la ventana principal con el idioma real.
+        self.control_dialogos_secundarios.establecer_idioma(idioma)  # Mantiene sincronizados los diálogos que se abrirán posteriormente.
 
         if self.ventana_advertencias is not None:
             self.control_idioma_interfaz.aplicar_ventana_diagnosticos(self.ventana_advertencias)  # Actualiza una ventana independiente que ya estuviera abierta.
