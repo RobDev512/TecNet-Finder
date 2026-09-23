@@ -96,3 +96,21 @@ def prueba_un_hijo_queda_centrado_bajo_su_padre():
 
     assert centro_padre == centro_hijo
 
+def prueba_filtro_pdf_selecciona_exportacion_pdf():
+    assert (
+        ControlExportacionArbol._formato_seleccionado(
+            "Arbol_Oficina",
+            ControlExportacionArbol.FILTRO_PDF,
+        )
+        == "pdf"
+    )
+
+
+def prueba_asegura_extension_pdf_correcta():
+    assert (
+        ControlExportacionArbol._asegurar_extension(
+            "Arbol_Oficina",
+            "pdf",
+        )
+        == "Arbol_Oficina.pdf"
+    )

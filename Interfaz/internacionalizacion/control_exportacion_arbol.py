@@ -8,6 +8,7 @@
 # elección entre:
 # - PNG HD: raster a 3x y 300 DPI.
 # - SVG: representación vectorial sin pérdida al ampliar.
+# - PDF: documento vectorial nítido para impresión o entrega.
 #
 # El controlador no altera la escena ni el árbol formal. Solo
 # renderiza la representación gráfica que ya está en pantalla.
@@ -15,8 +16,14 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QRect, QRectF, QSize
-from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtCore import QRect, QRectF, QSize, QSizeF
+from PySide6.QtGui import (
+    QColor,
+    QImage,
+    QPainter,
+    QPageSize,
+    QPdfWriter,
+)
 from PySide6.QtSvg import QSvgGenerator
 from PySide6.QtWidgets import QFileDialog
 
@@ -31,6 +38,7 @@ class ControlExportacionArbol:
 
     FILTRO_PNG = "PNG HD (*.png)"
     FILTRO_SVG = "SVG (*.svg)"
+    FILTRO_PDF = "PDF (*.pdf)"
 
     def __init__(self, ventana):
         self.ventana = ventana
@@ -58,12 +66,12 @@ class ControlExportacionArbol:
             return
 
         texto_ayuda = (
-            f"{self._t('dialogos.arbol.guardar_titulo')} · PNG HD / SVG"
+            f"{self._t('dialogos.arbol.guardar_titulo')} · PNG HD / SVG / PDF"
         )
         boton.setToolTip(texto_ayuda)
         boton.setAccessibleName(texto_ayuda)
 
-        if boton.property("exportacion_arbol_hd_svg"):
+        if boton.property("exportacion_arbol_hd_svg_pdf"):
             return
 
         try:
@@ -74,7 +82,7 @@ class ControlExportacionArbol:
         boton.clicked.connect(
             lambda _marcado=False, v=vista: self._seleccionar_exportacion(v)
         )
-        boton.setProperty("exportacion_arbol_hd_svg", True)
+        boton.setProperty("exportacion_arbol_hd_svg_pdf", True)
 
     def _seleccionar_exportacion(self, vista: VistaArbol) -> None:
         try:
@@ -88,11 +96,13 @@ class ControlExportacionArbol:
         nombre = str(vista.property("nombre_arbol") or "1")
         nombre_base = self._nombre_base_traducido(nombre)
 
+        filtros = f"{self.FILTRO_PNG};;{self.FILTRO_SVG};;{self.FILTRO_PDF}"
+
         ruta, filtro = QFileDialog.getSaveFileName(
             self.ventana,
             self._t("dialogos.arbol.guardar_titulo"),
             f"{nombre_base}.png",
-            f"{self.FILTRO_PNG};;{self.FILTRO_SVG}",
+            filtros,
             self.FILTRO_PNG,
         )
 
@@ -104,6 +114,8 @@ class ControlExportacionArbol:
 
         if formato == "svg":
             self._exportar_svg(escena, ruta_final)
+        elif formato == "pdf":
+            self._exportar_pdf(escena, ruta_final)
         else:
             self._exportar_png_hd(escena, ruta_final)
 
@@ -114,7 +126,7 @@ class ControlExportacionArbol:
         )
         ruta = Path(nombre_catalogo)
 
-        if ruta.suffix.lower() in (".png", ".svg"):
+        if ruta.suffix.lower() in (".png", ".svg", ".pdf"):
             return ruta.stem
 
         return ruta.name
@@ -125,10 +137,16 @@ class ControlExportacionArbol:
 
         if extension == ".svg":
             return "svg"
+        if extension == ".pdf":
+            return "pdf"
         if extension == ".png":
             return "png"
 
-        return "svg" if filtro == cls.FILTRO_SVG else "png"
+        if filtro == cls.FILTRO_SVG:
+            return "svg"
+        if filtro == cls.FILTRO_PDF:
+            return "pdf"
+        return "png"
 
     @staticmethod
     def _asegurar_extension(ruta: str, formato: str) -> str:
@@ -138,7 +156,7 @@ class ControlExportacionArbol:
         if ruta_path.suffix.lower() == extension:
             return str(ruta_path)
 
-        if ruta_path.suffix.lower() in (".png", ".svg"):
+        if ruta_path.suffix.lower() in (".png", ".svg", ".pdf"):
             ruta_path = ruta_path.with_suffix(extension)
         else:
             ruta_path = Path(f"{ruta}{extension}")
@@ -219,3 +237,43 @@ class ControlExportacionArbol:
             limites,
         )
         pintor.end()
+
+    def _exportar_pdf(self, escena, ruta: str) -> bool:
+        limites = self._limites_exportacion(escena)
+
+        ancho_px = max(limites.width(), 1.0)
+        alto_px = max(limites.height(), 1.0)
+
+        # Se construye una página personalizada proporcional
+        # al tamaño real del árbol, manteniendo nitidez al imprimir.
+        ancho_pt = ancho_px * 72.0 / 96.0
+        alto_pt = alto_px * 72.0 / 96.0
+
+        escritor = QPdfWriter(ruta)
+        escritor.setResolution(self.DPI_PNG_HD)
+        escritor.setTitle("TecNet Finder - Syntax Tree")
+        escritor.setCreator("TecNet Finder")
+        escritor.setPageSize(
+            QPageSize(
+                QSizeF(ancho_pt, alto_pt),
+                QPageSize.Unit.Point,
+                "TecNetFinderSyntaxTreePdf",
+            )
+        )
+
+        pintor = QPainter(escritor)
+        if not pintor.isActive():
+            return False
+
+        self._configurar_pintor(pintor)
+
+        destino = QRectF(0, 0, escritor.width(), escritor.height())
+        pintor.fillRect(destino, self._color_fondo(escena))
+        escena.render(
+            pintor,
+            destino,
+            limites,
+        )
+        pintor.end()
+
+        return True
