@@ -14,9 +14,9 @@
 # - Reporte de pruebas automáticas.
 # - Tooltip de diagnósticos dibujados sobre el editor.
 #
-# Los archivos de ejemplos y sus títulos descriptivos se
-# conservan como contenido académico; únicamente se traduce la
-# interfaz que los presenta.
+# Los archivos TXT originales se conservan como fuente canónica
+# para las pruebas automáticas. La representación visible y los
+# comandos insertados se localizan según el idioma de interfaz.
 # ============================================================
 
 from textwrap import fill
@@ -33,11 +33,13 @@ from PySide6.QtWidgets import (
 from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas
 from Interfaz.ejemplos.selector_ejemplos import SelectorEjemplos, TablaEjemplos
 from Interfaz.internacionalizacion.traductor_diagnosticos import TraductorDiagnosticos
+from Interfaz.internacionalizacion.traductor_ejemplos import TraductorEjemplos, identificador_caso
 from Motor.compilacion.diagnosticos import (
     obtener_codigos_diagnosticos_disponibles,
     obtener_codigos_diagnosticos_pendientes,
 )
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion
+from Motor.ejemplos.gestor_ejemplos import EjemploCodigo
 from Motor.ejemplos.pruebas_ejemplos import (
     ESTADO_CORRECTO,
     ESTADO_FALLIDO,
@@ -279,8 +281,28 @@ class VentanaReportePruebasTraducida(VentanaReportePruebas):
 
 
 class SelectorEjemplosTraducido(SelectorEjemplos):
-    def __init__(self, ejemplos_validos, ejemplos_invalidos, gestor: GestorTraducciones, padre=None):
+    def __init__(
+        self,
+        ejemplos_validos,
+        ejemplos_invalidos,
+        gestor: GestorTraducciones,
+        padre=None,
+        originales_validos=None,
+        originales_invalidos=None,
+    ):
         self.gestor_traducciones = gestor
+        originales = [*(originales_validos or []), *(originales_invalidos or [])]
+        localizados = [*ejemplos_validos, *ejemplos_invalidos]
+        self._original_por_codigo = {
+            identificador_caso(ejemplo.titulo): ejemplo
+            for ejemplo in originales
+            if identificador_caso(ejemplo.titulo) is not None
+        }
+        self._localizado_por_codigo = {
+            identificador_caso(ejemplo.titulo): ejemplo
+            for ejemplo in localizados
+            if identificador_caso(ejemplo.titulo) is not None
+        }
         super().__init__(ejemplos_validos, ejemplos_invalidos, padre)
         self._aplicar_idioma()
 
@@ -360,7 +382,37 @@ class SelectorEjemplosTraducido(SelectorEjemplos):
         self._ejecutar_pruebas(ejemplos)
 
     def _ejecutar_pruebas(self, ejemplos) -> None:
-        resumen = self.ejecutor_pruebas.ejecutar(ejemplos)
+        # Ejecuta exactamente el comando localizado que el usuario ve y puede
+        # insertar, pero conserva la salida esperada canónica en español para
+        # que el evaluador histórico extraiga los códigos sin cambiar su contrato.
+        ejemplos_prueba = []
+        for ejemplo in ejemplos:
+            codigo = identificador_caso(ejemplo.titulo)
+            original = self._original_por_codigo.get(codigo)
+
+            if original is None:
+                ejemplos_prueba.append(ejemplo)
+                continue
+
+            ejemplos_prueba.append(
+                EjemploCodigo(
+                    tipo=original.tipo,
+                    titulo=original.titulo,
+                    comando=ejemplo.comando,
+                    salida_esperada=original.salida_esperada,
+                )
+            )
+
+        resumen = self.ejecutor_pruebas.ejecutar(ejemplos_prueba)
+
+        # El reporte vuelve a mostrar la variante localizada sin alterar códigos,
+        # contadores ni la clasificación obtenida por el flujo real.
+        for resultado in resumen.resultados:
+            codigo = identificador_caso(resultado.ejemplo.titulo)
+            localizado = self._localizado_por_codigo.get(codigo)
+            if localizado is not None:
+                resultado.ejemplo = localizado
+
         ventana_reporte = VentanaReportePruebasTraducida(
             resumen,
             self.gestor_traducciones,
@@ -428,6 +480,7 @@ class ControlDialogosSecundarios:
         self.preferencias_aplicacion = preferencias_aplicacion
         self.gestor = GestorTraducciones(preferencias_aplicacion.idioma_interfaz())
         self.traductor_diagnosticos = TraductorDiagnosticos(self.gestor)
+        self.traductor_ejemplos = TraductorEjemplos(preferencias_aplicacion.idioma_interfaz())
         self.editor = self.ventana.editor_codigo
 
         try:
@@ -442,12 +495,14 @@ class ControlDialogosSecundarios:
         return self.gestor.traducir(clave, **variables)
 
     def establecer_idioma(self, idioma: str) -> bool:
-        return self.gestor.establecer_idioma(idioma)
+        actualizado = self.gestor.establecer_idioma(idioma)
+        actualizado_ejemplos = self.traductor_ejemplos.establecer_idioma(idioma)
+        return actualizado and actualizado_ejemplos
 
     def _abrir_selector_ejemplos(self) -> None:
-        ejemplos_validos, ejemplos_invalidos = self.editor.gestor_ejemplos.cargar_ejemplos()
+        originales_validos, originales_invalidos = self.editor.gestor_ejemplos.cargar_ejemplos()
 
-        if not ejemplos_validos and not ejemplos_invalidos:
+        if not originales_validos and not originales_invalidos:
             QMessageBox.warning(
                 self.editor,
                 self._t("secundarios.ejemplos.titulo_corto"),
@@ -455,11 +510,16 @@ class ControlDialogosSecundarios:
             )
             return
 
+        ejemplos_validos = self.traductor_ejemplos.traducir_coleccion(originales_validos)
+        ejemplos_invalidos = self.traductor_ejemplos.traducir_coleccion(originales_invalidos)
+
         selector = SelectorEjemplosTraducido(
             ejemplos_validos,
             ejemplos_invalidos,
             self.gestor,
             self.editor.window(),
+            originales_validos=originales_validos,
+            originales_invalidos=originales_invalidos,
         )
 
         if selector.exec() != QDialog.DialogCode.Accepted:

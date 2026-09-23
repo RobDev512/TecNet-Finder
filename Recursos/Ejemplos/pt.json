@@ -1,0 +1,177 @@
+{
+    "idioma": "pt",
+    "nombres": {
+        "Oficina": "Escritorio",
+        "Laboratorio": "Laboratorio",
+        "Administracion": "Administracao",
+        "Sistemas": "Sistemas",
+        "Optimizada": "Otimizada",
+        "Pegada": "Unida",
+        "Duplicados": "Duplicados",
+        "Sobrada": "Sobredimensionada",
+        "Red": "Test",
+        "Adecuada": "Adequada",
+        "Central": "Central",
+        "Segunda": "Segunda",
+        "Incorrecta": "Incorreta",
+        "Correcta": "Correta"
+    },
+    "casos": {
+        "V1": {
+            "titulo": "CASO V1: Entrada válida completa com nome de rede",
+            "salida": "Saída esperada: caso válido. Códigos esperados: nenhum. Deve reconhecer corretamente a instrução, passar pelas análises léxica, sintática e semântica e gerar três sub-redes VLSM para Escritorio."
+        },
+        "V2": {
+            "titulo": "CASO V2: Entrada válida sem nome de rede",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-007. Deve gerar a tabela VLSM usando o IP base para identificar a rede e avisar que NAME não foi especificado."
+        },
+        "V3": {
+            "titulo": "CASO V3: Entrada válida com uma única quantidade de hosts",
+            "salida": "Saída esperada: caso válido. Códigos esperados: nenhum. Deve passar pelas três fases de análise e gerar uma única sub-rede VLSM para Laboratorio."
+        },
+        "V4": {
+            "titulo": "CASO V4: Entrada válida com várias instruções",
+            "salida": "Saída esperada: caso válido. Códigos esperados: nenhum. Deve reconhecer dois blocos válidos e gerar as sub-redes VLSM correspondentes para Administracao e Sistemas."
+        },
+        "V5": {
+            "titulo": "CASO V5: Entrada válida com hosts fora da ordem recomendada",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-008. Deve aceitar a entrada, avisar que HOSTS não estão escritos do maior para o menor e ordená-los internamente como 50,30,10 para o cálculo VLSM."
+        },
+        "V6": {
+            "titulo": "CASO V6: Entrada válida com palavras reservadas unidas ao valor",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-002. Deve reconhecer a entrada, gerar a tabela VLSM e avisar que existem palavras reservadas unidas diretamente ao valor seguinte."
+        },
+        "V7": {
+            "titulo": "CASO V7: Entrada válida com nome de rede repetido",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-003. Ambas as instruções devem ser processadas, mas deve avisar que o nome Escritorio foi usado em mais de uma rede."
+        },
+        "V8": {
+            "titulo": "CASO V8: Entrada válida com quantidades de hosts repetidas",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-004. Deve gerar três sub-redes VLSM e avisar que a quantidade 50 aparece repetida na lista HOSTS."
+        },
+        "V9": {
+            "titulo": "CASO V9: Entrada válida com rede base sobredimensionada",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-005. Deve gerar a sub-rede solicitada e avisar que a rede base possui muito mais capacidade do que realmente é necessária."
+        },
+        "V10": {
+            "titulo": "CASO V10: Entrada válida com nome de rede genérico",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-006. Deve gerar a tabela VLSM e recomendar um nome de rede mais descritivo que Test."
+        },
+        "V11": {
+            "titulo": "CASO V11: Entrada válida sem nome explícito",
+            "salida": "Saída esperada: caso válido com aviso. Código esperado: ADV-007. Deve gerar duas sub-redes e recomendar adicionar NAME seguido de um identificador."
+        },
+        "V12": {
+            "titulo": "CASO V12: Entrada válida com vários avisos diferentes",
+            "salida": "Saída esperada: caso válido com vários avisos. Códigos esperados: ADV-004, ADV-005, ADV-006, ADV-007. Deve processar ambos os blocos e avisar sobre hosts repetidos, rede sobredimensionada, nome genérico e ausência de nome de rede."
+        },
+        "V13": {
+            "titulo": "CASO V13: Entrada válida sem nome e com hosts fora de ordem",
+            "salida": "Saída esperada: caso válido com vários avisos. Códigos esperados: ADV-007, ADV-008. Deve gerar as sub-redes, recomendar adicionar um nome de rede e avisar que HOSTS deveriam ser escritos do maior para o menor."
+        },
+        "V14": {
+            "titulo": "CASO V14: Entrada válida próxima, mas abaixo do limite de sobredimensionamento",
+            "salida": "Saída esperada: caso válido. Códigos esperados: nenhum. Deve gerar uma sub-rede VLSM e não produzir ADV-005 porque a rede base não alcança o limite definido para ser claramente sobredimensionada."
+        },
+        "I1": {
+            "titulo": "CASO I1: Erro léxico por palavra reservada escrita incorretamente",
+            "salida": "Saída esperada: caso inválido. Códigos esperados: LEX-001, SIN-002. Deve gerar LEX-001 porque MAS aparece como identificador fora de lugar e SIN-002 porque a palavra reservada MASK não foi reconhecida depois do endereço IP."
+        },
+        "I2": {
+            "titulo": "CASO I2: Erro léxico por símbolo não reconhecido",
+            "salida": "Saída esperada: caso inválido. Código esperado: LEX-002. Deve detectar o símbolo @ como um elemento que não pertence à linguagem definida."
+        },
+        "I3": {
+            "titulo": "CASO I3: Erro léxico por identificador fora de lugar",
+            "salida": "Saída esperada: caso inválido. Código esperado: LEX-001. Deve gerar um erro léxico porque Escritorio aparece como identificador sem ser precedido por NAME."
+        },
+        "I4": {
+            "titulo": "CASO I4: Erro sintático por IP incompleto",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-001. Deve gerar um erro sintático porque depois de IP era esperado um endereço IPv4 completo."
+        },
+        "I5": {
+            "titulo": "CASO I5: Erro sintático por falta de MASK",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-002. Deve gerar um erro sintático porque depois do endereço IP era esperada a palavra reservada MASK."
+        },
+        "I6": {
+            "titulo": "CASO I6: Erro sintático por máscara sem barra",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-003. Deve gerar um erro sintático porque depois de MASK era esperada uma máscara CIDR com barra, por exemplo /24."
+        },
+        "I7": {
+            "titulo": "CASO I7: Erro sintático por falta de quantidade de hosts",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-004. Deve gerar um erro sintático porque depois de HOSTS era esperada pelo menos uma quantidade numérica."
+        },
+        "I8": {
+            "titulo": "CASO I8: Erro sintático por vírgula dupla na lista de hosts",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-005. Deve gerar um erro sintático porque depois de uma vírgula era esperado outro NUMBER."
+        },
+        "I9": {
+            "titulo": "CASO I9: Erro sintático por vírgula final sem outro host",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-005. Deve gerar um erro sintático porque a lista HOSTS termina com uma vírgula sem outra quantidade depois."
+        },
+        "I10": {
+            "titulo": "CASO I10: Erro sintático por NAME sem identificador",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-006. Deve gerar um erro sintático porque depois de NAME era esperado um identificador."
+        },
+        "I11": {
+            "titulo": "CASO I11: Erro sintático por NAME antes de iniciar outra instrução",
+            "salida": "Saída esperada: caso inválido com processamento parcial. Códigos esperados: SIN-006, ADV-001. Deve rejeitar a primeira instrução por deixar NAME incompleto e conservar o segundo bloco válido para continuar o processamento."
+        },
+        "I12": {
+            "titulo": "CASO I12: Erro sintático por instrução duplicada exata",
+            "salida": "Saída esperada: caso inválido com processamento parcial. Códigos esperados: SIN-007, ADV-001. Deve conservar somente uma cópia válida, informar a instrução duplicada e avisar que continuará apenas com os blocos aceitos."
+        },
+        "I13": {
+            "titulo": "CASO I13: Erro sintático porque HOSTS aparece onde MASK era esperado",
+            "salida": "Saída esperada: caso inválido. Código esperado: SIN-002. Deve gerar um erro sintático porque depois do endereço IP era esperado MASK e apareceu HOSTS."
+        },
+        "I14": {
+            "titulo": "CASO I14: Erro semântico por máscara fora do intervalo",
+            "salida": "Saída esperada: caso inválido. Código esperado: SEM-001. Deve gerar um erro semântico porque a máscara /31 está fora do intervalo permitido de /8 a /30."
+        },
+        "I15": {
+            "titulo": "CASO I15: Erro semântico porque o IP não é endereço de rede",
+            "salida": "Saída esperada: caso inválido. Código esperado: SEM-002. Deve gerar um erro semântico porque 192.168.1.5 é um endereço de host para /24 e o endereço de rede correspondente é 192.168.1.0."
+        },
+        "I16": {
+            "titulo": "CASO I16: Erro semântico por quantidade de hosts igual a zero",
+            "salida": "Saída esperada: caso inválido. Código esperado: SEM-003. Deve gerar um erro semântico porque cada quantidade solicitada em HOSTS deve ser maior que zero."
+        },
+        "I17": {
+            "titulo": "CASO I17: Erro semântico por solicitação individual grande demais",
+            "salida": "Saída esperada: caso inválido. Códigos esperados: SEM-004, SEM-005. Deve gerar SEM-005 porque uma solicitação de 50 hosts precisa de um bloco maior que toda a rede /30 e SEM-004 porque a capacidade total necessária também excede a disponível."
+        },
+        "I18": {
+            "titulo": "CASO I18: Erro semântico porque o total de sub-redes não cabe",
+            "salida": "Saída esperada: caso inválido. Código esperado: SEM-004. Cada solicitação pode formar individualmente uma sub-rede, mas em conjunto os três blocos VLSM precisam de mais endereços do que os disponíveis em uma rede /24."
+        },
+        "I19": {
+            "titulo": "CASO I19: Erro semântico por redes base sobrepostas",
+            "salida": "Saída esperada: caso inválido com processamento parcial. Código esperado: SEM-006. A segunda rede deve ser rejeitada porque seu intervalo está dentro da primeira rede base, enquanto a primeira pode ser conservada como bloco semanticamente válido."
+        },
+        "I20": {
+            "titulo": "CASO I20: Erros mistos léxicos, sintáticos e semânticos",
+            "salida": "Saída esperada: caso inválido com vários diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Deve produzir diagnósticos das três fases. A primeira instrução contém problemas semânticos e um símbolo desconhecido, enquanto a segunda contém uma palavra inválida no lugar de MASK e uma lista de hosts malformada."
+        },
+        "I21": {
+            "titulo": "CASO I21: Erro léxico por uso incorreto de maiúsculas em palavra reservada",
+            "salida": "Saída esperada: caso inválido. Códigos esperados: LEX-003, SIN-002. Deve gerar LEX-003 porque mask deve ser escrito exatamente como MASK e depois SIN-002 porque o parser não recebe uma palavra reservada MASK válida."
+        },
+        "I22": {
+            "titulo": "CASO I22: Erro léxico por número unido diretamente a texto",
+            "salida": "Saída esperada: caso inválido. Códigos esperados: LEX-004, SIN-004. Deve gerar LEX-004 porque 50ABC mistura um valor numérico com texto sem separação e SIN-004 porque a fase sintática termina sem receber uma quantidade HOSTS válida."
+        },
+        "I23": {
+            "titulo": "CASO I23: Erro léxico por máscara CIDR unida diretamente a texto",
+            "salida": "Saída esperada: caso inválido. Códigos esperados: LEX-004, SIN-003. Deve gerar LEX-004 porque /24HOSTS une uma máscara numérica com texto e SIN-003 porque o parser não recebe uma máscara CIDR válida depois de MASK."
+        },
+        "I24": {
+            "titulo": "CASO I24: Erro sintático por começar com tokens fora de ordem e recuperação posterior",
+            "salida": "Saída esperada: caso inválido com processamento parcial. Códigos esperados: SIN-008, ADV-001. Deve gerar SIN-008 porque a primeira linha começa fora da estrutura esperada, recuperar-se na instrução seguinte e processar corretamente a rede Segunda."
+        },
+        "I25": {
+            "titulo": "CASO I25: Erros das três fases com recuperação de um bloco válido",
+            "salida": "Saída esperada: caso inválido com processamento parcial e vários diagnósticos. Códigos esperados: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. Deve demonstrar que TecNet Finder pode informar erros léxicos, sintáticos e semânticos e ainda recuperar a terceira instrução válida para continuar seu cálculo VLSM."
+        }
+    }
+}

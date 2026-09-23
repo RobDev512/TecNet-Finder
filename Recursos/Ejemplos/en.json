@@ -1,0 +1,177 @@
+{
+    "idioma": "en",
+    "nombres": {
+        "Oficina": "Office",
+        "Laboratorio": "Laboratory",
+        "Administracion": "Administration",
+        "Sistemas": "Systems",
+        "Optimizada": "Optimized",
+        "Pegada": "Joined",
+        "Duplicados": "Duplicates",
+        "Sobrada": "Oversized",
+        "Red": "Network",
+        "Adecuada": "Adequate",
+        "Central": "Central",
+        "Segunda": "Second",
+        "Incorrecta": "Incorrect",
+        "Correcta": "Correct"
+    },
+    "casos": {
+        "V1": {
+            "titulo": "CASE V1: Complete valid input with network name",
+            "salida": "Expected output: valid case. Expected codes: none. It should correctly recognize the instruction, pass lexical, syntactic and semantic analysis, and generate three VLSM subnets for Office."
+        },
+        "V2": {
+            "titulo": "CASE V2: Valid input without a network name",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-007. It should generate the VLSM table using the base IP to identify the network and warn that NAME was not specified."
+        },
+        "V3": {
+            "titulo": "CASE V3: Valid input with a single host quantity",
+            "salida": "Expected output: valid case. Expected codes: none. It should pass all three analysis phases and generate a single VLSM subnet for Laboratory."
+        },
+        "V4": {
+            "titulo": "CASE V4: Valid input with multiple instructions",
+            "salida": "Expected output: valid case. Expected codes: none. It should recognize two valid blocks and generate the corresponding VLSM subnets for Administration and Systems."
+        },
+        "V5": {
+            "titulo": "CASE V5: Valid input with hosts outside the recommended order",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-008. It should accept the input, warn that HOSTS are not written from largest to smallest, and internally order them as 50,30,10 for the VLSM calculation."
+        },
+        "V6": {
+            "titulo": "CASE V6: Valid input with reserved words attached to values",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-002. It should recognize the input, generate the VLSM table, and warn that reserved words are attached directly to the following value."
+        },
+        "V7": {
+            "titulo": "CASE V7: Valid input with a repeated network name",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-003. Both instructions should be processed, but it should warn that the name Office was used for more than one network."
+        },
+        "V8": {
+            "titulo": "CASE V8: Valid input with repeated host quantities",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-004. It should generate three VLSM subnets and warn that the quantity 50 is repeated in the HOSTS list."
+        },
+        "V9": {
+            "titulo": "CASE V9: Valid input with an oversized base network",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-005. It should generate the requested subnet and warn that the base network has much more capacity than is actually required."
+        },
+        "V10": {
+            "titulo": "CASE V10: Valid input with a generic network name",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-006. It should generate the VLSM table and recommend using a more descriptive network name than Network."
+        },
+        "V11": {
+            "titulo": "CASE V11: Valid input without an explicit name",
+            "salida": "Expected output: valid case with warning. Expected code: ADV-007. It should generate two subnets and recommend adding NAME followed by an identifier."
+        },
+        "V12": {
+            "titulo": "CASE V12: Valid input with several different warnings",
+            "salida": "Expected output: valid case with several warnings. Expected codes: ADV-004, ADV-005, ADV-006, ADV-007. It should process both blocks and warn about repeated hosts, an oversized network, a generic name, and a missing network name."
+        },
+        "V13": {
+            "titulo": "CASE V13: Valid input with missing name and hosts out of order",
+            "salida": "Expected output: valid case with several warnings. Expected codes: ADV-007, ADV-008. It should generate the subnets, recommend adding a network name, and warn that HOSTS should be written from largest to smallest."
+        },
+        "V14": {
+            "titulo": "CASE V14: Valid input close to but below the oversizing threshold",
+            "salida": "Expected output: valid case. Expected codes: none. It should generate one VLSM subnet and not produce ADV-005 because the base network does not reach the threshold defined as clearly oversized."
+        },
+        "I1": {
+            "titulo": "CASE I1: Lexical error caused by a misspelled reserved word",
+            "salida": "Expected output: invalid case. Expected codes: LEX-001, SIN-002. It should generate LEX-001 because MAS appears as an out-of-place identifier and SIN-002 because the reserved word MASK was not recognized after the IP address."
+        },
+        "I2": {
+            "titulo": "CASE I2: Lexical error caused by an unrecognized symbol",
+            "salida": "Expected output: invalid case. Expected code: LEX-002. It should detect the @ symbol as an element that does not belong to the defined language."
+        },
+        "I3": {
+            "titulo": "CASE I3: Lexical error caused by an out-of-place identifier",
+            "salida": "Expected output: invalid case. Expected code: LEX-001. It should generate a lexical error because Office appears as an identifier without being preceded by NAME."
+        },
+        "I4": {
+            "titulo": "CASE I4: Syntax error caused by an incomplete IP address",
+            "salida": "Expected output: invalid case. Expected code: SIN-001. It should generate a syntax error because a complete IPv4 address was expected after IP."
+        },
+        "I5": {
+            "titulo": "CASE I5: Syntax error caused by missing MASK",
+            "salida": "Expected output: invalid case. Expected code: SIN-002. It should generate a syntax error because the reserved word MASK was expected after the IP address."
+        },
+        "I6": {
+            "titulo": "CASE I6: Syntax error caused by a mask without a slash",
+            "salida": "Expected output: invalid case. Expected code: SIN-003. It should generate a syntax error because a CIDR mask with a slash, for example /24, was expected after MASK."
+        },
+        "I7": {
+            "titulo": "CASE I7: Syntax error caused by a missing host quantity",
+            "salida": "Expected output: invalid case. Expected code: SIN-004. It should generate a syntax error because at least one numeric quantity was expected after HOSTS."
+        },
+        "I8": {
+            "titulo": "CASE I8: Syntax error caused by a double comma in the host list",
+            "salida": "Expected output: invalid case. Expected code: SIN-005. It should generate a syntax error because another NUMBER was expected after a comma."
+        },
+        "I9": {
+            "titulo": "CASE I9: Syntax error caused by a trailing comma without another host",
+            "salida": "Expected output: invalid case. Expected code: SIN-005. It should generate a syntax error because the HOSTS list ends with a comma and no following quantity."
+        },
+        "I10": {
+            "titulo": "CASE I10: Syntax error caused by NAME without an identifier",
+            "salida": "Expected output: invalid case. Expected code: SIN-006. It should generate a syntax error because an identifier was expected after NAME."
+        },
+        "I11": {
+            "titulo": "CASE I11: Syntax error caused by NAME before another instruction begins",
+            "salida": "Expected output: invalid case with partial processing. Expected codes: SIN-006, ADV-001. It should reject the first instruction because NAME is incomplete and keep the second valid block so processing can continue."
+        },
+        "I12": {
+            "titulo": "CASE I12: Syntax error caused by an exact duplicate instruction",
+            "salida": "Expected output: invalid case with partial processing. Expected codes: SIN-007, ADV-001. It should keep only one valid copy, report the duplicated instruction, and warn that processing will continue only with accepted blocks."
+        },
+        "I13": {
+            "titulo": "CASE I13: Syntax error because HOSTS appears where MASK was expected",
+            "salida": "Expected output: invalid case. Expected code: SIN-002. It should generate a syntax error because MASK was expected after the IP address but HOSTS appeared instead."
+        },
+        "I14": {
+            "titulo": "CASE I14: Semantic error caused by a mask outside the allowed range",
+            "salida": "Expected output: invalid case. Expected code: SEM-001. It should generate a semantic error because mask /31 is outside the allowed /8 to /30 range."
+        },
+        "I15": {
+            "titulo": "CASE I15: Semantic error because the IP is not a network address",
+            "salida": "Expected output: invalid case. Expected code: SEM-002. It should generate a semantic error because 192.168.1.5 is a host address for /24 and the corresponding network address is 192.168.1.0."
+        },
+        "I16": {
+            "titulo": "CASE I16: Semantic error caused by a host quantity equal to zero",
+            "salida": "Expected output: invalid case. Expected code: SEM-003. It should generate a semantic error because every quantity requested in HOSTS must be greater than zero."
+        },
+        "I17": {
+            "titulo": "CASE I17: Semantic error caused by an individual request that is too large",
+            "salida": "Expected output: invalid case. Expected codes: SEM-004, SEM-005. It should generate SEM-005 because a request for 50 hosts needs a block larger than the entire /30 network, and SEM-004 because the total required capacity also exceeds what is available."
+        },
+        "I18": {
+            "titulo": "CASE I18: Semantic error because the total number of subnets does not fit",
+            "salida": "Expected output: invalid case. Expected code: SEM-004. Each request can individually form a subnet, but together the three VLSM blocks require more addresses than are available in a /24 network."
+        },
+        "I19": {
+            "titulo": "CASE I19: Semantic error caused by overlapping base networks",
+            "salida": "Expected output: invalid case with partial processing. Expected code: SEM-006. The second network should be rejected because its range lies within the first base network, while the first may remain as a semantically valid block."
+        },
+        "I20": {
+            "titulo": "CASE I20: Mixed lexical, syntactic and semantic errors",
+            "salida": "Expected output: invalid case with several diagnostics. Expected codes: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. It should produce diagnostics from all three phases. The first instruction contains semantic problems and an unknown symbol, while the second contains an invalid word instead of MASK and a malformed host list."
+        },
+        "I21": {
+            "titulo": "CASE I21: Lexical error caused by incorrect capitalization of a reserved word",
+            "salida": "Expected output: invalid case. Expected codes: LEX-003, SIN-002. It should generate LEX-003 because mask must be written exactly as MASK and then SIN-002 because the parser does not receive a valid MASK reserved word."
+        },
+        "I22": {
+            "titulo": "CASE I22: Lexical error caused by a number directly joined to text",
+            "salida": "Expected output: invalid case. Expected codes: LEX-004, SIN-004. It should generate LEX-004 because 50ABC mixes a numeric value with text without separation, and SIN-004 because the syntactic phase ends without receiving a valid HOSTS quantity."
+        },
+        "I23": {
+            "titulo": "CASE I23: Lexical error caused by a CIDR mask directly joined to text",
+            "salida": "Expected output: invalid case. Expected codes: LEX-004, SIN-003. It should generate LEX-004 because /24HOSTS joins a numeric mask with text, and SIN-003 because the parser does not receive a valid CIDR mask after MASK."
+        },
+        "I24": {
+            "titulo": "CASE I24: Syntax error caused by starting with out-of-order tokens and later recovery",
+            "salida": "Expected output: invalid case with partial processing. Expected codes: SIN-008, ADV-001. It should generate SIN-008 because the first line starts outside the expected structure, recover at the next instruction, and correctly process the network Second."
+        },
+        "I25": {
+            "titulo": "CASE I25: Errors from all three phases with recovery of a valid block",
+            "salida": "Expected output: invalid case with partial processing and several diagnostics. Expected codes: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. It should demonstrate that TecNet Finder can report lexical, syntactic and semantic errors and still recover the third valid instruction so its VLSM calculation can continue."
+        }
+    }
+}

@@ -147,19 +147,35 @@ class ControlCierreInterfaz(QObject):
 
         panel = self.ventana.panel_resultados
 
-        # En este punto los botones conservan únicamente las conexiones creadas
-        # por VentanaPrincipal/PanelResultados. Se sustituyen por equivalentes
-        # que mantienen la lógica estable y resuelven el texto con el idioma activo.
-        for boton, accion in (
-            (panel.boton_analizar, self._analizar_codigo),
-            (panel.boton_exportar_excel, self._exportar_excel),
-            (panel.boton_exportar_reporte, self._exportar_reporte),
-        ):
+        # Sustituye únicamente las acciones originales que todavía contenían
+        # textos fijos. No desconecta todos los slots del botón, porque
+        # ControlConfiguracion ya conectó aquí las acciones posteriores a la
+        # compilación responsables de navegación, Tabla VLSM y diagnósticos.
+        conexiones = (
+            (
+                panel.boton_analizar,
+                panel.accion_analizar,
+                self._analizar_codigo,
+            ),
+            (
+                panel.boton_exportar_excel,
+                panel._exportar_excel,
+                self._exportar_excel,
+            ),
+            (
+                panel.boton_exportar_reporte,
+                panel._exportar_reporte,
+                self._exportar_reporte,
+            ),
+        )
+
+        for boton, accion_original, accion_localizada in conexiones:
             try:
-                boton.clicked.disconnect()
+                boton.clicked.disconnect(accion_original)
             except (TypeError, RuntimeError):
                 pass
-            boton.clicked.connect(accion)
+
+            boton.clicked.connect(accion_localizada)
 
         self._dialogos_principales_preparados = True
 
@@ -308,6 +324,7 @@ class ControlCierreInterfaz(QObject):
         for vista in visor.findChildren(VistaArbol):
             self._preparar_reanclaje(vista)
             self._traducir_raiz_escena(vista)
+            self._ocultar_etiqueta_valor_escena(vista)
 
     def _preparar_reanclaje(self, vista: VistaArbol) -> None:
         if not any(vista_registrada is vista for vista_registrada in self._vistas_arbol):
@@ -481,6 +498,35 @@ class ControlCierreInterfaz(QObject):
                 item.pos().y(),
             )
             break
+
+    def _ocultar_etiqueta_valor_escena(self, vista: VistaArbol) -> None:
+        try:
+            escena = vista.scene()
+        except RuntimeError:
+            self._descartar_vista(vista)
+            return
+
+        if escena is None:
+            return
+
+        for item in escena.items():
+            if not hasattr(item, "toPlainText") or not hasattr(item, "setPlainText"):
+                continue
+
+            texto = item.toPlainText()
+            if not isinstance(texto, str) or not texto.startswith("VALOR\n"):
+                continue
+
+            valor = texto.split("\n", 1)[1]
+            rectangulo_anterior = item.boundingRect()
+            centro_x = item.pos().x() + rectangulo_anterior.width() / 2.0
+            centro_y = item.pos().y() + rectangulo_anterior.height() / 2.0
+            item.setPlainText(valor)
+            rectangulo_nuevo = item.boundingRect()
+            item.setPos(
+                centro_x - rectangulo_nuevo.width() / 2.0,
+                centro_y - rectangulo_nuevo.height() / 2.0,
+            )
 
     # ========================================================
     # Configuración

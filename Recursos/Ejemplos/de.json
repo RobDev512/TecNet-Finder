@@ -1,0 +1,177 @@
+{
+    "idioma": "de",
+    "nombres": {
+        "Oficina": "Buero",
+        "Laboratorio": "Labor",
+        "Administracion": "Verwaltung",
+        "Sistemas": "Systeme",
+        "Optimizada": "Optimiert",
+        "Pegada": "Verbunden",
+        "Duplicados": "Duplikate",
+        "Sobrada": "Uebergross",
+        "Red": "Test",
+        "Adecuada": "Angemessen",
+        "Central": "Zentrale",
+        "Segunda": "Zweite",
+        "Incorrecta": "Falsch",
+        "Correcta": "Korrekt"
+    },
+    "casos": {
+        "V1": {
+            "titulo": "FALL V1: Vollständige gültige Eingabe mit Netzwerkname",
+            "salida": "Erwartete Ausgabe: gültiger Fall. Erwartete Codes: keine. Die Anweisung soll korrekt erkannt werden, die lexikalische, syntaktische und semantische Analyse bestehen und drei VLSM-Subnetze für Buero erzeugen."
+        },
+        "V2": {
+            "titulo": "FALL V2: Gültige Eingabe ohne Netzwerkname",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-007. Die VLSM-Tabelle soll mit der Basis-IP zur Identifikation des Netzes erzeugt werden und melden, dass NAME nicht angegeben wurde."
+        },
+        "V3": {
+            "titulo": "FALL V3: Gültige Eingabe mit nur einer Host-Anzahl",
+            "salida": "Erwartete Ausgabe: gültiger Fall. Erwartete Codes: keine. Alle drei Analysephasen sollen erfolgreich sein und ein einzelnes VLSM-Subnetz für Labor erzeugt werden."
+        },
+        "V4": {
+            "titulo": "FALL V4: Gültige Eingabe mit mehreren Anweisungen",
+            "salida": "Erwartete Ausgabe: gültiger Fall. Erwartete Codes: keine. Zwei gültige Blöcke sollen erkannt und die entsprechenden VLSM-Subnetze für Verwaltung und Systeme erzeugt werden."
+        },
+        "V5": {
+            "titulo": "FALL V5: Gültige Eingabe mit Hosts außerhalb der empfohlenen Reihenfolge",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-008. Die Eingabe soll akzeptiert werden, darauf hinweisen, dass HOSTS nicht absteigend geschrieben sind, und sie intern als 50,30,10 für die VLSM-Berechnung sortieren."
+        },
+        "V6": {
+            "titulo": "FALL V6: Gültige Eingabe mit direkt an Werte angefügten reservierten Wörtern",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-002. Die Eingabe soll erkannt, die VLSM-Tabelle erzeugt und gemeldet werden, dass reservierte Wörter direkt an den folgenden Wert angefügt sind."
+        },
+        "V7": {
+            "titulo": "FALL V7: Gültige Eingabe mit wiederholtem Netzwerknamen",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-003. Beide Anweisungen sollen verarbeitet werden, aber es soll gemeldet werden, dass der Name Buero für mehr als ein Netzwerk verwendet wurde."
+        },
+        "V8": {
+            "titulo": "FALL V8: Gültige Eingabe mit wiederholten Host-Anzahlen",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-004. Drei VLSM-Subnetze sollen erzeugt werden und es soll gemeldet werden, dass die Anzahl 50 in der HOSTS-Liste wiederholt wird."
+        },
+        "V9": {
+            "titulo": "FALL V9: Gültige Eingabe mit überdimensioniertem Basisnetz",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-005. Das angeforderte Subnetz soll erzeugt und gemeldet werden, dass das Basisnetz deutlich mehr Kapazität als tatsächlich benötigt besitzt."
+        },
+        "V10": {
+            "titulo": "FALL V10: Gültige Eingabe mit generischem Netzwerknamen",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-006. Die VLSM-Tabelle soll erzeugt und ein aussagekräftigerer Netzwerkname als Test empfohlen werden."
+        },
+        "V11": {
+            "titulo": "FALL V11: Gültige Eingabe ohne expliziten Namen",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit Warnung. Erwarteter Code: ADV-007. Zwei Subnetze sollen erzeugt und das Hinzufügen von NAME gefolgt von einem Bezeichner empfohlen werden."
+        },
+        "V12": {
+            "titulo": "FALL V12: Gültige Eingabe mit mehreren unterschiedlichen Warnungen",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit mehreren Warnungen. Erwartete Codes: ADV-004, ADV-005, ADV-006, ADV-007. Beide Blöcke sollen verarbeitet und vor wiederholten Hosts, einem überdimensionierten Netz, einem generischen Namen und einem fehlenden Netzwerknamen gewarnt werden."
+        },
+        "V13": {
+            "titulo": "FALL V13: Gültige Eingabe ohne Namen und mit ungeordneten Hosts",
+            "salida": "Erwartete Ausgabe: gültiger Fall mit mehreren Warnungen. Erwartete Codes: ADV-007, ADV-008. Die Subnetze sollen erzeugt, ein Netzwerkname empfohlen und gemeldet werden, dass HOSTS absteigend geschrieben werden sollten."
+        },
+        "V14": {
+            "titulo": "FALL V14: Gültige Eingabe nahe, aber unterhalb der Überdimensionierungsschwelle",
+            "salida": "Erwartete Ausgabe: gültiger Fall. Erwartete Codes: keine. Ein VLSM-Subnetz soll erzeugt werden und ADV-005 darf nicht auftreten, weil das Basisnetz die definierte Schwelle für klare Überdimensionierung nicht erreicht."
+        },
+        "I1": {
+            "titulo": "FALL I1: Lexikalischer Fehler durch falsch geschriebenes reserviertes Wort",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwartete Codes: LEX-001, SIN-002. LEX-001 soll entstehen, weil MAS als falsch platzierter Bezeichner erscheint, und SIN-002, weil nach der IP-Adresse das reservierte Wort MASK nicht erkannt wurde."
+        },
+        "I2": {
+            "titulo": "FALL I2: Lexikalischer Fehler durch unbekanntes Symbol",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: LEX-002. Das Symbol @ soll als Element erkannt werden, das nicht zur definierten Sprache gehört."
+        },
+        "I3": {
+            "titulo": "FALL I3: Lexikalischer Fehler durch falsch platzierten Bezeichner",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: LEX-001. Ein lexikalischer Fehler soll entstehen, weil Buero als Bezeichner ohne vorangestelltes NAME erscheint."
+        },
+        "I4": {
+            "titulo": "FALL I4: Syntaxfehler durch unvollständige IP-Adresse",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-001. Ein Syntaxfehler soll entstehen, weil nach IP eine vollständige IPv4-Adresse erwartet wurde."
+        },
+        "I5": {
+            "titulo": "FALL I5: Syntaxfehler durch fehlendes MASK",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-002. Ein Syntaxfehler soll entstehen, weil nach der IP-Adresse das reservierte Wort MASK erwartet wurde."
+        },
+        "I6": {
+            "titulo": "FALL I6: Syntaxfehler durch Maske ohne Schrägstrich",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-003. Ein Syntaxfehler soll entstehen, weil nach MASK eine CIDR-Maske mit Schrägstrich, zum Beispiel /24, erwartet wurde."
+        },
+        "I7": {
+            "titulo": "FALL I7: Syntaxfehler durch fehlende Host-Anzahl",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-004. Ein Syntaxfehler soll entstehen, weil nach HOSTS mindestens eine numerische Anzahl erwartet wurde."
+        },
+        "I8": {
+            "titulo": "FALL I8: Syntaxfehler durch doppeltes Komma in der Host-Liste",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-005. Ein Syntaxfehler soll entstehen, weil nach einem Komma ein weiteres NUMBER erwartet wurde."
+        },
+        "I9": {
+            "titulo": "FALL I9: Syntaxfehler durch abschließendes Komma ohne weiteren Host",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-005. Ein Syntaxfehler soll entstehen, weil die HOSTS-Liste mit einem Komma ohne folgende Anzahl endet."
+        },
+        "I10": {
+            "titulo": "FALL I10: Syntaxfehler durch NAME ohne Bezeichner",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-006. Ein Syntaxfehler soll entstehen, weil nach NAME ein Bezeichner erwartet wurde."
+        },
+        "I11": {
+            "titulo": "FALL I11: Syntaxfehler durch NAME vor Beginn einer weiteren Anweisung",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit teilweiser Verarbeitung. Erwartete Codes: SIN-006, ADV-001. Die erste Anweisung soll wegen unvollständigem NAME verworfen und der zweite gültige Block zur weiteren Verarbeitung behalten werden."
+        },
+        "I12": {
+            "titulo": "FALL I12: Syntaxfehler durch exakt duplizierte Anweisung",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit teilweiser Verarbeitung. Erwartete Codes: SIN-007, ADV-001. Nur eine gültige Kopie soll behalten, die duplizierte Anweisung gemeldet und nur mit akzeptierten Blöcken fortgefahren werden."
+        },
+        "I13": {
+            "titulo": "FALL I13: Syntaxfehler, weil HOSTS anstelle von MASK erscheint",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SIN-002. Ein Syntaxfehler soll entstehen, weil nach der IP-Adresse MASK erwartet wurde, aber HOSTS erschien."
+        },
+        "I14": {
+            "titulo": "FALL I14: Semantischer Fehler durch Maske außerhalb des Bereichs",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SEM-001. Ein semantischer Fehler soll entstehen, weil die Maske /31 außerhalb des erlaubten Bereichs von /8 bis /30 liegt."
+        },
+        "I15": {
+            "titulo": "FALL I15: Semantischer Fehler, weil die IP keine Netzwerkadresse ist",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SEM-002. Ein semantischer Fehler soll entstehen, weil 192.168.1.5 für /24 eine Host-Adresse ist und die zugehörige Netzwerkadresse 192.168.1.0 lautet."
+        },
+        "I16": {
+            "titulo": "FALL I16: Semantischer Fehler durch Host-Anzahl gleich null",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SEM-003. Ein semantischer Fehler soll entstehen, weil jede in HOSTS angeforderte Anzahl größer als null sein muss."
+        },
+        "I17": {
+            "titulo": "FALL I17: Semantischer Fehler durch zu große Einzelanforderung",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwartete Codes: SEM-004, SEM-005. SEM-005 soll entstehen, weil 50 Hosts einen größeren Block als das gesamte /30-Netz benötigen, und SEM-004, weil auch die insgesamt benötigte Kapazität die verfügbare überschreitet."
+        },
+        "I18": {
+            "titulo": "FALL I18: Semantischer Fehler, weil die Gesamtheit der Subnetze nicht passt",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwarteter Code: SEM-004. Jede Anforderung kann einzeln ein Subnetz bilden, aber zusammen benötigen die drei VLSM-Blöcke mehr Adressen als in einem /24-Netz verfügbar sind."
+        },
+        "I19": {
+            "titulo": "FALL I19: Semantischer Fehler durch überlappende Basisnetze",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit teilweiser Verarbeitung. Erwarteter Code: SEM-006. Das zweite Netz soll verworfen werden, weil sein Bereich innerhalb des ersten Basisnetzes liegt, während das erste als semantisch gültiger Block erhalten bleiben kann."
+        },
+        "I20": {
+            "titulo": "FALL I20: Gemischte lexikalische, syntaktische und semantische Fehler",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit mehreren Diagnosen. Erwartete Codes: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Diagnosen aus allen drei Phasen sollen entstehen. Die erste Anweisung enthält semantische Probleme und ein unbekanntes Symbol, die zweite ein ungültiges Wort statt MASK und eine fehlerhafte Host-Liste."
+        },
+        "I21": {
+            "titulo": "FALL I21: Lexikalischer Fehler durch falsche Groß-/Kleinschreibung eines reservierten Wortes",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwartete Codes: LEX-003, SIN-002. LEX-003 soll entstehen, weil mask exakt als MASK geschrieben werden muss, anschließend SIN-002, weil der Parser kein gültiges reserviertes Wort MASK erhält."
+        },
+        "I22": {
+            "titulo": "FALL I22: Lexikalischer Fehler durch direkt mit Text verbundenen Zahlenwert",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwartete Codes: LEX-004, SIN-004. LEX-004 soll entstehen, weil 50ABC einen numerischen Wert ohne Trennung mit Text mischt, und SIN-004, weil die Syntaxphase ohne gültige HOSTS-Anzahl endet."
+        },
+        "I23": {
+            "titulo": "FALL I23: Lexikalischer Fehler durch direkt mit Text verbundene CIDR-Maske",
+            "salida": "Erwartete Ausgabe: ungültiger Fall. Erwartete Codes: LEX-004, SIN-003. LEX-004 soll entstehen, weil /24HOSTS eine numerische Maske mit Text verbindet, und SIN-003, weil der Parser nach MASK keine gültige CIDR-Maske erhält."
+        },
+        "I24": {
+            "titulo": "FALL I24: Syntaxfehler durch Start mit falsch angeordneten Tokens und anschließende Wiederherstellung",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit teilweiser Verarbeitung. Erwartete Codes: SIN-008, ADV-001. SIN-008 soll entstehen, weil die erste Zeile außerhalb der erwarteten Struktur beginnt; danach soll bei der nächsten Anweisung wiederhergestellt und das Netz Zweite korrekt verarbeitet werden."
+        },
+        "I25": {
+            "titulo": "FALL I25: Fehler aus allen drei Phasen mit Wiederherstellung eines gültigen Blocks",
+            "salida": "Erwartete Ausgabe: ungültiger Fall mit teilweiser Verarbeitung und mehreren Diagnosen. Erwartete Codes: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. Es soll zeigen, dass TecNet Finder lexikalische, syntaktische und semantische Fehler melden und dennoch die dritte gültige Anweisung wiederherstellen kann, um deren VLSM-Berechnung fortzusetzen."
+        }
+    }
+}

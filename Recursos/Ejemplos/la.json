@@ -1,0 +1,177 @@
+{
+    "idioma": "la",
+    "nombres": {
+        "Oficina": "Officina",
+        "Laboratorio": "Laboratorium",
+        "Administracion": "Administratio",
+        "Sistemas": "Systemata",
+        "Optimizada": "Optimizata",
+        "Pegada": "Iuncta",
+        "Duplicados": "Duplicata",
+        "Sobrada": "Amplior",
+        "Red": "Test",
+        "Adecuada": "Apta",
+        "Central": "Centralis",
+        "Segunda": "Secunda",
+        "Incorrecta": "Inrecta",
+        "Correcta": "Recta"
+    },
+    "casos": {
+        "V1": {
+            "titulo": "CASUS V1: Ingressus validus plenus cum nomine retis",
+            "salida": "Exitus exspectatus: casus validus. Codices exspectati: nulli. Instructio recte agnoscenda est, analyses lexicalis, syntactica et semantica superandae sunt, atque tria subretia VLSM pro Officina generanda sunt."
+        },
+        "V2": {
+            "titulo": "CASUS V2: Ingressus validus sine nomine retis",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-007. Tabula VLSM generanda est IP basi ad rete identificandum adhibita, et monendum est NAME non esse specificatum."
+        },
+        "V3": {
+            "titulo": "CASUS V3: Ingressus validus cum una quantitate hospitum",
+            "salida": "Exitus exspectatus: casus validus. Codices exspectati: nulli. Tres phases analysis superandae sunt et unum subrete VLSM pro Laboratorium generandum est."
+        },
+        "V4": {
+            "titulo": "CASUS V4: Ingressus validus cum pluribus instructionibus",
+            "salida": "Exitus exspectatus: casus validus. Codices exspectati: nulli. Duo bloci validi agnoscendi sunt et subretia VLSM respondentia pro Administratio et Systemata generanda sunt."
+        },
+        "V5": {
+            "titulo": "CASUS V5: Ingressus validus cum hospitibus extra ordinem commendatum",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-008. Ingressus accipiendus est, monendum HOSTS non a maiore ad minorem scriptos esse, eosque interne ut 50,30,10 ordinandos esse ad computationem VLSM."
+        },
+        "V6": {
+            "titulo": "CASUS V6: Ingressus validus cum verbis reservatis valori adhaerentibus",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-002. Ingressus agnoscendus est, tabula VLSM generanda, atque monendum verba reservata directe valori sequenti adhaerere."
+        },
+        "V7": {
+            "titulo": "CASUS V7: Ingressus validus cum nomine retis repetito",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-003. Utraque instructio tractanda est, sed monendum nomen Officina in pluribus retibus adhibitum esse."
+        },
+        "V8": {
+            "titulo": "CASUS V8: Ingressus validus cum quantitatibus hospitum repetitis",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-004. Tria subretia VLSM generanda sunt et monendum quantitatem 50 in indice HOSTS repetitam esse."
+        },
+        "V9": {
+            "titulo": "CASUS V9: Ingressus validus cum rete basi nimis amplo",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-005. Subrete petitum generandum est et monendum rete basis multo maiorem capacitatem quam vere necessariam habere."
+        },
+        "V10": {
+            "titulo": "CASUS V10: Ingressus validus cum nomine retis generico",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-006. Tabula VLSM generanda est et nomen retis descriptivius quam Test commendandum est."
+        },
+        "V11": {
+            "titulo": "CASUS V11: Ingressus validus sine nomine explicito",
+            "salida": "Exitus exspectatus: casus validus cum monitione. Codex exspectatus: ADV-007. Duo subretia generanda sunt et additio NAME cum identificatore commendanda est."
+        },
+        "V12": {
+            "titulo": "CASUS V12: Ingressus validus cum pluribus monitionibus diversis",
+            "salida": "Exitus exspectatus: casus validus cum pluribus monitionibus. Codices exspectati: ADV-004, ADV-005, ADV-006, ADV-007. Uterque blocus tractandus est et monendum de hospitibus repetitis, rete nimis amplo, nomine generico et absentia nominis retis."
+        },
+        "V13": {
+            "titulo": "CASUS V13: Ingressus validus sine nomine et cum hospitibus extra ordinem",
+            "salida": "Exitus exspectatus: casus validus cum pluribus monitionibus. Codices exspectati: ADV-007, ADV-008. Subretia generanda sunt, nomen retis commendandum et monendum HOSTS a maiore ad minorem scribendos esse."
+        },
+        "V14": {
+            "titulo": "CASUS V14: Ingressus validus prope sed infra limen amplitudinis",
+            "salida": "Exitus exspectatus: casus validus. Codices exspectati: nulli. Unum subrete VLSM generandum est neque ADV-005 producendus, quia rete basis limen definitum ad rete manifeste nimis amplum non attingit."
+        },
+        "I1": {
+            "titulo": "CASUS I1: Error lexicalis propter verbum reservatum male scriptum",
+            "salida": "Exitus exspectatus: casus invalidus. Codices exspectati: LEX-001, SIN-002. LEX-001 generandus est quia MAS ut identificator extra locum apparet, et SIN-002 quia post inscriptionem IP verbum reservatum MASK non agnitum est."
+        },
+        "I2": {
+            "titulo": "CASUS I2: Error lexicalis propter symbolum non agnitum",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: LEX-002. Symbolum @ ut elementum ad linguam definitam non pertinens detegendum est."
+        },
+        "I3": {
+            "titulo": "CASUS I3: Error lexicalis propter identificatorem extra locum",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: LEX-001. Error lexicalis generandus est quia Officina ut identificator sine NAME praecedente apparet."
+        },
+        "I4": {
+            "titulo": "CASUS I4: Error syntacticus propter IP incompletam",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-001. Error syntacticus generandus est quia post IP inscriptio IPv4 completa exspectabatur."
+        },
+        "I5": {
+            "titulo": "CASUS I5: Error syntacticus propter MASK absentem",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-002. Error syntacticus generandus est quia post inscriptionem IP verbum reservatum MASK exspectabatur."
+        },
+        "I6": {
+            "titulo": "CASUS I6: Error syntacticus propter larvam sine virgula obliqua",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-003. Error syntacticus generandus est quia post MASK larva CIDR cum virgula obliqua, exempli gratia /24, exspectabatur."
+        },
+        "I7": {
+            "titulo": "CASUS I7: Error syntacticus propter quantitatem hospitum absentem",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-004. Error syntacticus generandus est quia post HOSTS saltem una quantitas numerica exspectabatur."
+        },
+        "I8": {
+            "titulo": "CASUS I8: Error syntacticus propter duplicem commam in indice hospitum",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-005. Error syntacticus generandus est quia post commam aliud NUMBER exspectabatur."
+        },
+        "I9": {
+            "titulo": "CASUS I9: Error syntacticus propter commam finalem sine alio hospite",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-005. Error syntacticus generandus est quia index HOSTS comma terminatur sine quantitate sequente."
+        },
+        "I10": {
+            "titulo": "CASUS I10: Error syntacticus propter NAME sine identificatore",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-006. Error syntacticus generandus est quia post NAME identificator exspectabatur."
+        },
+        "I11": {
+            "titulo": "CASUS I11: Error syntacticus propter NAME ante initium alterius instructionis",
+            "salida": "Exitus exspectatus: casus invalidus cum processu partiali. Codices exspectati: SIN-006, ADV-001. Prima instructio reicienda est quia NAME incompletum manet, et secundus blocus validus ad processum continuandum servandus est."
+        },
+        "I12": {
+            "titulo": "CASUS I12: Error syntacticus propter instructionem exacte duplicatam",
+            "salida": "Exitus exspectatus: casus invalidus cum processu partiali. Codices exspectati: SIN-007, ADV-001. Una tantum copia valida servanda, instructio duplicata referenda et processus solum cum blocis acceptis continuandus est."
+        },
+        "I13": {
+            "titulo": "CASUS I13: Error syntacticus quia HOSTS ubi MASK exspectabatur apparet",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SIN-002. Error syntacticus generandus est quia post inscriptionem IP MASK exspectabatur sed HOSTS apparuit."
+        },
+        "I14": {
+            "titulo": "CASUS I14: Error semanticus propter larvam extra intervallum",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SEM-001. Error semanticus generandus est quia larva /31 extra intervallum permissum a /8 ad /30 est."
+        },
+        "I15": {
+            "titulo": "CASUS I15: Error semanticus quia IP non est inscriptio retis",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SEM-002. Error semanticus generandus est quia 192.168.1.5 inscriptio hospitis pro /24 est et inscriptio retis respondens 192.168.1.0 est."
+        },
+        "I16": {
+            "titulo": "CASUS I16: Error semanticus propter quantitatem hospitum zero aequalem",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SEM-003. Error semanticus generandus est quia omnis quantitas in HOSTS petita maior quam zero esse debet."
+        },
+        "I17": {
+            "titulo": "CASUS I17: Error semanticus propter petitionem singularem nimis magnam",
+            "salida": "Exitus exspectatus: casus invalidus. Codices exspectati: SEM-004, SEM-005. SEM-005 generandus est quia petitio 50 hospitum blocum maiorem quam totum rete /30 requirit, et SEM-004 quia capacitas totalis requisita etiam disponibilitatem excedit."
+        },
+        "I18": {
+            "titulo": "CASUS I18: Error semanticus quia summa subretium non capit",
+            "salida": "Exitus exspectatus: casus invalidus. Codex exspectatus: SEM-004. Quaeque petitio singulatim subrete formare potest, sed tres bloci VLSM simul plures inscriptiones quam in rete /24 disponibles requirunt."
+        },
+        "I19": {
+            "titulo": "CASUS I19: Error semanticus propter retia basis se invicem superantia",
+            "salida": "Exitus exspectatus: casus invalidus cum processu partiali. Codex exspectatus: SEM-006. Secundum rete reiciendum est quia intervallum eius intra primum rete basis est, dum primum ut blocus semantice validus servari potest."
+        },
+        "I20": {
+            "titulo": "CASUS I20: Errores lexicales, syntactici et semantici mixti",
+            "salida": "Exitus exspectatus: casus invalidus cum pluribus diagnosticis. Codices exspectati: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Diagnostica trium phasium producenda sunt. Prima instructio problemata semantica et symbolum ignotum continet, secunda verbum invalidum loco MASK et indicem hospitum male formatum."
+        },
+        "I21": {
+            "titulo": "CASUS I21: Error lexicalis propter litteras maiusculas/minusculas verbi reservati incorrectas",
+            "salida": "Exitus exspectatus: casus invalidus. Codices exspectati: LEX-003, SIN-002. LEX-003 generandus est quia mask exacte ut MASK scribendum est, deinde SIN-002 quia parser verbum reservatum MASK validum non accipit."
+        },
+        "I22": {
+            "titulo": "CASUS I22: Error lexicalis propter numerum directe textui iunctum",
+            "salida": "Exitus exspectatus: casus invalidus. Codices exspectati: LEX-004, SIN-004. LEX-004 generandus est quia 50ABC valorem numericum cum textu sine separatione miscet, et SIN-004 quia phasis syntactica sine quantitate HOSTS valida terminatur."
+        },
+        "I23": {
+            "titulo": "CASUS I23: Error lexicalis propter larvam CIDR directe textui iunctam",
+            "salida": "Exitus exspectatus: casus invalidus. Codices exspectati: LEX-004, SIN-003. LEX-004 generandus est quia /24HOSTS larvam numericam cum textu iungit, et SIN-003 quia parser post MASK larvam CIDR validam non accipit."
+        },
+        "I24": {
+            "titulo": "CASUS I24: Error syntacticus propter initium cum tokenis extra ordinem et recuperationem posteriorem",
+            "salida": "Exitus exspectatus: casus invalidus cum processu partiali. Codices exspectati: SIN-008, ADV-001. SIN-008 generandus est quia prima linea extra structuram exspectatam incipit; in instructione sequente recuperandum est et rete Secunda recte tractandum."
+        },
+        "I25": {
+            "titulo": "CASUS I25: Errores trium phasium cum recuperatione blocci validi",
+            "salida": "Exitus exspectatus: casus invalidus cum processu partiali et pluribus diagnosticis. Codices exspectati: LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. Demonstrandum est TecNet Finder errores lexicales, syntacticos et semanticos referre posse atque tertiam instructionem validam recuperare ut computatio VLSM continuetur."
+        }
+    }
+}

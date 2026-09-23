@@ -1,0 +1,177 @@
+{
+    "idioma": "fr",
+    "nombres": {
+        "Oficina": "Bureau",
+        "Laboratorio": "Laboratoire",
+        "Administracion": "Administration",
+        "Sistemas": "Systemes",
+        "Optimizada": "Optimisee",
+        "Pegada": "Collee",
+        "Duplicados": "Doublons",
+        "Sobrada": "Surdimensionnee",
+        "Red": "Test",
+        "Adecuada": "Adequate",
+        "Central": "Central",
+        "Segunda": "Deuxieme",
+        "Incorrecta": "Incorrecte",
+        "Correcta": "Correcte"
+    },
+    "casos": {
+        "V1": {
+            "titulo": "CAS V1 : Entrée valide complète avec nom de réseau",
+            "salida": "Sortie attendue : cas valide. Codes attendus : aucun. L’instruction doit être reconnue correctement, réussir les analyses lexicale, syntaxique et sémantique, puis générer trois sous-réseaux VLSM pour Bureau."
+        },
+        "V2": {
+            "titulo": "CAS V2 : Entrée valide sans nom de réseau",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-007. La table VLSM doit être générée en utilisant l’IP de base pour identifier le réseau et signaler que NAME n’a pas été spécifié."
+        },
+        "V3": {
+            "titulo": "CAS V3 : Entrée valide avec une seule quantité d’hôtes",
+            "salida": "Sortie attendue : cas valide. Codes attendus : aucun. Les trois phases d’analyse doivent réussir et un seul sous-réseau VLSM doit être généré pour Laboratoire."
+        },
+        "V4": {
+            "titulo": "CAS V4 : Entrée valide avec plusieurs instructions",
+            "salida": "Sortie attendue : cas valide. Codes attendus : aucun. Deux blocs valides doivent être reconnus et les sous-réseaux VLSM correspondants générés pour Administration et Systemes."
+        },
+        "V5": {
+            "titulo": "CAS V5 : Entrée valide avec des hôtes hors de l’ordre recommandé",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-008. L’entrée doit être acceptée, signaler que HOSTS ne sont pas écrits du plus grand au plus petit et les trier en interne comme 50,30,10 pour le calcul VLSM."
+        },
+        "V6": {
+            "titulo": "CAS V6 : Entrée valide avec des mots réservés collés à la valeur",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-002. L’entrée doit être reconnue, la table VLSM générée et un avertissement doit indiquer que des mots réservés sont directement collés à la valeur suivante."
+        },
+        "V7": {
+            "titulo": "CAS V7 : Entrée valide avec nom de réseau répété",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-003. Les deux instructions doivent être traitées, mais il faut signaler que le nom Bureau a été utilisé pour plusieurs réseaux."
+        },
+        "V8": {
+            "titulo": "CAS V8 : Entrée valide avec quantités d’hôtes répétées",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-004. Trois sous-réseaux VLSM doivent être générés et il faut signaler que la quantité 50 est répétée dans la liste HOSTS."
+        },
+        "V9": {
+            "titulo": "CAS V9 : Entrée valide avec réseau de base surdimensionné",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-005. Le sous-réseau demandé doit être généré et il faut signaler que le réseau de base possède beaucoup plus de capacité que nécessaire."
+        },
+        "V10": {
+            "titulo": "CAS V10 : Entrée valide avec nom de réseau générique",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-006. La table VLSM doit être générée et l’utilisation d’un nom de réseau plus descriptif que Test doit être recommandée."
+        },
+        "V11": {
+            "titulo": "CAS V11 : Entrée valide sans nom explicite",
+            "salida": "Sortie attendue : cas valide avec avertissement. Code attendu : ADV-007. Deux sous-réseaux doivent être générés et il faut recommander d’ajouter NAME suivi d’un identifiant."
+        },
+        "V12": {
+            "titulo": "CAS V12 : Entrée valide avec plusieurs avertissements différents",
+            "salida": "Sortie attendue : cas valide avec plusieurs avertissements. Codes attendus : ADV-004, ADV-005, ADV-006, ADV-007. Les deux blocs doivent être traités et signaler les hôtes répétés, le réseau surdimensionné, le nom générique et l’absence de nom de réseau."
+        },
+        "V13": {
+            "titulo": "CAS V13 : Entrée valide sans nom et avec hôtes hors ordre",
+            "salida": "Sortie attendue : cas valide avec plusieurs avertissements. Codes attendus : ADV-007, ADV-008. Les sous-réseaux doivent être générés, l’ajout d’un nom recommandé et il faut signaler que HOSTS devraient être écrits du plus grand au plus petit."
+        },
+        "V14": {
+            "titulo": "CAS V14 : Entrée valide proche mais sous le seuil de surdimensionnement",
+            "salida": "Sortie attendue : cas valide. Codes attendus : aucun. Un sous-réseau VLSM doit être généré sans produire ADV-005, car le réseau de base n’atteint pas le seuil défini comme clairement surdimensionné."
+        },
+        "I1": {
+            "titulo": "CAS I1 : Erreur lexicale due à un mot réservé mal écrit",
+            "salida": "Sortie attendue : cas invalide. Codes attendus : LEX-001, SIN-002. LEX-001 doit être généré car MAS apparaît comme identifiant hors place et SIN-002 car le mot réservé MASK n’a pas été reconnu après l’adresse IP."
+        },
+        "I2": {
+            "titulo": "CAS I2 : Erreur lexicale due à un symbole non reconnu",
+            "salida": "Sortie attendue : cas invalide. Code attendu : LEX-002. Le symbole @ doit être détecté comme un élément qui n’appartient pas au langage défini."
+        },
+        "I3": {
+            "titulo": "CAS I3 : Erreur lexicale due à un identifiant hors place",
+            "salida": "Sortie attendue : cas invalide. Code attendu : LEX-001. Une erreur lexicale doit être générée car Bureau apparaît comme identifiant sans être précédé par NAME."
+        },
+        "I4": {
+            "titulo": "CAS I4 : Erreur syntaxique due à une IP incomplète",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-001. Une erreur syntaxique doit être générée car une adresse IPv4 complète était attendue après IP."
+        },
+        "I5": {
+            "titulo": "CAS I5 : Erreur syntaxique due à l’absence de MASK",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-002. Une erreur syntaxique doit être générée car le mot réservé MASK était attendu après l’adresse IP."
+        },
+        "I6": {
+            "titulo": "CAS I6 : Erreur syntaxique due à un masque sans barre oblique",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-003. Une erreur syntaxique doit être générée car un masque CIDR avec barre oblique, par exemple /24, était attendu après MASK."
+        },
+        "I7": {
+            "titulo": "CAS I7 : Erreur syntaxique due à l’absence de quantité d’hôtes",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-004. Une erreur syntaxique doit être générée car au moins une quantité numérique était attendue après HOSTS."
+        },
+        "I8": {
+            "titulo": "CAS I8 : Erreur syntaxique due à une double virgule dans la liste d’hôtes",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-005. Une erreur syntaxique doit être générée car un autre NUMBER était attendu après une virgule."
+        },
+        "I9": {
+            "titulo": "CAS I9 : Erreur syntaxique due à une virgule finale sans autre hôte",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-005. Une erreur syntaxique doit être générée car la liste HOSTS se termine par une virgule sans quantité suivante."
+        },
+        "I10": {
+            "titulo": "CAS I10 : Erreur syntaxique due à NAME sans identifiant",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-006. Une erreur syntaxique doit être générée car un identifiant était attendu après NAME."
+        },
+        "I11": {
+            "titulo": "CAS I11 : Erreur syntaxique due à NAME avant une nouvelle instruction",
+            "salida": "Sortie attendue : cas invalide avec traitement partiel. Codes attendus : SIN-006, ADV-001. La première instruction doit être rejetée car NAME reste incomplet, et le second bloc valide doit être conservé pour poursuivre le traitement."
+        },
+        "I12": {
+            "titulo": "CAS I12 : Erreur syntaxique due à une instruction exactement dupliquée",
+            "salida": "Sortie attendue : cas invalide avec traitement partiel. Codes attendus : SIN-007, ADV-001. Une seule copie valide doit être conservée, l’instruction dupliquée signalée et le traitement doit continuer uniquement avec les blocs acceptés."
+        },
+        "I13": {
+            "titulo": "CAS I13 : Erreur syntaxique car HOSTS apparaît à la place de MASK",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SIN-002. Une erreur syntaxique doit être générée car MASK était attendu après l’adresse IP mais HOSTS est apparu."
+        },
+        "I14": {
+            "titulo": "CAS I14 : Erreur sémantique due à un masque hors plage",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SEM-001. Une erreur sémantique doit être générée car le masque /31 est hors de la plage autorisée de /8 à /30."
+        },
+        "I15": {
+            "titulo": "CAS I15 : Erreur sémantique car l’IP n’est pas une adresse réseau",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SEM-002. Une erreur sémantique doit être générée car 192.168.1.5 est une adresse d’hôte pour /24 et l’adresse réseau correspondante est 192.168.1.0."
+        },
+        "I16": {
+            "titulo": "CAS I16 : Erreur sémantique due à une quantité d’hôtes égale à zéro",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SEM-003. Une erreur sémantique doit être générée car chaque quantité demandée dans HOSTS doit être supérieure à zéro."
+        },
+        "I17": {
+            "titulo": "CAS I17 : Erreur sémantique due à une demande individuelle trop grande",
+            "salida": "Sortie attendue : cas invalide. Codes attendus : SEM-004, SEM-005. SEM-005 doit être généré car une demande de 50 hôtes nécessite un bloc plus grand que tout le réseau /30, et SEM-004 car la capacité totale requise dépasse aussi la capacité disponible."
+        },
+        "I18": {
+            "titulo": "CAS I18 : Erreur sémantique car l’ensemble des sous-réseaux ne tient pas",
+            "salida": "Sortie attendue : cas invalide. Code attendu : SEM-004. Chaque demande peut former individuellement un sous-réseau, mais les trois blocs VLSM exigent ensemble plus d’adresses que celles disponibles dans un réseau /24."
+        },
+        "I19": {
+            "titulo": "CAS I19 : Erreur sémantique due à des réseaux de base qui se chevauchent",
+            "salida": "Sortie attendue : cas invalide avec traitement partiel. Code attendu : SEM-006. Le second réseau doit être rejeté car sa plage se trouve dans le premier réseau de base, tandis que le premier peut rester un bloc sémantiquement valide."
+        },
+        "I20": {
+            "titulo": "CAS I20 : Erreurs lexicales, syntaxiques et sémantiques mixtes",
+            "salida": "Sortie attendue : cas invalide avec plusieurs diagnostics. Codes attendus : LEX-001, LEX-002, SIN-002, SEM-001, SEM-003. Des diagnostics des trois phases doivent être produits. La première instruction contient des problèmes sémantiques et un symbole inconnu, tandis que la seconde contient un mot invalide à la place de MASK et une liste d’hôtes mal formée."
+        },
+        "I21": {
+            "titulo": "CAS I21 : Erreur lexicale due à une casse incorrecte d’un mot réservé",
+            "salida": "Sortie attendue : cas invalide. Codes attendus : LEX-003, SIN-002. LEX-003 doit être généré car mask doit être écrit exactement comme MASK, puis SIN-002 car le parser ne reçoit pas un mot réservé MASK valide."
+        },
+        "I22": {
+            "titulo": "CAS I22 : Erreur lexicale due à un nombre directement collé à du texte",
+            "salida": "Sortie attendue : cas invalide. Codes attendus : LEX-004, SIN-004. LEX-004 doit être généré car 50ABC mélange une valeur numérique et du texte sans séparation, et SIN-004 car la phase syntaxique se termine sans quantité HOSTS valide."
+        },
+        "I23": {
+            "titulo": "CAS I23 : Erreur lexicale due à un masque CIDR directement collé à du texte",
+            "salida": "Sortie attendue : cas invalide. Codes attendus : LEX-004, SIN-003. LEX-004 doit être généré car /24HOSTS joint un masque numérique à du texte, et SIN-003 car le parser ne reçoit pas de masque CIDR valide après MASK."
+        },
+        "I24": {
+            "titulo": "CAS I24 : Erreur syntaxique en commençant par des tokens hors ordre puis récupération",
+            "salida": "Sortie attendue : cas invalide avec traitement partiel. Codes attendus : SIN-008, ADV-001. SIN-008 doit être généré car la première ligne commence hors de la structure attendue, puis l’analyse doit récupérer à l’instruction suivante et traiter correctement le réseau Deuxieme."
+        },
+        "I25": {
+            "titulo": "CAS I25 : Erreurs des trois phases avec récupération d’un bloc valide",
+            "salida": "Sortie attendue : cas invalide avec traitement partiel et plusieurs diagnostics. Codes attendus : LEX-001, LEX-002, SIN-002, SEM-001, SEM-003, ADV-001. Il doit montrer que TecNet Finder peut signaler des erreurs lexicales, syntaxiques et sémantiques tout en récupérant la troisième instruction valide pour poursuivre son calcul VLSM."
+        }
+    }
+}
