@@ -6,7 +6,8 @@
 # Descripción:
 # Extiende ControlConfiguracion para sincronizar el idioma
 # confirmado con la ventana principal, Configuración, diálogos
-# secundarios y la ventana independiente de diagnósticos.
+# secundarios, árboles y la ventana independiente de
+# diagnósticos.
 #
 # También evita mostrar el acceso flotante de diagnósticos
 # mientras el editor se encuentra ampliado.
@@ -17,6 +18,7 @@ from PySide6.QtCore import QTimer
 from Interfaz.configuracion.control_configuracion import ControlConfiguracion
 from Interfaz.internacionalizacion.control_cierre_interfaz import ControlCierreInterfaz
 from Interfaz.internacionalizacion.control_dialogos_secundarios import ControlDialogosSecundarios
+from Interfaz.internacionalizacion.control_exportacion_arbol import ControlExportacionArbol
 from Interfaz.internacionalizacion.control_idioma_interfaz import ControlIdiomaInterfaz
 
 
@@ -30,13 +32,14 @@ class ControlConfiguracionIdioma(ControlConfiguracion):
             self.preferencias_aplicacion,
         )
         self.control_cierre_interfaz = ControlCierreInterfaz(self.ventana)
+        self.control_exportacion_arbol = ControlExportacionArbol(self.ventana)
 
         self._aplicar_idioma_principal()
 
         if self.ventana_configuracion_preparada is not None:
             self.control_cierre_interfaz.preparar_configuracion(
                 self.ventana_configuracion_preparada
-            )  # Traduce también la sesión que el controlador base preparó durante su propio constructor.
+            )
 
         self.ventana.panel_resultados.boton_analizar.clicked.connect(
             self._programar_reaplicacion_idioma
@@ -85,9 +88,6 @@ class ControlConfiguracionIdioma(ControlConfiguracion):
         if self.boton_reabrir_advertencias is None:
             return
 
-        # El editor ampliado es un modo de enfoque. Mantener aquí el acceso
-        # flotante de diagnósticos lo deja fuera de contexto porque las
-        # pestañas de resultados están ocultas.
         if self.ventana.editor_ampliado:
             self.boton_reabrir_advertencias.setVisible(False)
             self.boton_reabrir_advertencias.setEnabled(False)
@@ -130,6 +130,11 @@ class ControlConfiguracionIdioma(ControlConfiguracion):
         self.control_idioma_interfaz.aplicar(idioma)
         self.control_dialogos_secundarios.establecer_idioma(idioma)
         self.control_cierre_interfaz.establecer_idioma(idioma)
+
+        # El cierre prepara y reancla primero cada VistaArbol.
+        # Después se sustituye exclusivamente la acción Guardar para
+        # ofrecer PNG HD y SVG sin alterar la escena ni el compilador.
+        self.control_exportacion_arbol.establecer_idioma(idioma)
 
         if self.ventana_advertencias is not None:
             self.control_idioma_interfaz.aplicar_ventana_diagnosticos(
