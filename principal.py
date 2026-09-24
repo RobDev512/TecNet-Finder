@@ -18,112 +18,140 @@
 # temporales y nunca se restauran automáticamente al iniciar.
 # ============================================================
 
-import sys  # Permite recibir los argumentos del proceso y devolver correctamente el código de salida de TecNet Finder.
+import sys
 
-from PySide6.QtNetwork import QLocalServer, QLocalSocket  # Permite detectar otra ejecución de TecNet Finder y comunicarse localmente con ella.
-from PySide6.QtWidgets import QApplication, QMessageBox  # Proporciona la aplicación gráfica y el mensaje utilizado ante un fallo excepcional de instancia.
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA  # Permite saber si el componente opcional de inteligencia artificial está instalado.
-from AsistenteIA.infraestructura.gestor_ollama import GestorOllama  # Administra el servidor privado utilizado por las funciones locales de IA.
-from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA  # Recupera las preferencias persistentes relacionadas con las funciones de asistencia.
-from Interfaz.apariencia.estilos import ESTILO_APLICACION  # Recupera la hoja de estilos general utilizada por toda la interfaz.
-from Interfaz.configuracion.control_configuracion_idioma import ControlConfiguracionIdioma  # Conecta Configuración y sincroniza además el idioma confirmado con la ventana principal.
-from Interfaz.ventanas.ventana_principal import VentanaPrincipal  # Proporciona la ventana principal donde funciona TecNet Finder.
-from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Recupera las preferencias generales de ventana, navegación y resultados.
-
-
-NOMBRE_SERVIDOR_INSTANCIA = "TecNetFinder_Instancia_Unica"  # Identifica localmente la instancia principal para impedir que queden dos aplicaciones abiertas.
-MENSAJE_ACTIVAR_VENTANA = b"ACTIVAR"  # Indica a la instancia existente que otra ejecución intentó abrir TecNet Finder.
+from AsistenteIA.infraestructura.gestor_componente_ia import GestorComponenteIA
+from AsistenteIA.infraestructura.gestor_ollama import GestorOllama
+from AsistenteIA.preferencias.preferencias_ia import PreferenciasIA
+from Interfaz.apariencia.control_recuperacion_pantalla import ControlRecuperacionPantalla
+from Interfaz.apariencia.estilos import ESTILO_APLICACION
+from Interfaz.configuracion.control_configuracion_idioma import ControlConfiguracionIdioma
+from Interfaz.ventanas.ventana_principal import VentanaPrincipal
+from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion
 
 
-def _avisar_instancia_existente() -> bool:  # Intenta contactar una ejecución existente antes de crear una nueva aplicación.
-    conexion = QLocalSocket()  # Crea una conexión local temporal destinada únicamente a comunicarse con la primera instancia.
-    conexion.connectToServer(NOMBRE_SERVIDOR_INSTANCIA)  # Busca el servidor reservado por la aplicación que ya se encuentra abierta.
+NOMBRE_SERVIDOR_INSTANCIA = "TecNetFinder_Instancia_Unica"
+MENSAJE_ACTIVAR_VENTANA = b"ACTIVAR"
+
+
+def _avisar_instancia_existente() -> bool:
+    conexion = QLocalSocket()
+    conexion.connectToServer(NOMBRE_SERVIDOR_INSTANCIA)
 
     if not conexion.waitForConnected(250):
-        return False  # Informa que no existe una instancia accesible y permite continuar con el inicio normal.
+        return False
 
-    conexion.write(MENSAJE_ACTIVAR_VENTANA)  # Solicita que la ventana ya existente vuelva a mostrarse o tome el foco.
-    conexion.flush()  # Envía inmediatamente los datos pendientes de la conexión local.
-    conexion.waitForBytesWritten(250)  # Da un margen breve para que el mensaje alcance la instancia principal.
-    conexion.disconnectFromServer()  # Cierra la comunicación porque ya no será necesaria.
-    return True  # Informa que sí existía otra instancia y evita crear una segunda ventana.
-
-
-def _mostrar_ventana_normal_centrada(aplicacion: QApplication, ventana: VentanaPrincipal) -> None:  # Recupera el estado persistente "normal" como el nuevo Modo ventana.
-    pantalla = aplicacion.primaryScreen()  # Utiliza el monitor principal como referencia segura durante el inicio.
-    ventana.preparar_modo_ventana_inicial(pantalla)  # Sincroniza estado, tamaño fijo, posición y arrastre antes del primer fotograma.
-    ventana.show()  # Muestra TecNet Finder ya identificado correctamente como Modo ventana.
+    conexion.write(MENSAJE_ACTIVAR_VENTANA)
+    conexion.flush()
+    conexion.waitForBytesWritten(250)
+    conexion.disconnectFromServer()
+    return True
 
 
-def _mostrar_ventana_segun_preferencias(aplicacion: QApplication, ventana: VentanaPrincipal, preferencias: PreferenciasAplicacion) -> None:  # Decide el estado inicial utilizando las preferencias persistentes.
-    estado_recordado = None  # Comienza sin asumir que existe un estado anterior que deba restaurarse.
+def _mostrar_ventana_normal_centrada(
+    aplicacion: QApplication,
+    ventana: VentanaPrincipal,
+) -> None:
+    pantalla = aplicacion.primaryScreen()
+    ventana.preparar_modo_ventana_inicial(pantalla)
+    ventana.show()
+
+
+def _mostrar_ventana_segun_preferencias(
+    aplicacion: QApplication,
+    ventana: VentanaPrincipal,
+    preferencias: PreferenciasAplicacion,
+) -> None:
+    estado_recordado = None
 
     if preferencias.recordar_estado_ventana():
-        estado_recordado = preferencias.ultimo_estado_ventana()  # Recupera solamente los estados persistentes permitidos: Modo ventana o maximizada.
+        estado_recordado = preferencias.ultimo_estado_ventana()
 
-    if estado_recordado == PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA:
-        ventana.showMaximized()  # Restaura una sesión anterior que terminó con la ventana maximizada.
+    if (
+        estado_recordado
+        == PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA
+    ):
+        ventana.showMaximized()
         return
 
-    if estado_recordado == PreferenciasAplicacion.ESTADO_VENTANA_NORMAL:
-        _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Restaura una sesión anterior que terminó utilizando Modo ventana.
+    if (
+        estado_recordado
+        == PreferenciasAplicacion.ESTADO_VENTANA_NORMAL
+    ):
+        _mostrar_ventana_normal_centrada(aplicacion, ventana)
         return
 
     if preferencias.iniciar_maximizado():
-        ventana.showMaximized()  # Utiliza la preferencia inicial histórica cuando todavía no existe un estado anterior recordado.
+        ventana.showMaximized()
         return
 
-    _mostrar_ventana_normal_centrada(aplicacion, ventana)  # Utiliza Modo ventana cuando el usuario desactivó el inicio maximizado.
+    _mostrar_ventana_normal_centrada(aplicacion, ventana)
 
 
-def _guardar_estado_final_ventana(ventana: VentanaPrincipal, preferencias: PreferenciasAplicacion) -> None:  # Conserva un estado seguro que podrá restaurarse durante la siguiente ejecución.
+def _guardar_estado_final_ventana(
+    ventana: VentanaPrincipal,
+    preferencias: PreferenciasAplicacion,
+) -> None:
     if not preferencias.recordar_estado_ventana():
-        return  # No almacena el estado de la sesión cuando el usuario desactivó explícitamente esta preferencia.
+        return
 
     if ventana.en_pantalla_completa:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA if ventana.modo_antes_pantalla_completa == "maximizado" else PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Recupera el modo existente antes de entrar temporalmente a pantalla completa.
+        estado = (
+            PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA
+            if ventana.modo_antes_pantalla_completa == "maximizado"
+            else PreferenciasAplicacion.ESTADO_VENTANA_NORMAL
+        )
     elif ventana.en_media_pantalla:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Considera Media pantalla como una disposición temporal derivada de Modo ventana.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL
     elif ventana.en_modo_ventana:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Conserva explícitamente que la siguiente sesión debe iniciar nuevamente en Modo ventana.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL
     elif ventana.isMaximized():
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA  # Conserva que TecNet Finder terminó la sesión en estado maximizado.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_MAXIMIZADA
     else:
-        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL  # Trata cualquier otra geometría convencional como Modo ventana al próximo inicio.
+        estado = PreferenciasAplicacion.ESTADO_VENTANA_NORMAL
 
-    preferencias.establecer_ultimo_estado_ventana(estado)  # Guarda únicamente un estado que pueda restaurarse de forma segura en el próximo inicio.
+    preferencias.establecer_ultimo_estado_ventana(estado)
 
 
-def iniciar_aplicacion() -> int:  # Construye todos los componentes globales y mantiene TecNet Finder activo hasta el cierre.
-    aplicacion = QApplication(sys.argv)  # Crea la aplicación Qt utilizando los argumentos recibidos por el proceso.
-    aplicacion.setApplicationName("TecNet Finder")  # Establece el nombre utilizado por Qt y por distintos elementos del sistema operativo.
-    aplicacion.setStyle("Fusion")  # Utiliza una base visual consistente antes de aplicar los estilos personalizados.
-    aplicacion.setStyleSheet(ESTILO_APLICACION)  # Aplica la apariencia general definida para TecNet Finder.
+def iniciar_aplicacion() -> int:
+    aplicacion = QApplication(sys.argv)
+    aplicacion.setApplicationName("TecNet Finder")
+    aplicacion.setStyle("Fusion")
+    aplicacion.setStyleSheet(ESTILO_APLICACION)
 
     if _avisar_instancia_existente():
-        return 0  # Finaliza silenciosamente esta ejecución cuando otra instancia ya recibió la solicitud de activación.
+        return 0
 
-    QLocalServer.removeServer(NOMBRE_SERVIDOR_INSTANCIA)  # Elimina un identificador residual que pudiera haber quedado después de un cierre anormal.
-    servidor_instancia = QLocalServer(aplicacion)  # Crea el servidor local que identificará esta ejecución como la instancia principal.
+    QLocalServer.removeServer(NOMBRE_SERVIDOR_INSTANCIA)
+    servidor_instancia = QLocalServer(aplicacion)
 
     if not servidor_instancia.listen(NOMBRE_SERVIDOR_INSTANCIA):
         if _avisar_instancia_existente():
-            return 0  # Reintenta contactar otra instancia por si apareció durante la inicialización.
+            return 0
 
-        QMessageBox.critical(None, "TecNet Finder", "No fue posible reservar el identificador de instancia única de TecNet Finder.")  # Informa que la protección de instancia única no pudo establecerse.
-        return 1  # Finaliza con error porque continuar podría permitir ejecuciones duplicadas.
+        QMessageBox.critical(
+            None,
+            "TecNet Finder",
+            "No fue posible reservar el identificador de instancia única de TecNet Finder.",
+        )
+        return 1
 
-    componente_ia = GestorComponenteIA()  # Prepara el administrador encargado de localizar la instalación opcional del componente de IA.
-    preferencias_ia = PreferenciasIA()  # Recupera las funciones de asistencia que el usuario decidió mantener activadas.
-    preferencias_aplicacion = PreferenciasAplicacion()  # Crea una única instancia compartida para todas las preferencias generales.
-    gestor_ollama = GestorOllama(componente_ia=componente_ia)  # Prepara el servidor privado utilizando el mismo componente administrado por TecNet Finder.
-    asistencia_disponible = False  # Parte de un estado seguro donde ninguna función depende obligatoriamente de la IA.
+    componente_ia = GestorComponenteIA()
+    preferencias_ia = PreferenciasIA()
+    preferencias_aplicacion = PreferenciasAplicacion()
+    gestor_ollama = GestorOllama(componente_ia=componente_ia)
+    asistencia_disponible = False
 
-    if componente_ia.instalado() and preferencias_ia.alguna_funcion_activada():
-        asistencia_disponible = gestor_ollama.iniciar()  # Inicia Ollama únicamente cuando existe el componente y alguna función realmente lo necesita.
+    if (
+        componente_ia.instalado()
+        and preferencias_ia.alguna_funcion_activada()
+    ):
+        asistencia_disponible = gestor_ollama.iniciar()
 
-    ventana = VentanaPrincipal()  # Crea la interfaz principal después de preparar las dependencias globales.
+    ventana = VentanaPrincipal()
     ventana.control_configuracion = ControlConfiguracionIdioma(
         ventana=ventana,
         gestor_ollama=gestor_ollama,
@@ -131,38 +159,53 @@ def iniciar_aplicacion() -> int:  # Construye todos los componentes globales y m
         preferencias_ia=preferencias_ia,
         asistencia_disponible_inicial=asistencia_disponible,
         preferencias_aplicacion=preferencias_aplicacion,
-    )  # Comparte las dependencias existentes y añade sincronización del idioma confirmado.
+    )
 
-    def atender_nueva_instancia() -> None:  # Atiende solicitudes enviadas por otras ejecuciones que intentaron abrir TecNet Finder.
+    # Mantiene los números de línea sincronizados con la fuente del editor
+    # y recupera automáticamente la apariencia después de suspensión/DPI.
+    ventana.control_recuperacion_pantalla = ControlRecuperacionPantalla(
+        aplicacion=aplicacion,
+        ventana=ventana,
+        gestor_tipografia=ventana.control_configuracion.gestor_tipografia,
+    )
+
+    def atender_nueva_instancia() -> None:
         while servidor_instancia.hasPendingConnections():
-            conexion = servidor_instancia.nextPendingConnection()  # Recupera la siguiente conexión pendiente recibida por el servidor local.
+            conexion = servidor_instancia.nextPendingConnection()
 
             if conexion is None:
-                break  # Abandona el ciclo si Qt no pudo proporcionar una conexión válida.
+                break
 
             if conexion.bytesAvailable() == 0:
-                conexion.waitForReadyRead(150)  # Espera brevemente cuando el mensaje todavía no ha llegado por completo.
+                conexion.waitForReadyRead(150)
 
-            mensaje = bytes(conexion.readAll())  # Recupera el contenido enviado por la instancia secundaria.
+            mensaje = bytes(conexion.readAll())
 
             if mensaje == MENSAJE_ACTIVAR_VENTANA:
-                ventana.activar_desde_instancia_secundaria()  # Recupera o enfoca la ventana principal en lugar de crear una segunda.
+                ventana.activar_desde_instancia_secundaria()
 
-            conexion.disconnectFromServer()  # Cierra la conexión después de atender la solicitud.
-            conexion.deleteLater()  # Delega a Qt la liberación segura del objeto asociado con la conexión.
+            conexion.disconnectFromServer()
+            conexion.deleteLater()
 
-    servidor_instancia.newConnection.connect(atender_nueva_instancia)  # Ejecuta el manejador cada vez que otra instancia intenta comunicarse.
-    _mostrar_ventana_segun_preferencias(aplicacion, ventana, preferencias_aplicacion)  # Muestra la ventana utilizando el estado elegido en Configuración.
+    servidor_instancia.newConnection.connect(atender_nueva_instancia)
+    _mostrar_ventana_segun_preferencias(
+        aplicacion,
+        ventana,
+        preferencias_aplicacion,
+    )
 
     try:
-        resultado_aplicacion = aplicacion.exec()  # Mantiene activa la interfaz hasta que el usuario cierre TecNet Finder.
-        _guardar_estado_final_ventana(ventana, preferencias_aplicacion)  # Conserva el estado final solamente después de terminar normalmente la sesión.
-        return resultado_aplicacion  # Devuelve a Windows el código obtenido del ciclo principal de Qt.
+        resultado_aplicacion = aplicacion.exec()
+        _guardar_estado_final_ventana(
+            ventana,
+            preferencias_aplicacion,
+        )
+        return resultado_aplicacion
     finally:
-        gestor_ollama.detener()  # Detiene el servidor privado de IA aunque la aplicación termine por una ruta excepcional.
-        servidor_instancia.close()  # Libera el servidor local utilizado para impedir instancias duplicadas.
-        QLocalServer.removeServer(NOMBRE_SERVIDOR_INSTANCIA)  # Elimina el identificador local para permitir un inicio limpio posteriormente.
+        gestor_ollama.detener()
+        servidor_instancia.close()
+        QLocalServer.removeServer(NOMBRE_SERVIDOR_INSTANCIA)
 
 
 if __name__ == "__main__":
-    sys.exit(iniciar_aplicacion())  # Inicia TecNet Finder solamente cuando principal.py fue ejecutado directamente.
+    sys.exit(iniciar_aplicacion())

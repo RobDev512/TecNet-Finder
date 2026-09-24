@@ -7,9 +7,15 @@
 # Contiene controles visuales reutilizables para Configuración.
 #
 # Incluye:
-# - Campo numérico sin botones nativos.
+# - Campo numérico editable con selector desplegable.
 # - Selector desplegable personalizado.
 # - Popup redondeado y desplazable.
+#
+# Los campos de tamaño de fuente permiten:
+# - escribir directamente un tamaño concreto;
+# - elegirlo desde una lista;
+# - avanzar o retroceder de uno en uno con el teclado;
+# - ignorar la rueda del mouse para evitar cambios accidentales.
 #
 # Los desplegables de pocas opciones ajustan exactamente su
 # altura al contenido. Las listas extensas continúan utilizando
@@ -20,17 +26,105 @@ from PySide6.QtCore import QPoint, Qt, Signal  # Proporciona posición, opciones
 from PySide6.QtWidgets import QApplication, QAbstractSpinBox, QFrame, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QSpinBox, QVBoxLayout  # Importa los componentes reutilizados.
 
 
-class CampoNumeroConfiguracion(QSpinBox):  # Representa un campo numérico sin las flechas nativas de Windows.
+class CampoNumeroConfiguracion(QSpinBox):  # Representa un tamaño editable con lista desplegable al estilo de un combo numérico.
     def __init__(self, padre=None):
-        super().__init__(padre)  # Inicializa QSpinBox conservando validación y teclado.
-        self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # Elimina completamente los controles arriba y abajo.
+        super().__init__(padre)  # Conserva la validación numérica, escritura directa y navegación de QSpinBox.
+        self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # Retira las flechas nativas para utilizar únicamente el desplegable propio.
         self.setFixedHeight(38)  # Mantiene la misma altura que los selectores personalizados.
-        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Presenta el número como un campo convencional.
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)  # Presenta el valor como un campo convencional.
+        self.setSingleStep(1)  # Las flechas Arriba/Abajo del teclado avanzan o retroceden exactamente un punto.
+        self.setKeyboardTracking(False)  # Confirma el valor escrito al terminar la edición en lugar de emitir por cada tecla.
+
+        self.popup = VentanaOpcionesConfiguracion(self.window())  # Reutiliza el mismo popup visual utilizado por los demás selectores.
+        self.popup.opcion_seleccionada.connect(self._seleccionar_valor_popup)  # Aplica únicamente una opción elegida explícitamente.
+
+        self.boton_flecha = QPushButton("⌄", self)  # Añade el indicador desplegable sin sacrificar la escritura directa.
+        self.boton_flecha.setObjectName("FlechaCampoNumeroConfiguracion")  # Permite mantener separado su estilo del campo principal.
+        self.boton_flecha.setFixedWidth(34)  # Reserva una zona compacta, equivalente a los demás selectores.
+        self.boton_flecha.setCursor(Qt.CursorShape.PointingHandCursor)  # Indica que la lista puede abrirse.
+        self.boton_flecha.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Mantiene el foco de teclado sobre el valor editable.
+        self.boton_flecha.clicked.connect(self._mostrar_opciones)  # Abre o cierra el listado de tamaños.
+
         self.setStyleSheet("""
-            QSpinBox { background-color: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 8px; padding: 5px 10px; selection-background-color: #585b70; }
+            QSpinBox {
+                background-color: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                border-radius: 8px;
+                padding: 5px 40px 5px 10px;
+                selection-background-color: #585b70;
+            }
             QSpinBox:hover { border-color: #585b70; }
             QSpinBox:focus { border-color: #89b4fa; }
-        """)  # Utiliza la paleta base que posteriormente puede traducir el gestor de apariencia.
+            QPushButton#FlechaCampoNumeroConfiguracion {
+                background-color: transparent;
+                color: #a6adc8;
+                border: none;
+                border-top-right-radius: 7px;
+                border-bottom-right-radius: 7px;
+                padding: 0px;
+                font-family: "Segoe UI Symbol";
+                font-size: 13pt;
+            }
+            QPushButton#FlechaCampoNumeroConfiguracion:hover {
+                background-color: #45475a;
+                color: #ffffff;
+            }
+        """)  # Conserva la misma paleta base y apariencia de los controles existentes.
+
+        self.valueChanged.connect(self._sincronizar_popup)  # Mantiene resaltado el valor actual aunque se escriba o cambie mediante teclado.
+        self._reconstruir_opciones()  # Prepara el rango predeterminado hasta que el panel establezca sus límites reales.
+        self.boton_flecha.raise_()  # Mantiene visible la flecha encima del área editable.
+
+    def setRange(self, minimo: int, maximo: int) -> None:
+        super().setRange(minimo, maximo)  # Conserva la validación segura proporcionada por QSpinBox.
+        if hasattr(self, "popup"):
+            self._reconstruir_opciones()  # Regenera todos los enteros disponibles dentro del nuevo intervalo.
+
+    def wheelEvent(self, evento) -> None:
+        evento.ignore()  # Impide modificar accidentalmente el tamaño al desplazar la página de Configuración con la rueda.
+
+    def resizeEvent(self, evento) -> None:
+        super().resizeEvent(evento)  # Permite que QSpinBox actualice primero su editor interno.
+        if not hasattr(self, "boton_flecha"):
+            return
+        ancho_boton = self.boton_flecha.width()
+        self.boton_flecha.setGeometry(
+            max(self.width() - ancho_boton - 1, 0),
+            1,
+            ancho_boton,
+            max(self.height() - 2, 1),
+        )  # Mantiene la flecha pegada al extremo derecho como en un combo convencional.
+        self.boton_flecha.raise_()
+
+    def _reconstruir_opciones(self) -> None:
+        self.popup.limpiar()  # Descarta cualquier intervalo anterior.
+
+        for tamano in range(self.minimum(), self.maximum() + 1):
+            self.popup.agregar_opcion(str(tamano), tamano)  # Ofrece todos los tamaños permitidos de uno en uno.
+
+        self.popup.seleccionar_dato(self.value())  # Marca visualmente el tamaño activo.
+
+    def _mostrar_opciones(self) -> None:
+        if self.popup.isVisible():
+            self.popup.close()
+            return  # Un segundo clic sobre la flecha cierra la lista.
+
+        self.popup.seleccionar_dato(self.value())  # Abre siempre junto al valor actualmente escrito.
+        self.popup.mostrar_junto_control(self, self.width())  # Decide automáticamente si debe aparecer arriba o abajo.
+
+    def _seleccionar_valor_popup(self, valor) -> None:
+        try:
+            tamano = int(valor)
+        except (TypeError, ValueError):
+            return
+
+        self.setValue(tamano)  # Aplica la selección y deja que valueChanged notifique al panel.
+        self.lineEdit().selectAll()  # Facilita reemplazar inmediatamente el tamaño mediante teclado.
+        self.setFocus()
+
+    def _sincronizar_popup(self, valor: int) -> None:
+        self.popup.seleccionar_dato(int(valor))  # Conserva sincronizada la lista después de escribir o usar Arriba/Abajo.
 
 
 class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por los selectores generales.
@@ -92,8 +186,10 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
             elemento = self.lista.item(indice)  # Recupera la fila correspondiente.
             if elemento.data(Qt.ItemDataRole.UserRole) == dato:
                 self.lista.setCurrentItem(elemento)  # Marca visualmente la opción seleccionada.
-                if self.lista.count() > self.MAXIMO_FILAS_SIN_CRECER: self.lista.scrollToItem(elemento)  # Desplaza únicamente listas extensas que realmente lo necesitan.
-                else: self.lista.verticalScrollBar().setValue(0)  # Mantiene visibles todas las opciones de listas pequeñas sin saltos innecesarios.
+                if self.lista.count() > self.MAXIMO_FILAS_SIN_CRECER:
+                    self.lista.scrollToItem(elemento)  # Desplaza únicamente listas extensas que realmente lo necesitan.
+                else:
+                    self.lista.verticalScrollBar().setValue(0)  # Mantiene visibles todas las opciones de listas pequeñas sin saltos innecesarios.
                 return  # Finaliza después de localizar la coincidencia.
 
     def mostrar_junto_control(self, control, ancho: int) -> None:
@@ -105,12 +201,14 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
         alto_deseado = max(48, alto_filas + 18) if cantidad else 48  # Añade solamente los márgenes del marco, evitando zonas vacías arbitrarias.
         alto_deseado = min(270, alto_deseado)  # Conserva el límite histórico para listas extensas.
         self.lista.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff if cantidad <= self.MAXIMO_FILAS_SIN_CRECER else Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Muestra scrollbar únicamente cuando existen más filas que las admitidas sin crecer.
-        if cantidad <= self.MAXIMO_FILAS_SIN_CRECER: self.lista.verticalScrollBar().setValue(0)  # Garantiza que una selección previa no deje opciones pequeñas fuera de la vista.
+        if cantidad <= self.MAXIMO_FILAS_SIN_CRECER:
+            self.lista.verticalScrollBar().setValue(0)  # Garantiza que una selección previa no deje opciones pequeñas fuera de la vista.
 
         origen = control.mapToGlobal(QPoint(0, 0))  # Recupera la posición global del selector.
         centro = control.mapToGlobal(control.rect().center())  # Obtiene un punto perteneciente al monitor actual.
         pantalla = QApplication.screenAt(centro) or QApplication.primaryScreen()  # Utiliza ese monitor o la pantalla principal como respaldo.
-        if pantalla is None: return  # Evita mostrar el popup en una posición imposible de calcular cuando Qt todavía no conoce una pantalla.
+        if pantalla is None:
+            return  # Evita mostrar el popup en una posición imposible de calcular cuando Qt todavía no conoce una pantalla.
 
         area = pantalla.availableGeometry()  # Recupera el área útil excluyendo la barra de tareas.
         margen = 8  # Reserva un pequeño espacio respecto a los bordes del monitor.
@@ -141,7 +239,8 @@ class VentanaOpcionesConfiguracion(QFrame):  # Representa el popup utilizado por
         self.raise_()  # Garantiza que aparezca encima de Configuración.
 
     def _seleccionar_elemento(self, elemento: QListWidgetItem) -> None:
-        if not self.isVisible(): return  # Evita una segunda emisión causada por itemActivated después de itemPressed.
+        if not self.isVisible():
+            return  # Evita una segunda emisión causada por itemActivated después de itemPressed.
         dato = elemento.data(Qt.ItemDataRole.UserRole)  # Recupera el valor real asociado con la fila.
         self.opcion_seleccionada.emit(dato)  # Comunica el valor antes de cerrar el popup.
         self.close()  # Cierra el desplegable después de entregar correctamente la selección.
@@ -200,7 +299,8 @@ class SelectorDesplegableConfiguracion(QFrame):  # Sustituye QComboBox mediante 
         dato_real = texto if dato is None else dato  # Utiliza el mismo texto como dato cuando no se necesita otro valor.
         self._datos.append((texto, dato_real))  # Conserva internamente la relación.
         self.popup.agregar_opcion(texto, dato_real)  # Registra la misma opción dentro del popup.
-        if self._dato_actual is None: self.establecer_valor(dato_real, emitir=False)  # Utiliza la primera opción como selección inicial sin emitir un cambio.
+        if self._dato_actual is None:
+            self.establecer_valor(dato_real, emitir=False)  # Utiliza la primera opción como selección inicial sin emitir un cambio.
 
     def establecer_valor(self, dato, emitir: bool = False) -> None:
         for texto, dato_opcion in self._datos:
@@ -210,14 +310,17 @@ class SelectorDesplegableConfiguracion(QFrame):  # Sustituye QComboBox mediante 
                 self.boton_texto.setText(texto)  # Presenta inmediatamente el texto correspondiente.
                 self.boton_texto.setToolTip(texto)  # Permite consultar textos extensos.
                 self.popup.seleccionar_dato(dato_opcion)  # Mantiene sincronizada la selección del popup.
-                if emitir and cambio: self.valor_cambiado.emit(dato_opcion)  # Comunica solamente una selección real del usuario.
+                if emitir and cambio:
+                    self.valor_cambiado.emit(dato_opcion)  # Comunica solamente una selección real del usuario.
                 return  # Finaliza una vez localizada la opción.
 
     def valor_actual(self):
         return self._dato_actual  # Permite consultar el valor actualmente seleccionado.
 
     def _mostrar_opciones(self) -> None:
-        if self.popup.isVisible(): self.popup.close(); return  # Cierra el selector al pulsarlo nuevamente.
+        if self.popup.isVisible():
+            self.popup.close()
+            return  # Cierra el selector al pulsarlo nuevamente.
         self.popup.mostrar_junto_control(self, self.width())  # Decide automáticamente si el popup debe abrirse arriba o abajo.
 
     def _seleccionar_valor(self, dato) -> None:
