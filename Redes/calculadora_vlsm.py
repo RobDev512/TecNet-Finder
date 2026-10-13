@@ -28,7 +28,7 @@ class ErrorCalculoVLSM(Exception):  # Representa una imposibilidad técnica de c
         super().__init__(detalle)  # Inicializa la excepción estándar con el detalle recibido.
 
 
-def calcular_vlsm(direccion_ip: str, mascara_subred: str, cantidades_hosts: list[int], nombre_red: str | None = None) -> list[SubredVLSM]:  # Calcula las subredes VLSM; la máscara base se validará posteriormente en la fase semántica.
+def calcular_vlsm(direccion_ip: str, mascara_subred: str, cantidades_hosts: list[int], nombre_red: str | None = None) -> list[SubredVLSM]:  # Calcula las subredes VLSM; las validaciones de máscara, capacidad y dirección de red corresponden previamente al análisis semántico.
     resultados: list[SubredVLSM] = []  # Crea la lista donde se almacenarán las subredes calculadas.
     ip_actual = int(ipaddress.IPv4Address(direccion_ip))  # Convierte la IP base a entero para poder avanzar entre bloques de direcciones.
     hosts_ordenados = sorted(enumerate(cantidades_hosts), key=lambda elemento: elemento[1], reverse=True)  # Ordena por cantidad sin perder la posición original escrita después de HOSTS.
