@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "pages": [
+    {
+      "id": "tecnet-finder",
+      "theme": "theme-systems",
+      "title": "TecNet Finder",
+      "documentTitle": "TecNet Finder · RobDev512",
+      "metaDescription": "TecNet Finder, DSL y proyecto de compilador orientado al análisis de redes mediante VLSM.",
+      "eyebrow": "Sistemas · DSL / Compilador",
+      "logo": {
+        "src": "./assets/tecnet-finder-logo.png",
+        "alt": "Logo de TecNet Finder"
+      },
+      "repository": {
+        "label": "GitHub",
+        "url": "https://github.com/RobDev512/TecNet-Finder",
+        "external": true
+      },
+      "hero": {
+        "titleLines": [
+          "TecNet",
+          "Finder"
+        ],
+        "description": "DSL orientado al análisis y planificación de redes mediante VLSM, con lexer, parser, análisis semántico, diagnósticos y una interfaz gráfica construida con PySide6.",
+        "actions": [
+          {
+            "label": "Descargar 1.2.1",
+            "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.2.1/TecNet.Finder.1.2.1.Setup.exe",
+            "style": "primary",
+            "external": true
+          },
+          {
+            "label": "Ver roadmap",
+            "url": "#roadmap-explorer",
+            "style": "secondary",
+            "external": false
+          }
+        ],
+        "meta": [
+          {
+            "strong": "v1.2.1",
+            "small": "Final Polish & Internationalization"
+          },
+          {
+            "strong": "DSL de redes",
+            "small": "VLSM · IPv4"
+          },
+          {
+            "strong": "Compilador",
+            "small": "Python · PySide6"
+          }
+        ]
+      },
+      "features": [
+        {
+          "title": "Lexer",
+          "text": "Análisis léxico del DSL con reconocimiento de instrucciones, tokens y errores."
+        },
+        {
+          "title": "Parser",
+          "text": "Validación sintáctica y recuperación parcial para mantener útil el flujo de análisis."
+        },
+        {
+          "title": "Semántico",
+          "text": "Validación de significado, diagnósticos y advertencias integradas."
+        },
+        {
+          "title": "VLSM",
+          "text": "Planificación de subredes, resultados visuales, exportación y herramientas de apoyo."
+        }
+      ],
+      "release": {
+        "kicker": "Release actual",
+        "version": "v1.2.1",
+        "summary": "v1.2.1 estabiliza la etapa semántica completada en v1.2.0 y añade internacionalización, mejoras de tipografía, refinamiento del árbol sintáctico y exportación PNG HD, SVG y PDF.",
+        "status": "Aplicada",
+        "title": "Final Polish & Internationalization",
+        "items": [
+          "Compilador léxico, sintáctico y semántico consolidado.",
+          "Seis idiomas y ejemplos localizados.",
+          "Tipografía configurable para interfaz y editor.",
+          "Árbol sintáctico refinado y más legible.",
+          "Exportación PNG HD, SVG y PDF."
+        ],
+        "link": {
+          "label": "Explorar historial en GitHub →",
+          "url": "https://github.com/RobDev512/TecNet-Finder",
+          "external": true
+        }
+      },
+      "roadmap": {
+        "kicker": "Roadmap dinámico",
+        "title": "Explora la evolución de TecNet Finder",
+        "description": "El roadmap conecta la evolución del producto con las fases del compilador. Cada actualización académica se refleja aquí desde el ROADMAP.md del proyecto."
+      },
+      "nextRelease": {
+        "kicker": "Siguiente versión",
+        "title": "v1.2.2 · Stability & Polish",
+        "text": "La siguiente etapa se enfoca en estabilidad y mantenimiento: logs, Acerca de, información de versión, restauración de preferencias y reporte sencillo de errores inesperados."
+      },
+      "footer": {
+        "left": "TecNet Finder · Proyecto personal en evolución",
+        "right": {
+          "label": "GitHub",
+          "url": "https://github.com/RobDev512/TecNet-Finder",
+          "external": true
+        }
+      }
+    }
+  ]
+}
