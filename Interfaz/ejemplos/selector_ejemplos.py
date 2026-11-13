@@ -21,6 +21,7 @@ from PySide6.QtCore import QRectF, QSize, Qt, QTimer  # Proporciona geometría, 
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen  # Proporciona herramientas para dibujar la casilla personalizada y cargar iconos.
 from PySide6.QtWidgets import QAbstractItemView, QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles necesarios para construir el selector.
 
+from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Agrega la barra personalizada a ventanas de ejemplos.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
 from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
 from Motor.ejemplos.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
@@ -155,7 +156,7 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         self.resize(1220, 660)  # Proporciona suficiente espacio inicial para cuatro columnas.
         self.setMinimumSize(950, 500)  # Evita tamaños donde comandos y salidas resulten difíciles de consultar.
 
-        diseno = QVBoxLayout(self)  # Organiza información, pestañas y acciones verticalmente.
+        diseno = preparar_dialogo_con_barra(self, self.windowTitle())  # Integra el selector con la barra oficial y conserva su contenido.
         diseno.setContentsMargins(12, 12, 12, 12)  # Mantiene márgenes uniformes alrededor del selector.
         diseno.setSpacing(10)  # Conserva una separación consistente entre secciones.
 
@@ -345,7 +346,7 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         vista.resize(780, 440)  # Proporciona suficiente espacio para comandos con varias instrucciones.
         vista.setMinimumSize(620, 360)  # Evita dimensiones demasiado reducidas para leer cómodamente.
 
-        diseno = QVBoxLayout(vista)  # Organiza el contenido y las acciones verticalmente.
+        diseno = preparar_dialogo_con_barra(vista, vista.windowTitle())  # Aplica la misma barra a la vista previa del ejemplo.
         diseno.setContentsMargins(10, 10, 10, 10)  # Mantiene separación uniforme respecto a todos los bordes.
 
         texto = QPlainTextEdit()  # Crea un visor adecuado para conservar saltos y estructura del ejemplo.

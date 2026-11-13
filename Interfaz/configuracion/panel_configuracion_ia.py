@@ -20,6 +20,7 @@
 
 from PySide6.QtCore import QObject, QRect, QRunnable, QThreadPool, Qt, Signal, Slot  # Permite controlar geometría, señales y trabajos ejecutados fuera del hilo gráfico.
 from PySide6.QtGui import QColor, QPainter, QPixmap  # Permite dibujar el progreso y cargar los recursos gráficos asociados con las funciones de IA.
+from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Reutiliza la barra oficial en las confirmaciones de IA.
 from PySide6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QStackedWidget, QStyle, QVBoxLayout, QWidget  # Importa los controles utilizados por el panel.
 
 from AsistenteIA.infraestructura.configuracion import MODELO_IA  # Permite mostrar el modelo técnico utilizado actualmente.
@@ -484,7 +485,7 @@ class PanelConfiguracionIA(QWidget):  # Representa la sección de IA dentro de l
         dialogo.setModal(True)  # Impide interactuar con Configuración mientras la decisión siga pendiente.
         dialogo.setMinimumWidth(610)  # Mantiene espacio suficiente para el mensaje sin producir una ventana excesivamente alta.
 
-        diseno_principal = QHBoxLayout(dialogo)  # Organiza el icono de confirmación y el contenido textual en una misma fila.
+        diseno_principal = preparar_dialogo_con_barra(dialogo, titulo, horizontal=True, margenes=(18, 16, 18, 16))  # Incorpora la barra oficial sin alterar las decisiones de confirmación.
         diseno_principal.setContentsMargins(18, 16, 18, 16)  # Mantiene respiración uniforme respecto a los límites de la ventana.
         diseno_principal.setSpacing(18)  # Separa claramente el icono del bloque de contenido.
 

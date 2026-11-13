@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 
+from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Aplica la barra oficial a la vista previa localizada.
 from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas
 from Interfaz.ejemplos.selector_ejemplos import SelectorEjemplos, TablaEjemplos
 from Interfaz.internacionalizacion.traductor_diagnosticos import TraductorDiagnosticos
@@ -248,6 +249,8 @@ class VentanaReportePruebasTraducida(VentanaReportePruebas):
 
     def _aplicar_idioma(self) -> None:
         self.setWindowTitle(self._t("secundarios.reporte.titulo"))
+        self.barra_titulo.etiqueta_titulo.setText(self.windowTitle())  # Sincroniza la barra propia con el idioma del reporte.
+        self.barra_titulo.boton_cerrar.setToolTip(self._t("comun.cerrar"))  # Traduce la ayuda del botón de cierre.
 
         self.reporte_texto = generar_reporte_pruebas_traducido(
             self.resumen,
@@ -311,6 +314,8 @@ class SelectorEjemplosTraducido(SelectorEjemplos):
 
     def _aplicar_idioma(self) -> None:
         self.setWindowTitle(self._t("secundarios.ejemplos.titulo"))
+        self.barra_titulo.etiqueta_titulo.setText(self.windowTitle())  # Sincroniza el título del selector localizado.
+        self.barra_titulo.boton_cerrar.setToolTip(self._t("comun.cerrar"))  # Conserva el idioma activo en la X.
 
         for etiqueta in self.findChildren(QLabel):
             texto = etiqueta.text()
@@ -440,7 +445,7 @@ class SelectorEjemplosTraducido(SelectorEjemplos):
 
         from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout
 
-        diseno = QVBoxLayout(vista)
+        diseno = preparar_dialogo_con_barra(vista, vista.windowTitle(), margenes=(10, 10, 10, 10))  # Integra la vista previa traducida con la barra propia.
         diseno.setContentsMargins(10, 10, 10, 10)
 
         texto = QPlainTextEdit()

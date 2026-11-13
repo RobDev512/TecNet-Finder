@@ -143,6 +143,8 @@ class ControlIdiomaInterfaz:
     def _aplicar_barra_titulo(self) -> None:
         barra = self.ventana.barra_titulo  # Recupera la barra personalizada ya construida.
 
+        if barra.boton_mantenimiento is not None: self._establecer_ayuda(barra.boton_mantenimiento, "principal.barra.mantenimiento")  # Traduce Mantenimiento según el idioma activo.
+
         self._establecer_ayuda(barra.boton_configuracion, "principal.barra.configuracion")
         self._establecer_ayuda(barra.boton_minimizar, "principal.barra.minimizar")
         self._establecer_ayuda(barra.boton_cerrar, "comun.cerrar")
