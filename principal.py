@@ -31,6 +31,7 @@ from Interfaz.apariencia.estilos import ESTILO_APLICACION
 from Interfaz.configuracion.control_configuracion_idioma import ControlConfiguracionIdioma
 from Interfaz.ventanas.ventana_principal import VentanaPrincipal
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion
+from Motor.infraestructura.registro import configurar_registro
 
 
 NOMBRE_SERVIDOR_INSTANCIA = "TecNetFinder_Instancia_Unica"
@@ -117,6 +118,8 @@ def _guardar_estado_final_ventana(
 
 
 def iniciar_aplicacion() -> int:
+    logger = configurar_registro()
+    logger.info("Iniciando TecNet Finder")
     aplicacion = QApplication(sys.argv)
     aplicacion.setApplicationName("TecNet Finder")
     aplicacion.setStyle("Fusion")
