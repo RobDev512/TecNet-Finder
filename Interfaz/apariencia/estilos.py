@@ -541,31 +541,31 @@ QPushButton#CasillaIA:hover {
 QScrollBar:vertical {
     background-color: transparent;
     border: none;
-    width: 12px;
-    margin: 2px 1px;
+    width: 16px;
+    margin: 0px;
 }
 
 QScrollBar::handle:vertical {
     background-color: #45475a;
     border: none;
     border-radius: 5px;
-    min-height: 30px;
-    margin: 1px 1px;
+    min-height: 36px;
+    margin: 2px 3px;
 }
 
 QScrollBar:horizontal {
     background-color: transparent;
     border: none;
-    height: 12px;
-    margin: 1px 2px;
+    height: 16px;
+    margin: 0px;
 }
 
 QScrollBar::handle:horizontal {
     background-color: #45475a;
     border: none;
     border-radius: 5px;
-    min-width: 30px;
-    margin: 1px 1px;
+    min-width: 36px;
+    margin: 3px 2px;
 }
 
 QScrollBar::handle:vertical:hover,

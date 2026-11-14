@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QDialog, QMessageBox, QPlainTextEdit, QPushButton,
 
 from AsistenteIA.autocompletado.control_autocompletado import ControlAutocompletado  # Importa el controlador que obtiene sugerencias sin bloquear la interfaz.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos gráficos iniciales utilizados por el editor.
+from Interfaz.editor.controles_edicion_local import ControlCompletadoLocal, mostrar_menu_contextual_editor  # Traduce el menú contextual y añade sugerencias sin IA.
 from Interfaz.ejemplos.selector_ejemplos import SelectorEjemplos  # Importa la ventana especializada utilizada para consultar casos válidos e inválidos.
 from Motor.compilacion.diagnosticos import Diagnostico  # Importa el modelo estructurado utilizado para representar errores y advertencias.
 from Motor.ejemplos.gestor_ejemplos import GestorEjemplos  # Importa el componente encargado de leer e interpretar los archivos de ejemplos.
@@ -64,6 +65,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.icono_autocompletado_ia = QPixmap(str(ruta_icono_autocompletado)) if ruta_icono_autocompletado.exists() else QPixmap()  # Carga el icono solo cuando el recurso se encuentra disponible.
         self.gestor_ejemplos = GestorEjemplos()  # Prepara el lector reutilizable de casos almacenados en Ejemplos.
         self.control_autocompletado = ControlAutocompletado(self)  # Prepara el asistente asíncrono asociado exclusivamente con este editor.
+        self.completador_local = ControlCompletadoLocal(self)  # Añade sugerencias deterministas sin requerir Ollama ni conexión.
         self.area_numeros_linea = AreaNumerosLinea(self)  # Crea el área lateral donde se dibujarán los números.
         self.boton_ampliar = QPushButton(self)  # Crea el botón flotante destinado a ampliar y restaurar el área de edición.
         self.boton_ejemplos = QPushButton(self)  # Crea el segundo botón flotante destinado al selector de ejemplos.
@@ -74,6 +76,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.updateRequest.connect(self.actualizar_area_numeros_linea)  # Mantiene sincronizada el área lateral durante desplazamientos.
         self.cursorPositionChanged.connect(self.resaltar_linea_actual)  # Actualiza el fondo de la línea cuando se mueve el cursor.
         self.cursorPositionChanged.connect(self._actualizar_autocompletado)  # Invalida sugerencias cuando el cursor deja la posición que las originó.
+        self.cursorPositionChanged.connect(self.completador_local.ocultar)  # Retira la lista local cuando el cursor se mueve fuera de su posición.
         self.textChanged.connect(self.limpiar_diagnosticos)  # Elimina diagnósticos antiguos cuando el código se modifica.
         self.textChanged.connect(self.resaltar_linea_actual)  # Retira el resaltado cuando el editor queda vacío para no cubrir el placeholder.
         self.textChanged.connect(self._actualizar_autocompletado)  # Programa una nueva sugerencia cuando cambia realmente el código.
@@ -225,7 +228,12 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self._pintar_sugerencia_ia()  # Dibuja la continuación virtual sin incorporarla todavía al documento.
         self._pintar_diagnosticos()  # Dibuja las ondas encima del editor después de que el texto ya está visible.
 
+    def contextMenuEvent(self, evento) -> None:
+        self.completador_local.ocultar()  # Cierra cualquier sugerencia antes de mostrar las acciones de edición.
+        mostrar_menu_contextual_editor(self, evento)  # Reutiliza las acciones nativas en el idioma y tema activos.
+
     def keyPressEvent(self, evento) -> None:
+        if self.completador_local.procesar_tecla(evento): return  # Prioriza la lista visible y el atajo Ctrl+Espacio frente al ghost text.
         if self.sugerencia_ia and evento.key() == Qt.Key.Key_Tab and evento.modifiers() == Qt.KeyboardModifier.NoModifier:
             prefijo_actual = self._obtener_prefijo_linea_cursor()  # Comprueba nuevamente que el usuario siga exactamente donde nació la sugerencia.
 
@@ -247,6 +255,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
             return
 
         super().keyPressEvent(evento)  # Conserva el comportamiento tradicional para cualquier otra tecla.
+        self.completador_local.actualizar_despues_de_tecla(evento)  # Muestra sugerencias solo después de una edición real.
 
     def pintar_numeros_linea(self, evento) -> None:
         pintor = QPainter(self.area_numeros_linea)  # Crea el objeto encargado de dibujar dentro del área lateral.
@@ -281,6 +290,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         self.setExtraSelections(selecciones)  # Aplica únicamente el resaltado de la línea porque las ondas se dibujan manualmente.
 
     def _actualizar_autocompletado(self) -> None:
+        if self.completador_local.visible() or self.completador_local.insertando: self.control_autocompletado.cancelar(); self._ocultar_sugerencia_ia(); return  # Evita superponer propuestas de IA durante una inserción local.
         self._ocultar_sugerencia_ia()  # Una propuesta anterior deja de ser válida en cuanto cambia texto o posición.
         prefijo = self._obtener_prefijo_linea_cursor()  # Recupera únicamente la línea que puede completarse de forma segura.
 
@@ -314,6 +324,7 @@ class EditorCodigo(QPlainTextEdit):  # Define el editor especializado utilizado 
         return prefijo  # Entrega al predictor únicamente la instrucción actualmente activa.
 
     def _recibir_sugerencia_ia(self, prefijo: str, sugerencia: str) -> None:
+        if self.completador_local.visible(): return  # Evita que una predicción tardía tape las sugerencias del lenguaje.
         prefijo_actual = self._obtener_prefijo_linea_cursor()  # Comprueba nuevamente el documento porque la generación ocurrió en otro hilo.
 
         if prefijo_actual != prefijo:

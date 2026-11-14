@@ -73,6 +73,11 @@ def configurar_registro(carpeta: str | os.PathLike[str] | None = None, *, nivel:
     manejador.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))  # Define la presentación de cada evento.
     logger.addHandler(manejador)  # Activa la escritura de eventos en el archivo preparado.
     logger.info("Sistema de registro inicializado")  # Registra la finalización de la configuración.
+
+    if carpeta is None:  # Instala el reporte de errores únicamente durante el inicio real; las pruebas aisladas no modifican los ganchos globales.
+        from Motor.infraestructura.reporte_errores import instalar_reporte_errores  # Importa el capturador después de preparar el logger para evitar dependencias circulares.
+        instalar_reporte_errores(logger)  # Conserva errores inesperados y permite ofrecer un reporte al usuario.
+
     return logger  # Devuelve el logger listo para ser utilizado por la aplicación.
 
 

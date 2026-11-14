@@ -12,8 +12,8 @@
 # ============================================================
 
 NOMBRE_APLICACION = "TecNet Finder"  # Identifica el producto de forma única en todas las ventanas.
-VERSION_ESTABLE = "1.2.1"  # Última versión publicada y utilizada en el instalador actual.
-VERSION_DESARROLLO = "1.2.2"  # Versión en preparación dentro de la rama de estabilidad.
+VERSION_ESTABLE = "1.2.2"  # Versión a empaquetar; publicar después de validar el instalador Windows.
+VERSION_DESARROLLO = "1.2.2"  # Versión preparada dentro de la rama de estabilidad.
 VERSION_ACTUAL = VERSION_DESARROLLO  # Identifica los archivos que se ejecutan durante esta actualización.
 VERSION_VISIBLE = f"v{VERSION_ACTUAL}"  # Presenta la versión mediante el prefijo convencional.
 NOMBRE_ACTUALIZACION = "Stability & Polish"  # Conserva la denominación del roadmap.

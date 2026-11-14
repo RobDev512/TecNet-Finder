@@ -1,0 +1,74 @@
+/* ============================================================
+   TecNet Finder · Slideshow y demo aislados del sitio principal
+   ============================================================ */
+.tecnet-showcase { margin:34px 0 46px; padding:28px; border:1px solid rgba(116,199,236,.22); border-radius:24px; background:radial-gradient(circle at 12% 0%,rgba(116,199,236,.12),transparent 34rem),linear-gradient(135deg,rgba(16,39,54,.78),rgba(9,19,26,.65)); color:#d7eef7; contain:layout paint; }
+.tecnet-showcase * { box-sizing:border-box; }
+.tnf-showcase-intro { max-width:760px; margin-bottom:22px; }
+.tnf-showcase-intro .section-kicker, .tnf-showcase-card .section-kicker { color:#75cef3; font-weight:750; font-size:.79rem; text-transform:uppercase; letter-spacing:.09em; }
+.tnf-showcase-intro h2 { color:#e9f7ff; font-size:clamp(27px,4vw,40px); margin:6px 0 10px; }
+.tnf-showcase-intro p { color:#a7c5d3; line-height:1.7; margin:0; }
+.tnf-showcase-grid { display:grid; grid-template-columns:minmax(0,1.14fr) minmax(0,.86fr); gap:20px; }
+.tnf-showcase-card { min-width:0; padding:20px; background:rgba(9,25,35,.85); border:1px solid rgba(116,199,236,.2); border-radius:19px; }
+.tnf-showcase-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:0 0 16px; }
+.tnf-showcase-card-header h3 { color:#e9f7ff; font-size:1.11rem; margin:4px 0; }
+.tnf-showcase-card-header p { color:#9cbaca; font-size:.81rem; line-height:1.5; margin:0; }
+.tnf-showcase-pill { white-space:nowrap; flex-shrink:0; padding:5px 9px; border-radius:30px; background:rgba(116,199,236,.1); border:1px solid rgba(116,199,236,.27); color:#82ddff; font-size:.66rem; font-weight:750; }
+.tnf-showcase-stage { position:relative; min-height:355px; }
+.tnf-showcase-slide { display:none; }
+.tnf-showcase-slide.is-active { display:block; animation:tnf-fade .25s ease; }
+.tnf-mock-window { overflow:hidden; border:1px solid #416476; background:#0e1c26; border-radius:13px; box-shadow:0 14px 40px rgba(0,0,0,.19); }
+.tnf-mock-title { display:flex; justify-content:space-between; padding:10px 13px; background:#142b37; color:#bce9ff; font-size:.73rem; font-family:ui-monospace,Consolas,monospace; }
+.tnf-mock-title span { color:#8baabc; }
+.tnf-mock-body { padding:13px; min-height:266px; }
+.tnf-mock-heading { margin:0 0 11px; font-weight:800; color:#77c9f7; font-size:1rem; }
+.tnf-mock-heading small { display:block; margin-top:3px; color:#a1c1cf; font-weight:400; font-size:.7rem; }
+.tnf-mock-tabs { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:11px; }
+.tnf-mock-tabs span { padding:6px 8px; border:1px solid #36566a; border-radius:8px 8px 0 0; font-size:.64rem; background:#1e3744; }
+.tnf-mock-tabs .is-current { background:#74c7ec; color:#09202c; }
+.tnf-mock-editor { display:flex; min-height:86px; padding:9px; background:#09141c; border:1px solid #36566a; border-radius:8px; font-family:Consolas,monospace; font-size:.76rem; overflow:auto; }
+.tnf-mock-line { padding-right:12px; margin-right:9px; color:#6d91a4; border-right:1px solid #294758; }
+.tnf-mock-editor code { white-space:pre; color:#d5edf9; }
+.tnf-mock-editor em { font-style:normal; color:#7ccbf5; } .tnf-mock-editor b { color:#a2e9b0; } .tnf-mock-editor strong { color:#f7b98c; } .tnf-mock-editor i { color:#ffe0a7; font-style:normal; }
+.tnf-mock-action { display:inline-flex; align-items:center; gap:12px; margin-top:9px; background:#74c7ec; border-radius:7px; color:#06222e; padding:7px 9px; font-size:.67rem; font-weight:800; }
+.tnf-mock-action span { color:#acc5ce; background:#203a4a; padding:6px 8px; border-radius:5px; }
+.tnf-mock-stats { display:flex; gap:6px; margin-top:9px; }
+.tnf-mock-stats span { flex:1; text-align:center; background:#182f3b; padding:8px 4px; border:1px solid #355e74; border-radius:8px; color:#a8cedf; font-size:.6rem; }
+.tnf-mock-stats b { display:block; color:#74c7ec; font-size:1.15rem; margin-top:3px; }
+.tnf-mock-table-wrap { overflow-x:auto; } .tnf-mock-table-wrap table { width:100%; min-width:390px; border-collapse:collapse; font-size:.7rem; color:#d4edf9; }
+.tnf-mock-table-wrap th { background:#274555; color:#d9f7ff; } .tnf-mock-table-wrap th,.tnf-mock-table-wrap td { padding:9px 7px; border-bottom:1px solid #31505e; text-align:left; }
+.tnf-mock-table-wrap tr:nth-child(even) td { background:#162e3a; }
+.tnf-mock-note { font-size:.65rem; color:#9cbac8; }
+.tnf-mock-settings { display:grid; grid-template-columns:125px 1fr; gap:10px; font-size:.7rem; }
+.tnf-mock-settings aside { background:#1a3442; padding:11px; line-height:2.55; color:#adc8d5; border-radius:7px; }
+.tnf-mock-settings aside b { color:#79d1f6; font-weight:700; }
+.tnf-mock-settings>div { min-width:0; }
+.tnf-mock-settings>div strong { color:#8ad9ff; } .tnf-mock-settings>div p { font-size:.66rem; color:#a6c7d4; }
+.tnf-mock-setting-card { padding:10px 9px; background:#192f3a; border:1px solid #3b5c69; border-radius:7px; margin-top:7px; font-weight:700; }
+.tnf-mock-setting-card small { display:block; color:#a8c3ce; font-weight:400; margin-top:5px; }
+.tnf-showcase-caption { color:#9fc9da; text-align:center; font-size:.74rem; margin:12px 0 0; }
+.tnf-showcase-controls { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:16px; }
+.tnf-showcase-controls button { cursor:pointer; border:1px solid #365b6e; background:#203b4b; color:#b3e7fa; height:32px; min-width:34px; border-radius:8px; }
+.tnf-showcase-controls button:hover,.tnf-showcase-controls button:focus-visible { background:#2f5667; border-color:#74c7ec; }
+.tnf-showcase-controls .tnf-showcase-dot { width:9px; min-width:9px; height:9px; padding:0; border-radius:50%; background:#526e7e; border:0; }
+.tnf-showcase-controls .tnf-showcase-dot.is-active { background:#74c7ec; width:23px; border-radius:12px; }
+.tnf-demo-card label { display:block; color:#b4d7e7; font-size:.79rem; margin:0 0 8px; }
+#tnfDemoInput { width:100%; min-height:109px; resize:vertical; padding:11px 12px; border:1px solid #47718a; border-radius:9px; outline:none; background:#081823; color:#e6f7ff; font: .82rem/1.6 ui-monospace,Consolas,monospace; }
+#tnfDemoInput:focus { border-color:#74c7ec; box-shadow:0 0 0 2px rgba(116,199,236,.14); }
+.tnf-demo-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.tnf-demo-actions button { cursor:pointer; border:1px solid #41697c; border-radius:8px; background:#234455; color:#deeff7; padding:9px 12px; font-size:.78rem; font-weight:700; }
+.tnf-demo-actions button:hover,.tnf-demo-actions button:focus-visible { background:#31617a; border-color:#74c7ec; }
+.tnf-demo-actions button.tnf-demo-primary { background:#74c7ec; color:#071f2e; border-color:#74c7ec; }
+.tnf-demo-actions button.tnf-demo-primary:hover { background:#a5e4f9; }
+.tnf-demo-status { color:#9cddcb; font-size:.75rem; line-height:1.6; min-height:2em; }
+.tnf-demo-status.is-error { color:#ffb7a9; }
+.tnf-demo-output { min-height:30px; }
+.tnf-demo-summary { color:#b5e7fb; font-size:.77rem; font-weight:700; margin:6px 0; }
+.tnf-demo-table-scroll { overflow-x:auto; border:1px solid #365a6e; border-radius:9px; }
+.tnf-demo-table-scroll table { border-collapse:collapse; min-width:540px; width:100%; font-size:.7rem; }
+.tnf-demo-table-scroll th,.tnf-demo-table-scroll td { padding:8px; text-align:left; border-bottom:1px solid #294957; white-space:nowrap; }
+.tnf-demo-table-scroll th { color:#d7f1fd; background:#244453; } .tnf-demo-table-scroll td { color:#c6e2ef; } .tnf-demo-table-scroll tr:nth-child(even) { background:rgba(114,194,226,.05); }
+.tnf-demo-notice { border-top:1px solid #294857; margin:16px 0 0; padding-top:12px; font-size:.7rem; line-height:1.65; color:#92b7c5; }
+@keyframes tnf-fade { from { opacity:.35; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:1000px) { .tnf-showcase-grid { grid-template-columns:1fr; } }
+@media(max-width:600px) { .tecnet-showcase { padding:15px; border-radius:16px; } .tnf-showcase-card { padding:13px; } .tnf-showcase-card-header { flex-wrap:wrap; } .tnf-mock-settings { grid-template-columns:100px 1fr; } .tnf-showcase-stage { min-height:350px; } }
+@media(prefers-reduced-motion:reduce) { .tnf-showcase-slide.is-active { animation:none; } }

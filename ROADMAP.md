@@ -2,9 +2,10 @@
 
 ## Estado actual
 
-**Versión vigente:** v1.2.1
-**Estado general:** Cerrada funcionalmente / roadmap activo
-**Siguiente etapa activa:** v1.2.2 — Stability & Polish
+**Versión pública en GitHub:** v1.2.1
+**Última versión cerrada y validada:** v1.2.2 — Stability & Polish
+**Estado general:** v1.2.2 cerrada y validada en Windows el 14 de noviembre de 2026; publicación en GitHub Releases pendiente.
+**Siguiente etapa planificada:** v1.3.0 — Intermediate Code Update
 
 > Cada versión debe cubrir una necesidad académica concreta y, además,
 > incorporar una mejora visible del producto.
@@ -91,7 +92,7 @@ incorporación del análisis semántico.
 
 **Estado:** Aplicada
 
-Versión vigente y cierre de estabilización posterior a la integración semántica.
+Versión estable anterior y cierre de estabilización posterior a la integración semántica.
 
 ### Internacionalización
 
@@ -134,24 +135,39 @@ Versión vigente y cierre de estabilización posterior a la integración semánt
 
 ## v1.2.2 — Stability & Polish
 
-**Estado:** En desarrollo
+**Estado:** Aplicada
 
-Versión de estabilización posterior a la revisión docente; no introduce una
-unidad nueva.
+**Cierre local:** 14 de noviembre de 2026. EXE e instalador probados; 318 pruebas superadas.
+
+Versión de estabilidad posterior a la revisión docente. No introduce una unidad nueva ni genera código intermedio.
 
 ### Función estrella
 
 Centro de estabilidad y mantenimiento.
 
-### Objetivos
+### Funciones implementadas
 
-- Sistema de logs.
-- Ventana Acerca de.
-- Información de versión.
-- Restaurar valores predeterminados.
-- Exportar/importar preferencias.
-- Reporte sencillo de errores inesperados.
+- Sistema de logs rotativos y consulta desde la interfaz.
+- Información de la aplicación, sección Acerca de y versión centralizada.
+- Restauración de preferencias con confirmación y respaldo.
+- Exportación/importación de preferencias en JSON con validación.
+- Reportes locales de excepciones inesperadas (copiar y guardar).
+- Menús contextuales del editor traducidos y acordes con los temas.
+- Completador local sin IA para palabras reservadas del DSL, separado del autocompletado con IA.
+- Correcciones visuales: centrado, estilos, barras de desplazamiento y ventanas.
+- Slideshow de presentación y demo educativa web de cálculo VLSM, independiente del compilador Python.
 
+### Validación de cierre
+
+- [x] 318 pruebas automatizadas aprobadas en Windows.
+- [x] EXE generado con PyInstaller y aplicación comprobada visualmente.
+- [x] Instalador generado con Inno Setup 7 e instalación probada.
+- [x] ZIP portable, ZIP de código fuente y comprobaciones SHA-256 generados.
+- [x] Entrega de release copiada a `Avance 1/Release 1.2.2` conservando las evidencias anteriores.
+- [x] Slideshow y demo web VLSM revisados localmente.
+- [ ] Publicar la release v1.2.2 en GitHub y actualizar su enlace público.
+
+**Nota:** no se afirma haber probado la desinstalación ni todos los escenarios de idiomas y temas.
 ---
 
 ## v1.3.0 — Intermediate Code Update
@@ -328,8 +344,8 @@ Nueva sintaxis orientada a redes y subredes.
 
 ## Prioridades
 
-- No añadir funciones grandes a v1.2.1.
-- Usar v1.2.2 para estabilidad y mantenimiento si la revisión genera correcciones.
+- Mantener la v1.2.2 cerrada; nuevas funciones pertenecen a versiones posteriores.
+- Mantener el enlace de descarga pública v1.2.1 hasta publicar realmente el instalador v1.2.2.
 - Desde v1.3.0, cada versión debe tener una función estrella visible.
 - Mantener separadas las herramientas educativas del DSL principal.
 - No definir todavía la arquitectura objetivo de v2.0.0.

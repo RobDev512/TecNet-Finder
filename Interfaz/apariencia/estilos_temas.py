@@ -476,8 +476,8 @@ QScrollArea, QAbstractScrollArea {{
 
 QScrollBar:vertical {{
     background-color: transparent;
-    width: 12px;
-    margin: 3px 2px;
+    width: 16px;
+    margin: 0px;
     border: none;
 }}
 
@@ -485,7 +485,8 @@ QScrollBar::handle:vertical {{
     background-color: {p["borde_fuerte"]};
     border: none;
     border-radius: 5px;
-    min-height: 32px;
+    min-height: 36px;
+    margin: 2px 3px;
 }}
 
 QScrollBar::handle:vertical:hover {{ background-color: {p["acento"]}; }}
@@ -495,8 +496,8 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background-color
 
 QScrollBar:horizontal {{
     background-color: transparent;
-    height: 12px;
-    margin: 2px 3px;
+    height: 16px;
+    margin: 0px;
     border: none;
 }}
 
@@ -504,7 +505,8 @@ QScrollBar::handle:horizontal {{
     background-color: {p["borde_fuerte"]};
     border: none;
     border-radius: 5px;
-    min-width: 32px;
+    min-width: 36px;
+    margin: 3px 2px;
 }}
 
 QScrollBar::handle:horizontal:hover {{ background-color: {p["acento"]}; }}
