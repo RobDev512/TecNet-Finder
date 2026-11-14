@@ -4,7 +4,7 @@
 
 El proyecto comenzó en Lenguajes y Autómatas I (análisis léxico y sintáctico) y continuó en Lenguajes y Autómatas II, cuya Unidad 1 incorporó el análisis semántico. La v1.2.2 consolida la estabilidad del producto **sin agregar todavía generación de código intermedio**.
 
-**Estado de la v1.2.2:** cerrada y validada en Windows (318 pruebas, EXE, instalación, archivos de distribución y copia académica). **Publicación en GitHub Releases pendiente.**
+**Estado de la v1.2.2:** cerrada, validada en Windows (318 pruebas aprobadas, EXE e instalador probados) y publicada en [GitHub Releases](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2).
 
 ## Lenguaje fuente
 
@@ -50,38 +50,39 @@ Los modelos de IA y Ollama son **opcionales** para las fases básicas del compil
 
 ## Crear EXE e instalador en Windows
 
-Requiere **PyInstaller** e **Inno Setup 6 o 7**. No se puede construir de manera fiable el instalador de Windows desde un entorno que no sea Windows.
+Requiere **Python 3.11, PyInstaller e Inno Setup 6 o 7**. El empaquetado se hace manualmente con los tres archivos permanentes de `Empaquetado/`:
+
+- `TecNetFinder.spec`: configuración de PyInstaller para generar el EXE con sus dependencias.
+- `TecNetFinder.iss`: configuración de Inno Setup para crear el instalador.
+- `version_info.txt`: metadatos de versión del EXE.
+
+Desde la raíz del proyecto, ejecuta las pruebas y compila mediante el archivo `.spec`:
 
 ```powershell
-.\Empaquetado\preparar_release_v122.ps1
+python -m pytest -q
+python -m PyInstaller --noconfirm --clean --workpath "$env:TEMP\TecNetFinder-Build" --distpath ".\dist" ".\Empaquetado\TecNetFinder.spec"
 ```
 
-El script ejecuta las pruebas y genera la distribución **onedir** de PyInstaller, el instalador de Inno Setup y los ZIP de distribución en una carpeta independiente bajo `%LOCALAPPDATA%\TecNetFinder\Releases`, fuera de OneDrive. Después de comprobar manualmente el EXE, instalar y desinstalar el paquete, copia los entregables al archivo académico **sin tocar las entregas antiguas**:
+Luego abre `Empaquetado/TecNetFinder.iss` con **Inno Setup**, comprueba que la versión indicada y la ruta de la carpeta `dist/TecNetFinder` sean correctas, y compila el instalador desde su interfaz. La versión y el contenido deben actualizarse antes de empaquetar futuras releases.
 
-```powershell
-.\Empaquetado\preparar_release_v122.ps1 -SoloCopiarAvance
-```
+**Precaución con OneDrive:** el directorio del proyecto está sincronizado. Si PyInstaller no puede reemplazar `dist/TecNetFinder` por un bloqueo de archivos, cierra las instancias abiertas de la app y utiliza una carpeta de distribución fuera de OneDrive. En ese caso, adapta la ruta de origen del instalador en Inno Setup antes de compilar. No elimines forzosamente carpetas que estén en uso.
 
-Este segundo paso comprueba los SHA-256 existentes y crea exclusivamente `Avance 1/Release 1.2.2`.
+**Importante:** el ejecutable `TecNetFinder.exe` depende de los archivos de la carpeta `TecNetFinder/_internal`. Para distribuirlo, conserva toda la carpeta o utiliza el instalador; no copies únicamente el EXE.
 
-**Importante:** el archivo `.exe` dentro de `dist/TecNetFinder` depende de otros archivos en esa misma carpeta. Para distribución utiliza el instalador o el ZIP portable completo; no copies únicamente el ejecutable.
-
-Antes de publicar, ejecuta el EXE compilado, instala y desinstala el instalador en Windows y verifica SHA-256. El empaquetado por sí solo no confirma que la versión esté validada.
+Antes de publicar una versión, comprueba manualmente el EXE, realiza una prueba del instalador y verifica la suma SHA-256 del archivo final.
 
 ## Página web y demostración
 
 La carpeta `site/` contiene la página del proyecto y una vista previa con slideshow y una **demo educativa de VLSM en JavaScript**. La demo no ejecuta el compilador Python, sus diagnósticos completos, ni la IA de escritorio; no envía el texto a servidores.
 
 
-### Actualizar los datos públicos después de publicar
+### Publicación y actualización de la página
 
-**No actualices el botón de descarga a v1.2.2 antes de que el instalador real esté disponible en GitHub Releases.** Después de crear la release `v1.2.2` y confirmar la URL del archivo, ejecuta:
+La versión pública actual es [v1.2.2](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2). El instalador oficial se ofrece desde GitHub Releases y la suma SHA-256 está escrita en la descripción de esa release.
 
-```powershell
-python .\Empaquetado\actualizar_web_release_v122.py --url "URL_REAL_DEL_INSTALADOR"
-```
+Cuando se publique una nueva versión, actualiza manualmente el enlace de descarga, la descripción, el estado de la versión y el roadmap en `site/project-config.json`, `ROADMAP.md`, `site/ROADMAP.md` y, en el repositorio separado del Hub, `data/project-pages.json` y `projects/tecnet-finder/ROADMAP.md`. Publica los cambios en GitHub cuando la nueva descarga exista realmente.
 
-Si también tienes clonado el Hub `RobDev512.github.io`, añade `--hub "RUTA_LOCAL_DEL_REPOSITORIO_DEL_HUB"`. El script actualiza únicamente los metadatos locales de TecNet Finder y sincroniza los ROADMAP; **no publica ni hace push**. Los archivos `site/index.html`, `tecnet-showcase.css` y `tecnet-showcase.js` aportan la demo visual, mientras que el ZIP separado del Hub incluye los tres equivalentes para `projects/tecnet-finder/`.
+Los archivos `site/index.html`, `site/tecnet-showcase.css` y `site/tecnet-showcase.js` aportan la demo visual en la página propia. La página del Hub conserva sus equivalentes en `projects/tecnet-finder/`.
 
 ## Licencia y documentación
 
