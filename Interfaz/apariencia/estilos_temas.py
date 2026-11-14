@@ -471,40 +471,49 @@ QScrollArea, QAbstractScrollArea {{
 }}
 
 /* ===========================================================
-   Scrollbars
+   Barras de desplazamiento unificadas (ambos sentidos)
    =========================================================== */
 
 QScrollBar:vertical {{
     background-color: transparent;
+    width: 16px;
+    margin: 0px;
+    border: none;
 }}
 
 QScrollBar::handle:vertical {{
-    background-color: {p["superficie_hover"]};
+    background-color: {p["borde_fuerte"]};
+    border: none;
+    border-radius: 5px;
+    min-height: 36px;
+    margin: 2px 3px;
 }}
 
-QScrollBar::handle:vertical:hover {{
-    background-color: {p["superficie_presionada"]};
-}}
-
-QScrollBar::handle:vertical:pressed {{
-    background-color: {p["acento"]};
-}}
+QScrollBar::handle:vertical:hover {{ background-color: {p["acento"]}; }}
+QScrollBar::handle:vertical:pressed {{ background-color: {p["acento_hover"]}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ background-color: transparent; height: 0px; border: none; }}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background-color: transparent; border: none; }}
 
 QScrollBar:horizontal {{
     background-color: transparent;
+    height: 16px;
+    margin: 0px;
+    border: none;
 }}
 
 QScrollBar::handle:horizontal {{
-    background-color: {p["superficie_hover"]};
+    background-color: {p["borde_fuerte"]};
+    border: none;
+    border-radius: 5px;
+    min-width: 36px;
+    margin: 3px 2px;
 }}
 
-QScrollBar::handle:horizontal:hover {{
-    background-color: {p["superficie_presionada"]};
-}}
-
-QScrollBar::handle:horizontal:pressed {{
-    background-color: {p["acento"]};
-}}
+QScrollBar::handle:horizontal:hover {{ background-color: {p["acento"]}; }}
+QScrollBar::handle:horizontal:pressed {{ background-color: {p["acento_hover"]}; }}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ background-color: transparent; width: 0px; border: none; }}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background-color: transparent; border: none; }}
+QAbstractScrollArea::corner {{ background-color: {p["panel"]}; border: none; }}
 
 /* ===========================================================
    Controles especiales

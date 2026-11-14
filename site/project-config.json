@@ -25,7 +25,7 @@
         "description": "DSL orientado al análisis y planificación de redes mediante VLSM, con lexer, parser, análisis semántico, diagnósticos y una interfaz gráfica construida con PySide6.",
         "actions": [
           {
-            "label": "Descargar 1.2.1",
+            "label": "Descargar 1.2.1 (pública)",
             "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.2.1/TecNet.Finder.1.2.1.Setup.exe",
             "style": "primary",
             "external": true
@@ -39,8 +39,8 @@
         ],
         "meta": [
           {
-            "strong": "v1.2.1",
-            "small": "Final Polish & Internationalization"
+            "strong": "v1.2.2",
+            "small": "Cerrada · publicación pendiente"
           },
           {
             "strong": "DSL de redes",
@@ -71,17 +71,17 @@
         }
       ],
       "release": {
-        "kicker": "Release actual",
-        "version": "v1.2.1",
-        "summary": "v1.2.1 estabiliza la etapa semántica completada en v1.2.0 y añade internacionalización, mejoras de tipografía, refinamiento del árbol sintáctico y exportación PNG HD, SVG y PDF.",
-        "status": "Aplicada",
-        "title": "Final Polish & Internationalization",
+        "kicker": "Versión cerrada · publicación pendiente",
+        "version": "v1.2.2",
+        "summary": "La v1.2.2 terminó su cierre local: 318 pruebas aprobadas, EXE e instalador verificados, respaldo académico y demo web revisada. La descarga pública permanece en v1.2.1 hasta publicar la nueva release en GitHub.",
+        "status": "Cerrada y validada",
+        "title": "Stability & Polish",
         "items": [
-          "Compilador léxico, sintáctico y semántico consolidado.",
-          "Seis idiomas y ejemplos localizados.",
-          "Tipografía configurable para interfaz y editor.",
-          "Árbol sintáctico refinado y más legible.",
-          "Exportación PNG HD, SVG y PDF."
+          "Logs rotativos y Centro de estabilidad y mantenimiento.",
+          "Restauración, exportación e importación de preferencias con validación.",
+          "Reporte local de excepciones inesperadas.",
+          "Menú contextual traducido y completador local independiente de la IA.",
+          "Ajustes visuales, empaquetado Windows y 318 pruebas satisfactorias."
         ],
         "link": {
           "label": "Explorar historial en GitHub →",
@@ -95,9 +95,9 @@
         "description": "El roadmap conecta la evolución del producto con las fases del compilador. Cada actualización académica se refleja aquí desde el ROADMAP.md del proyecto."
       },
       "nextRelease": {
-        "kicker": "Siguiente versión",
-        "title": "v1.2.2 · Stability & Polish",
-        "text": "La siguiente etapa se enfoca en estabilidad y mantenimiento: logs, Acerca de, información de versión, restauración de preferencias y reporte sencillo de errores inesperados."
+        "kicker": "Siguiente etapa",
+        "title": "v1.3.0 · Intermediate Code Update",
+        "text": "Unidad 2: generación de código intermedio mediante tripletas, cuádruplos y Código P adaptados al DSL de redes."
       },
       "footer": {
         "left": "TecNet Finder · Proyecto personal en evolución",

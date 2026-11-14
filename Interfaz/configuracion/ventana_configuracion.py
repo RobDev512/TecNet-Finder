@@ -77,18 +77,6 @@ class VentanaConfiguracion(QDialog):  # Representa el diálogo general de Config
         self.setStyleSheet("""
             QDialog#VentanaConfiguracion { background-color: transparent; }
             QFrame#TarjetaConfiguracion QLabel { background-color: #1e1e2e; border: none; border-radius: 7px; padding: 2px 5px; }
-            QScrollBar:vertical { background-color: transparent; width: 11px; margin: 4px 2px; border: none; }
-            QScrollBar::handle:vertical { background-color: #45475a; min-height: 34px; border: none; border-radius: 5px; }
-            QScrollBar::handle:vertical:hover { background-color: #585b70; }
-            QScrollBar::handle:vertical:pressed { background-color: #6c7086; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { background-color: transparent; border: none; height: 0px; }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background-color: transparent; border: none; }
-            QScrollBar:horizontal { background-color: transparent; height: 11px; margin: 2px 4px; border: none; }
-            QScrollBar::handle:horizontal { background-color: #45475a; min-width: 34px; border: none; border-radius: 5px; }
-            QScrollBar::handle:horizontal:hover { background-color: #585b70; }
-            QScrollBar::handle:horizontal:pressed { background-color: #6c7086; }
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { background-color: transparent; border: none; width: 0px; }
-            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background-color: transparent; border: none; }
         """)  # Conserva los ajustes particulares de Configuración.
 
         if padre is not None: self.setWindowIcon(padre.windowIcon())  # Reutiliza el icono oficial de TecNet Finder.

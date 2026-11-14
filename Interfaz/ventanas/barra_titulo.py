@@ -405,6 +405,7 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
         self.ventana = ventana  # Conserva acceso a las acciones de ventana.
         self.permitir_arrastre = permitir_arrastre  # Determina si la barra puede utilizarse para mover la ventana.
 
+        self.boton_mantenimiento = None  # Permite omitir Mantenimiento en las ventanas secundarias.
         self.boton_configuracion = None  # Permite omitir Configuración cuando no corresponde.
         self.boton_minimizar = None  # Permite omitir minimizar en ventanas secundarias.
         self.boton_media_pantalla = None  # Permite mostrar el selector únicamente en la ventana principal.
@@ -438,6 +439,15 @@ class BarraTitulo(QWidget):  # Representa la barra superior reutilizable de las 
         self.etiqueta_titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)  # Permite arrastrar también desde la zona del título.
         diseno.addWidget(self.etiqueta_titulo)  # Coloca el título después del logotipo.
         diseno.addStretch()  # Empuja todos los controles hacia el extremo derecho.
+
+        if mostrar_configuracion and hasattr(self.ventana, "_abrir_mantenimiento"):  # Agrega Mantenimiento únicamente en la ventana principal.
+            self.boton_mantenimiento = self._crear_boton("BotonVentana", "Mantenimiento")  # Construye el botón con el estilo de la barra.
+            self.boton_mantenimiento.setFixedSize(38, 38)  # Mantiene las mismas dimensiones que Configuración.
+            self.boton_mantenimiento.setIconSize(QSize(18, 18))  # Ajusta el icono al tamaño utilizado por el engrane.
+            self.boton_mantenimiento.setAccessibleName("Mantenimiento")  # Proporciona una descripción accesible.
+            self.boton_mantenimiento.establecer_iconos(ruta_icono_oscuro("Mantenimiento.png"), ruta_icono_oscuro("Mantenimiento_Hover.png"), ruta_icono_oscuro("Mantenimiento_Hover.png"))  # Inicializa los estados oscuros.
+            self.boton_mantenimiento.clicked.connect(self.ventana._abrir_mantenimiento)  # Abre el Centro de estabilidad y mantenimiento.
+            diseno.addWidget(self.boton_mantenimiento)  # Coloca el botón inmediatamente antes de Configuración.
 
         if mostrar_configuracion:  # Comprueba si esta ventana necesita acceso directo a Configuración.
             self.boton_configuracion = self._crear_boton("BotonVentana", "Configuración")  # Crea el botón especializado.

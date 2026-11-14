@@ -324,41 +324,6 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
                 background-color: {p["superficie_hover"]};
                 color: {p["acento"]};
             }}
-
-            QScrollBar:vertical {{
-                background-color: transparent;
-                width: 11px;
-                margin: 4px 2px;
-                border: none;
-            }}
-
-            QScrollBar::handle:vertical {{
-                background-color: {p["superficie_hover"]};
-                min-height: 34px;
-                border: none;
-                border-radius: 5px;
-            }}
-
-            QScrollBar::handle:vertical:hover {{
-                background-color: {p["superficie_presionada"]};
-            }}
-
-            QScrollBar::handle:vertical:pressed {{
-                background-color: {p["acento"]};
-            }}
-
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {{
-                background-color: transparent;
-                border: none;
-                height: 0px;
-            }}
-
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {{
-                background-color: transparent;
-                border: none;
-            }}
         """)  # Define solamente las particularidades visuales de este diálogo.
 
         for tarjeta in ventana.findChildren(QFrame, "TarjetaConfiguracion"):
@@ -790,41 +755,6 @@ class AplicadorTemaComponentes(QWidget):  # Actúa como auxiliar persistente vin
                 }}
 
                 QScrollArea#AreaDiagnosticosIndependientes > QWidget > QWidget {{
-                    background-color: transparent;
-                    border: none;
-                }}
-
-                QScrollBar:vertical {{
-                    background-color: transparent;
-                    width: 10px;
-                    margin: 7px 1px 7px 1px;
-                    border: none;
-                }}
-
-                QScrollBar::handle:vertical {{
-                    background-color: {p["superficie_hover"]};
-                    min-height: 34px;
-                    border: none;
-                    border-radius: 5px;
-                }}
-
-                QScrollBar::handle:vertical:hover {{
-                    background-color: {p["superficie_presionada"]};
-                }}
-
-                QScrollBar::handle:vertical:pressed {{
-                    background-color: {p["acento"]};
-                }}
-
-                QScrollBar::add-line:vertical,
-                QScrollBar::sub-line:vertical {{
-                    background-color: transparent;
-                    border: none;
-                    height: 0px;
-                }}
-
-                QScrollBar::add-page:vertical,
-                QScrollBar::sub-page:vertical {{
                     background-color: transparent;
                     border: none;
                 }}

@@ -17,10 +17,11 @@
 # ============================================================
 
 
-from PySide6.QtCore import QRectF, QSize, Qt, QTimer  # Proporciona geometría, tamaños, estados, alineaciones y temporización de la interfaz.
+from PySide6.QtCore import QAbstractAnimation, QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, QTimer  # Proporciona animaciones, geometría, tamaños y eventos de la interfaz.
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen  # Proporciona herramientas para dibujar la casilla personalizada y cargar iconos.
 from PySide6.QtWidgets import QAbstractItemView, QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Proporciona los controles necesarios para construir el selector.
 
+from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Agrega la barra personalizada a ventanas de ejemplos.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los iconos iniciales utilizados por las acciones del selector.
 from Interfaz.ejemplos.reporte_pruebas_ejemplos import VentanaReportePruebas  # Proporciona la ventana encargada de presentar los resultados automáticos.
 from Motor.ejemplos.gestor_ejemplos import EjemploCodigo  # Proporciona la estructura utilizada para representar cada caso disponible.
@@ -103,6 +104,39 @@ class TablaEjemplos(QTableWidget):  # Mantiene columnas proporcionales y filas s
     def __init__(self, filas: int, proporciones: list[float], padre=None):  # Recibe la cantidad inicial de filas y la proporción destinada a cada columna.
         super().__init__(filas, 4, padre)  # Inicializa siempre las cuatro columnas Sel., Caso, Comando y Salida esperada.
         self.proporciones_columnas = proporciones  # Conserva las proporciones utilizadas cada vez que cambia el tamaño disponible.
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)  # Evita saltos de filas completas al mover la barra vertical.
+        barra = self.verticalScrollBar()  # Recupera la barra utilizada por la tabla para desplazar su contenido.
+        barra.setSingleStep(24)  # Ofrece desplazamientos pequeños y precisos con teclado y controles nativos.
+        self.animacion_scroll = QPropertyAnimation(barra, b"value", self)  # Anima únicamente los movimientos de la rueda convencional.
+        self.animacion_scroll.setDuration(185)  # Conserva una transición breve y fluida sin retrasar la navegación.
+        self.animacion_scroll.setEasingCurve(QEasingCurve.Type.OutCubic)  # Suaviza el final del desplazamiento.
+        self.destino_scroll = barra.value()  # Acumula los pasos recibidos sin perder desplazamientos consecutivos.
+        barra.sliderPressed.connect(self._detener_animacion_scroll)  # Deja el control inmediato al usuario cuando arrastra la barra.
+        barra.actionTriggered.connect(self._detener_animacion_scroll)  # Evita competir con clics o navegación nativa de la barra.
+
+    def _detener_animacion_scroll(self, *_argumentos) -> None:  # Respeta los movimientos manuales de la barra.
+        self.animacion_scroll.stop()  # Detiene cualquier desplazamiento animado todavía pendiente.
+        self.destino_scroll = self.verticalScrollBar().value()  # Sincroniza el objetivo con la posición real.
+
+    def wheelEvent(self, evento) -> None:  # Suaviza la rueda común sin alterar touchpads, atajos ni el arrastre de la barra.
+        if evento.modifiers() or not evento.pixelDelta().isNull() or evento.angleDelta().x():  # Respeta gestos precisos y movimientos con modificadores.
+            self._detener_animacion_scroll()  # Evita que una animación anterior compita con la interacción nativa.
+            super().wheelEvent(evento)  # Conserva el comportamiento original de Qt para estos dispositivos.
+            return  # No ejecuta una segunda animación sobre el mismo evento.
+
+        pasos = evento.angleDelta().y() / 120  # Convierte la rueda vertical a pasos, incluidos los fraccionarios.
+        barra = self.verticalScrollBar()  # Consulta límites y desplazamiento actuales de la tabla.
+        if not pasos or barra.maximum() <= barra.minimum():  # Evita interceptar eventos sin desplazamiento vertical disponible.
+            super().wheelEvent(evento)  # Deja que Qt atienda estos casos de forma natural.
+            return  # No inicia una animación innecesaria.
+
+        if self.animacion_scroll.state() != QAbstractAnimation.State.Running: self.destino_scroll = barra.value()  # Comienza desde la posición visible si no hay animación activa.
+        self.destino_scroll = max(barra.minimum(), min(barra.maximum(), round(self.destino_scroll - pasos * 115)))  # Acumula y limita los movimientos de rueda.
+        self.animacion_scroll.stop()  # Sustituye el movimiento previo sin saltar al destino anterior.
+        self.animacion_scroll.setStartValue(barra.value())  # Continúa desde la posición visible actualmente.
+        self.animacion_scroll.setEndValue(self.destino_scroll)  # Define la nueva posición objetivo.
+        self.animacion_scroll.start()  # Ejecuta la transición sin bloquear la tabla ni las casillas.
+        evento.accept()  # Impide que Qt aplique también un salto de desplazamiento convencional.
 
     def resizeEvent(self, evento) -> None:  # Redistribuye automáticamente columnas y filas después de redimensionar la tabla.
         super().resizeEvent(evento)  # Permite primero que Qt aplique normalmente el nuevo tamaño.
@@ -155,7 +189,7 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         self.resize(1220, 660)  # Proporciona suficiente espacio inicial para cuatro columnas.
         self.setMinimumSize(950, 500)  # Evita tamaños donde comandos y salidas resulten difíciles de consultar.
 
-        diseno = QVBoxLayout(self)  # Organiza información, pestañas y acciones verticalmente.
+        diseno = preparar_dialogo_con_barra(self, self.windowTitle())  # Integra el selector con la barra oficial y conserva su contenido.
         diseno.setContentsMargins(12, 12, 12, 12)  # Mantiene márgenes uniformes alrededor del selector.
         diseno.setSpacing(10)  # Conserva una separación consistente entre secciones.
 
@@ -345,7 +379,7 @@ class SelectorEjemplos(QDialog):  # Permite consultar, probar e insertar uno o v
         vista.resize(780, 440)  # Proporciona suficiente espacio para comandos con varias instrucciones.
         vista.setMinimumSize(620, 360)  # Evita dimensiones demasiado reducidas para leer cómodamente.
 
-        diseno = QVBoxLayout(vista)  # Organiza el contenido y las acciones verticalmente.
+        diseno = preparar_dialogo_con_barra(vista, vista.windowTitle())  # Aplica la misma barra a la vista previa del ejemplo.
         diseno.setContentsMargins(10, 10, 10, 10)  # Mantiene separación uniforme respecto a todos los bordes.
 
         texto = QPlainTextEdit()  # Crea un visor adecuado para conservar saltos y estructura del ejemplo.

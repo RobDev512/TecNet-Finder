@@ -531,4 +531,59 @@ QPushButton#CasillaIA:hover {
     border-color: #89b4fa;
     background-color: #181825;
 }
+
+
+/* ===========================================================
+   Barras de desplazamiento redondeadas (estructura global)
+   Los colores definitivos se aplican desde estilos_temas.py.
+   =========================================================== */
+
+QScrollBar:vertical {
+    background-color: transparent;
+    border: none;
+    width: 16px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #45475a;
+    border: none;
+    border-radius: 5px;
+    min-height: 36px;
+    margin: 2px 3px;
+}
+
+QScrollBar:horizontal {
+    background-color: transparent;
+    border: none;
+    height: 16px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #45475a;
+    border: none;
+    border-radius: 5px;
+    min-width: 36px;
+    margin: 3px 2px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+    background-color: #585b70;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    background: transparent;
+    border: none;
+    width: 0px;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: transparent;
+    border: none;
+}
 """

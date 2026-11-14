@@ -1,7 +1,14 @@
-#define MyAppName "TecNet Finder"
-#define MyAppVersion "1.2.1"
+﻿#define MyAppName "TecNet Finder"
+#define MyAppVersion "1.2.2"
 #define MyAppPublisher "RobDev512"
 #define MyAppExeName "TecNetFinder.exe"
+
+#ifndef MyAppFilesDir
+#define MyAppFilesDir "..\dist\TecNetFinder"
+#endif
+#ifndef MyAppOutputDir
+#define MyAppOutputDir "..\dist\Instalador"
+#endif
 
 [Setup]
 AppId={{E97A8C8D-5D55-4B75-9A54-0E9E11417E64}
@@ -11,7 +18,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\TecNet Finder
 DefaultGroupName=TecNet Finder
 UninstallDisplayIcon={app}\{#MyAppExeName}
-OutputDir=..\dist\Instalador
+OutputDir={#MyAppOutputDir}
 OutputBaseFilename=TecNet Finder {#MyAppVersion} Setup
 SetupIconFile=..\Recursos\Marca\LogoTNF.ico
 Compression=lzma2
@@ -28,7 +35,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos adicionales:"; Flags: unchecked
 
 [Files]
-Source: "..\dist\TecNetFinder\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppFilesDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\TecNet Finder"; Filename: "{app}\{#MyAppExeName}"

@@ -257,6 +257,7 @@ class GestorTipografia(QObject):  # Centraliza apariencia y recursos visuales.
         def hover(nombre_archivo: str):
             return resolver_icono_tema(nombre_archivo, tema_id)  # Permite que un hover inexistente en Claro utilice automáticamente su variante almacenada dentro de Oscuro.
 
+        if barra.boton_mantenimiento is not None: barra.boton_mantenimiento.establecer_iconos(normal("Mantenimiento.png"), hover("Mantenimiento_Hover.png"), hover("Mantenimiento_Hover.png"))  # Actualiza los estados del botón según el tema visual activo.
         if barra.boton_configuracion is not None: barra.boton_configuracion.establecer_iconos(normal("Engrane.png"), hover("Engrane_Hover.png"), hover("Engrane_Hover.png"))  # Utiliza siempre el engrane de interacción durante hover y pulsación.
         if barra.boton_minimizar is not None: barra.boton_minimizar.establecer_iconos(normal("Minimizar.png"), hover("Minimizar_hover.png"), hover("Minimizar_hover.png"))  # Utiliza la variante de interacción también cuando el modo activo es claro.
         if barra.boton_media_pantalla is not None: barra.boton_media_pantalla.establecer_iconos(normal("Pantalla_Dividida.png"), hover("Pantalla_Dividida_hover.png"), hover("Pantalla_Dividida_hover.png"))  # Conserva el estado visual especial del selector de mitad.

@@ -16,6 +16,7 @@
 from PySide6.QtCore import QSize  # Proporciona el tamaño utilizado para los iconos de los botones.
 from PySide6.QtGui import QIcon  # Permite cargar los recursos PNG disponibles dentro del proyecto.
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout  # Proporciona los controles necesarios para construir la ventana.
+from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Reutiliza la barra superior de los diálogos oficiales.
 from Interfaz.apariencia.recursos_tema import ruta_icono_oscuro  # Proporciona los recursos iniciales utilizados por la ventana de reporte.
 
 from Motor.ejemplos.pruebas_ejemplos import ResumenPruebasEjemplos, generar_reporte_pruebas  # Proporciona el resumen estructurado y su representación textual completa.
@@ -36,7 +37,7 @@ class VentanaReportePruebas(QDialog):  # Presenta visualmente el resultado de un
         if ruta_icono.exists():  # Comprueba que el recurso exista antes de intentar utilizarlo.
             self.setWindowIcon(QIcon(str(ruta_icono)))  # Utiliza el icono de pruebas dentro de la barra de la ventana.
 
-        diseno = QVBoxLayout(self)  # Organiza encabezado, resumen, reporte y acciones verticalmente.
+        diseno = preparar_dialogo_con_barra(self, self.windowTitle())  # Construye la barra personalizada y conserva el contenido del reporte.
         diseno.setContentsMargins(12, 12, 12, 12)  # Mantiene una separación uniforme respecto a todos los bordes.
         diseno.setSpacing(10)  # Conserva una distancia consistente entre las diferentes secciones.
 

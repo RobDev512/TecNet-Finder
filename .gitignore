@@ -35,3 +35,6 @@ Desktop.ini
 ~$*.xlsx
 # Respaldos locales del proyecto
 respaldo_*.zip
+
+# Preferencias de la aplicación
+TecNetFinder-preferencias.json

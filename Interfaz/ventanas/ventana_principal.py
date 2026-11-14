@@ -27,7 +27,7 @@ from pathlib import Path  # Permite localizar los recursos del proyecto sin util
 
 from PySide6.QtCore import QEvent, QEasingCurve, QPropertyAnimation, QTimer, Qt  # Proporciona eventos, animaciones, temporización y estados de ventana.
 from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut  # Proporciona iconos, imágenes y atajos de teclado.
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QVBoxLayout, QWidget  # Proporciona los componentes principales de la interfaz.
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget  # Proporciona los componentes principales de la interfaz.
 
 from Interfaz.apariencia.recursos_tema import ruta_marca  # Centraliza el acceso al logotipo oficial y demás recursos de identidad visual.
 from Interfaz.editor.editor_codigo import EditorCodigo  # Proporciona el editor especializado del lenguaje.
@@ -35,6 +35,7 @@ from Interfaz.editor.resaltador_sintaxis import ResaltadorSintaxis  # Proporcion
 from Interfaz.resultados.panel_diagnosticos import PanelDiagnosticos  # Proporciona la vista estructurada de errores y advertencias.
 from Interfaz.resultados.panel_resultados import PanelResultados  # Proporciona las pestañas y tablas donde se presentan los resultados.
 from Interfaz.ventanas.barra_titulo import BarraTitulo  # Proporciona la barra personalizada utilizada por la ventana principal.
+from Interfaz.ventanas.ventana_mantenimiento import VentanaMantenimiento  # Proporciona acceso al Centro de estabilidad y mantenimiento.
 from Motor.compilacion.flujo_compilacion import FlujoCompilacion  # Coordina las fases formales actualmente disponibles.
 
 
@@ -183,7 +184,14 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
         caja_titulos.addWidget(self.subtitulo_principal)  # Coloca la descripción debajo.
         encabezado.addLayout(caja_titulos)  # Agrega ambos textos junto al logotipo.
         encabezado.addStretch()  # Mantiene todo el conjunto alineado hacia la izquierda.
+
         diseno_principal.addLayout(encabezado)  # Inserta el encabezado dentro del contenido.
+
+
+    def _abrir_mantenimiento(self) -> None:  # Presenta el Centro de estabilidad desde la ventana principal.
+        ventana = VentanaMantenimiento(self)  # Crea el diálogo conservando la ventana principal como propietaria.
+        ventana.exec()  # Muestra la herramienta y espera hasta que el usuario la cierre.
+
 
     def _configurar_boton_ampliar_editor(self) -> None:  # Conecta el botón flotante de ampliación con la distribución principal.
         boton = self.editor_codigo.boton_ampliar  # Recupera el control creado directamente para esta función por EditorCodigo.
@@ -209,16 +217,13 @@ class VentanaPrincipal(QMainWindow):  # Construye TecNet Finder y administra sus
 
         self.titulo_principal.setVisible(not ampliar)  # Libera el espacio ocupado por el nombre principal.
         self.subtitulo_principal.setVisible(not ampliar)  # Libera también el espacio ocupado por la descripción.
+
         self.etiqueta_estado.setVisible(not ampliar)  # Oculta temporalmente el resumen general mientras se escribe.
         panel.tabBar().setVisible(not ampliar)  # Oculta Entrada / Salida, Tablas, Sintaxis y Fases posteriores durante el enfoque.
         panel.pestanas_salida.setVisible(not ampliar)  # Oculta Resumen, Análisis, Tabla VLSM y Diagnósticos para entregar todo el alto al editor.
 
-        for boton in (
-            panel.boton_analizar,
-            panel.boton_exportar_excel,
-            panel.boton_exportar_reporte,
-            panel.boton_limpiar,
-        ):
+        # Ciclo para ocultar los botones de acción durante el modo ampliado.
+        for boton in (panel.boton_analizar,panel.boton_exportar_excel,panel.boton_exportar_reporte,panel.boton_limpiar,):
             boton.setVisible(not ampliar)  # Oculta la fila de acciones; Compilar continúa disponible mediante Ctrl+Enter.
 
         panel_entrada = self.editor_codigo.parentWidget()  # Recupera el panel que contiene directamente título, editor y acciones.
