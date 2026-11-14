@@ -25,8 +25,8 @@
         "description": "DSL orientado al análisis y planificación de redes mediante VLSM, con lexer, parser, análisis semántico, diagnósticos y una interfaz gráfica construida con PySide6.",
         "actions": [
           {
-            "label": "Descargar 1.2.1 (pública)",
-            "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.2.1/TecNet.Finder.1.2.1.Setup.exe",
+            "label": "Descargar 1.2.2",
+            "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.2.2/TecNet.Finder.1.2.2.Setup.exe",
             "style": "primary",
             "external": true
           },
@@ -40,7 +40,7 @@
         "meta": [
           {
             "strong": "v1.2.2",
-            "small": "Cerrada · publicación pendiente"
+            "small": "Stability & Polish"
           },
           {
             "strong": "DSL de redes",
@@ -71,17 +71,17 @@
         }
       ],
       "release": {
-        "kicker": "Versión cerrada · publicación pendiente",
+        "kicker": "Release actual",
         "version": "v1.2.2",
-        "summary": "La v1.2.2 terminó su cierre local: 318 pruebas aprobadas, EXE e instalador verificados, respaldo académico y demo web revisada. La descarga pública permanece en v1.2.1 hasta publicar la nueva release en GitHub.",
-        "status": "Cerrada y validada",
+        "summary": "v1.2.2 consolida la estabilidad del compilador y mejora mantenimiento, preferencias y edición sin introducir todavía generación de código intermedio.",
+        "status": "Publicada",
         "title": "Stability & Polish",
         "items": [
           "Logs rotativos y Centro de estabilidad y mantenimiento.",
-          "Restauración, exportación e importación de preferencias con validación.",
-          "Reporte local de excepciones inesperadas.",
-          "Menú contextual traducido y completador local independiente de la IA.",
-          "Ajustes visuales, empaquetado Windows y 318 pruebas satisfactorias."
+          "Restaurar, exportar e importar preferencias con respaldos.",
+          "Reporte local de errores inesperados.",
+          "Menú contextual traducido y completador local de palabras reservadas.",
+          "Correcciones visuales y funcionamiento conservado en seis idiomas y diez temas."
         ],
         "link": {
           "label": "Explorar historial en GitHub →",
@@ -97,7 +97,7 @@
       "nextRelease": {
         "kicker": "Siguiente etapa",
         "title": "v1.3.0 · Intermediate Code Update",
-        "text": "Unidad 2: generación de código intermedio mediante tripletas, cuádruplos y Código P adaptados al DSL de redes."
+        "text": "Unidad 2: generación de código intermedio, tripletas, cuádruplos y Código P adaptados al DSL de redes."
       },
       "footer": {
         "left": "TecNet Finder · Proyecto personal en evolución",

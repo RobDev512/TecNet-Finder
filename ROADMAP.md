@@ -2,9 +2,9 @@
 
 ## Estado actual
 
-**Versión pública en GitHub:** v1.2.1
-**Última versión cerrada y validada:** v1.2.2 — Stability & Polish
-**Estado general:** v1.2.2 cerrada y validada en Windows el 14 de noviembre de 2026; publicación en GitHub Releases pendiente.
+**Versión pública en GitHub:** v1.2.2
+**Última versión cerrada y publicada:** v1.2.2 — Stability & Polish
+**Estado general:** v1.2.2 cerrada, validada y publicada en GitHub Releases; v1.3.0 es la siguiente etapa.
 **Siguiente etapa planificada:** v1.3.0 — Intermediate Code Update
 
 > Cada versión debe cubrir una necesidad académica concreta y, además,
@@ -165,7 +165,7 @@ Centro de estabilidad y mantenimiento.
 - [x] ZIP portable, ZIP de código fuente y comprobaciones SHA-256 generados.
 - [x] Entrega de release copiada a `Avance 1/Release 1.2.2` conservando las evidencias anteriores.
 - [x] Slideshow y demo web VLSM revisados localmente.
-- [ ] Publicar la release v1.2.2 en GitHub y actualizar su enlace público.
+- [x] Publicar la release v1.2.2 en GitHub y actualizar su enlace público.
 
 **Nota:** no se afirma haber probado la desinstalación ni todos los escenarios de idiomas y temas.
 ---
@@ -345,7 +345,7 @@ Nueva sintaxis orientada a redes y subredes.
 ## Prioridades
 
 - Mantener la v1.2.2 cerrada; nuevas funciones pertenecen a versiones posteriores.
-- Mantener el enlace de descarga pública v1.2.1 hasta publicar realmente el instalador v1.2.2.
+- Mantener enlazada la descarga publicada en GitHub Releases y sus verificaciones.
 - Desde v1.3.0, cada versión debe tener una función estrella visible.
 - Mantener separadas las herramientas educativas del DSL principal.
 - No definir todavía la arquitectura objetivo de v2.0.0.
