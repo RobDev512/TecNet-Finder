@@ -12,9 +12,9 @@
 # ============================================================
 
 NOMBRE_APLICACION = "TecNet Finder"  # Identifica el producto de forma única en todas las ventanas.
-VERSION_ESTABLE = "1.2.2"  # Versión a empaquetar; publicar después de validar el instalador Windows.
-VERSION_DESARROLLO = "1.2.2"  # Versión preparada dentro de la rama de estabilidad.
-VERSION_ACTUAL = VERSION_DESARROLLO  # Identifica los archivos que se ejecutan durante esta actualización.
-VERSION_VISIBLE = f"v{VERSION_ACTUAL}"  # Presenta la versión mediante el prefijo convencional.
-NOMBRE_ACTUALIZACION = "Stability & Polish"  # Conserva la denominación del roadmap.
-URL_REPOSITORIO = "https://github.com/RobDev512/TecNet-Finder"  # Enlace público del proyecto.
+VERSION_ESTABLE = "1.2.2"  # Conserva la última versión publicada y comprobada mediante instalador.
+VERSION_DESARROLLO = "1.3.0"  # Identifica la rama de triplos que todavía está en validación.
+VERSION_ACTUAL = VERSION_DESARROLLO  # Presenta el código que se está probando en esta rama.
+VERSION_VISIBLE = f"v{VERSION_ACTUAL}"  # Presenta la versión de desarrollo en las ventanas.
+NOMBRE_ACTUALIZACION = "Código intermedio y triplos"  # Describe la actualización que se está implementando.
+URL_REPOSITORIO = "https://github.com/RobDev512/TecNet-Finder"  # Conserva el enlace público del proyecto.

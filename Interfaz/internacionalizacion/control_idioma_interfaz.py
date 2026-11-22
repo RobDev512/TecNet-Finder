@@ -143,8 +143,6 @@ class ControlIdiomaInterfaz:
     def _aplicar_barra_titulo(self) -> None:
         barra = self.ventana.barra_titulo  # Recupera la barra personalizada ya construida.
 
-        if barra.boton_mantenimiento is not None: self._establecer_ayuda(barra.boton_mantenimiento, "principal.barra.mantenimiento")  # Traduce Mantenimiento según el idioma activo.
-
         self._establecer_ayuda(barra.boton_configuracion, "principal.barra.configuracion")
         self._establecer_ayuda(barra.boton_minimizar, "principal.barra.minimizar")
         self._establecer_ayuda(barra.boton_cerrar, "comun.cerrar")
@@ -494,10 +492,27 @@ class ControlIdiomaInterfaz:
         claves_textos = ("resultados.fases.unidad2", "resultados.fases.unidad3", "resultados.fases.unidad4")
 
         for indice, (clave_pestana, clave_texto) in enumerate(zip(claves_pestanas, claves_textos)):
-            self.pestanas_fases.setTabText(indice, self._t(clave_pestana))
-            visor = self.pestanas_fases.widget(indice)
-            if visor is not None and hasattr(visor, "setPlainText"):
-                visor.setPlainText(self._t(clave_texto))
+            self.pestanas_fases.setTabText(indice, self._t(clave_pestana))  # Actualiza los títulos sin reemplazar los resultados.
+            visor = self.pestanas_fases.widget(indice)  # Obtiene la implementación real de cada fase.
+            if indice > 0 and visor is not None and hasattr(visor, "setPlainText"):
+                visor.setPlainText(self._t(clave_texto))  # Conserva los mensajes futuros de Optimización y Código objeto.
+
+        self.ventana.panel_resultados.visor_triplos.establecer_textos(
+            encabezado=self._t("resultados.triplos.comprobacion"),  # Traduce el encabezado de la tercera columna.
+            copiar=self._t("resultados.triplos.copiar"),  # Traduce la acción de copiado.
+            vacio=self._t("resultados.triplos.vacio"),  # Traduce el mensaje inicial.
+            sin_bloques=self._t("resultados.triplos.sin_bloques"),  # Traduce la ausencia de bloques aceptados.
+            no_disponible=self._t("resultados.triplos.no_disponible"),  # Traduce fallos en la fase intermedia.
+            contador=self._t("resultados.triplos.contador"),  # Conserva la plantilla numérica del idioma elegido.
+            origen=self._t("resultados.triplos.origen"),  # Traduce la línea y el bloque de procedencia.
+            host=self._t("resultados.triplos.host"),  # Traduce la posición original de la solicitud HOSTS.
+            ayudas={
+                "INICIAR_RED": self._t("resultados.triplos.ayuda.iniciar_red"),
+                "SOLICITUD": self._t("resultados.triplos.ayuda.solicitud"),
+                "ASIGNAR_VLSM": self._t("resultados.triplos.ayuda.asignar_vlsm"),
+                "SIGUIENTE_CURSOR": self._t("resultados.triplos.ayuda.siguiente_cursor"),
+            },  # Aplica ayudas del idioma actual sin recalcular los triplos.
+        )  # Actualiza únicamente textos visibles y no altera los triplos ya calculados.
 
     def _aplicar_panel_diagnosticos(self) -> None:
         panel = self.ventana.panel_diagnosticos  # Recupera las dos vistas de diagnósticos estructurados.

@@ -37,6 +37,7 @@ from PySide6.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QFra
 
 from Interfaz.apariencia.recursos_tema import ruta_icono_comun, ruta_icono_oscuro  # Proporciona recursos iniciales y semánticos mediante la estructura centralizada.
 from Interfaz.resultados.visor_arbol_sintactico import VisorArbolSintactico  # Muestra textual y gráficamente los árboles sintácticos.
+from Interfaz.resultados.visor_triplos import VisorTriplos  # Presenta código intermedio, referencias y comprobaciones VLSM.
 from Motor.exportacion.exportador_resultados import exportar_reporte_txt, exportar_vlsm_excel  # Guarda resultados en archivos externos.
 from Motor.compilacion.modelos import ResultadoCompilacion, Token  # Define los modelos utilizados para mostrar el análisis.
 
@@ -600,15 +601,15 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         pestanas = QTabWidget()  # Crea una pestaña por cada fase futura.
         diseno.addWidget(pestanas)  # Permite que utilicen todo el espacio.
 
-        codigo_intermedio = self._crear_salida_textual()  # Reserva el espacio de la Unidad 2.
+        self.visor_triplos = VisorTriplos()  # Utiliza la pestaña existente para mostrar la fase implementada.
+        self._aplicar_icono(self.visor_triplos.boton_copiar, "Copiar.png")  # Reutiliza el icono oficial y permite actualizarlo al cambiar el tema.
         optimizacion = self._crear_salida_textual()  # Reserva el espacio de la Unidad 3.
         codigo_objeto = self._crear_salida_textual()  # Reserva el espacio de la Unidad 4.
 
-        codigo_intermedio.setPlainText("Esta fase se implementará durante la Unidad 2 de Lenguajes y Autómatas II.")  # Mantiene clara su condición futura.
         optimizacion.setPlainText("Esta fase se implementará durante la Unidad 3 de Lenguajes y Autómatas II.")  # Mantiene clara su condición futura.
         codigo_objeto.setPlainText("Esta fase se implementará durante la Unidad 4 de Lenguajes y Autómatas II.")  # Mantiene clara su condición futura.
 
-        pestanas.addTab(codigo_intermedio, "Código intermedio")  # Agrega la fase de la Unidad 2.
+        pestanas.addTab(self.visor_triplos, "Código intermedio")  # Muestra triplos y comprobaciones en la fase de la Unidad 2.
         pestanas.addTab(optimizacion, "Optimización")  # Agrega la fase de la Unidad 3.
         pestanas.addTab(codigo_objeto, "Código objeto")  # Agrega la fase de la Unidad 4.
 
@@ -673,6 +674,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self._mostrar_vlsm(resultado)  # Actualiza las subredes VLSM.
         self._mostrar_tokens(resultado)  # Actualiza los tokens.
         self._mostrar_reservadas(resultado)  # Actualiza el conteo de palabras reservadas.
+        self.visor_triplos.mostrar_resultado(resultado)  # Actualiza el código intermedio de los bloques aceptados.
         self._mostrar_advertencias_compactas(resultado)  # Actualiza u oculta la sección inferior según la preferencia actual.
 
         sintactico = resultado.resultado_sintactico  # Obtiene una referencia corta al resultado del parser.
@@ -1169,6 +1171,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
 
         self.resultado_actual = None  # Descarta la compilación que dejó de corresponder con la entrada.
         self.codigo_fuente_resultado = ""  # Descarta también su copia del código fuente.
+        self.visor_triplos.limpiar()  # Evita mostrar triplos antiguos después de modificar la entrada.
         self.boton_exportar_excel.setEnabled(False)  # Impide exportar resultados obsoletos.
         self.boton_exportar_reporte.setEnabled(False)  # Impide generar reportes obsoletos.
         self.boton_copiar_analisis.setEnabled(False)  # Impide copiar como vigente un análisis anterior.
@@ -1193,6 +1196,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
     def limpiar(self) -> None:
         self.resultado_actual = None  # Descarta la compilación anterior.
         self.codigo_fuente_resultado = ""  # Descarta el código relacionado con esa compilación.
+        self.visor_triplos.limpiar()  # Limpia el código intermedio junto al resto de la interfaz.
         self.boton_exportar_excel.setEnabled(False)  # Desactiva la exportación VLSM.
         self.boton_exportar_reporte.setEnabled(False)  # Desactiva el reporte textual.
         self.boton_copiar_analisis.setEnabled(False)  # Desactiva el copiado del análisis.
