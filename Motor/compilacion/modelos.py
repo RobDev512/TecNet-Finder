@@ -20,9 +20,9 @@
 from dataclasses import dataclass, field  # Proporciona clases de datos y fábricas seguras para colecciones con valores predeterminados.
 
 from Motor.compilacion.diagnosticos import Diagnostico  # Permite utilizar la misma estructura de errores y advertencias en los resultados de todas las fases.
+from Motor.compilacion.triplos import ResultadoIntermedio  # Conserva la secuencia de triplos generada por el compilador.
+from Motor.compilacion.interprete_triplos import ResultadoEjecucion  # Guarda los valores y las comprobaciones obtenidos al ejecutar los triplos.
 
-from Motor.compilacion.triplos import ResultadoIntermedio
-from Motor.compilacion.interprete_triplos import ResultadoEjecucion
 
 @dataclass(frozen=True)  # Mantiene inmutable cada token después de que el analizador léxico lo reconoce.
 class Token:  # Representa un elemento individual reconocido dentro del código fuente.
@@ -104,9 +104,8 @@ class ResultadoCompilacion:  # Representa el resultado general que posteriorment
     subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes producidas a partir de los bloques finalmente válidos.
     advertencias: list[Diagnostico] = field(default_factory=list)  # Conserva recomendaciones no bloqueantes que acompañan al resultado.
     diagnosticos_generales: list[Diagnostico] = field(default_factory=list)  # Conserva fallos técnicos controlados que no pertenecen a una fase formal concreta.
-    codigo_intermedio: ResultadoIntermedio | None = None
-    ejecucion_intermedia: ResultadoEjecucion | None = None
-
+    codigo_intermedio: ResultadoIntermedio | None = None  # Conserva los triplos de los bloques válidos cuando esta fase se ejecuta.
+    ejecucion_intermedia: ResultadoEjecucion | None = None  # Conserva los resultados de cada triplo y sus comprobaciones para la interfaz.
 
     @property  # Construye dinámicamente una única colección con todos los diagnósticos existentes.
     def diagnosticos(self) -> list[Diagnostico]:  # Devuelve errores y advertencias respetando el orden de las etapas del flujo.

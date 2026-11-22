@@ -21,12 +21,13 @@
 from Compilador.analizador_lexico import AnalizadorLexico  # Proporciona la primera fase encargada de convertir el código fuente en tokens.
 from Compilador.analizador_semantico import AnalizadorSemantico  # Proporciona la fase que valida el significado de los bloques sintácticamente correctos.
 from Compilador.analizador_sintactico import AnalizadorSintactico  # Proporciona la fase que comprueba el orden gramatical de los tokens reconocidos.
+from Compilador.generador_triplos import GeneradorTriplos  # Traduce cada bloque válido a operaciones intermedias numeradas.
 from Motor.compilacion.advertencias import generar_advertencias  # Genera recomendaciones no bloqueantes independientes de las fases formales.
 from Motor.compilacion.diagnosticos import crear_diagnostico  # Permite construir diagnósticos generales cuando ocurre un fallo técnico controlado.
+from Motor.compilacion.interprete_triplos import InterpreteTriplos  # Ejecuta triplos y registra sus comprobaciones para el visor.
 from Motor.compilacion.modelos import BloqueRed, ResultadoCompilacion, Token  # Proporciona los modelos utilizados para reunir resultados y localizar elementos originales.
 from Redes.calculadora_vlsm import ErrorCalculoVLSM, calcular_vlsm  # Proporciona el cálculo VLSM y su excepción técnica controlada.
-from Compilador.generador_triplos import GeneradorTriplos
-from Motor.compilacion.interprete_triplos import InterpreteTriplos
+
 
 class FlujoCompilacion:  # Coordina en orden todas las etapas actualmente conectadas dentro de TecNet Finder.
     def analizar(self, codigo_fuente: str) -> ResultadoCompilacion:  # Ejecuta una compilación completa sobre el código recibido desde el editor.
@@ -82,36 +83,20 @@ class FlujoCompilacion:  # Coordina en orden todas las etapas actualmente conect
 
             subredes_vlsm.extend(resultados_bloque)  # Incorpora al resultado global todas las subredes calculadas correctamente para este bloque.
 
-
-        # Genera y ejecuta el código intermedio de los bloques válidos.
-        codigo_intermedio = None
-        ejecucion_intermedia = None
-
-        try:
-            generador_triplos = GeneradorTriplos()
-            interprete_triplos = InterpreteTriplos()
-
-            codigo_intermedio = generador_triplos.generar(
-                resultado_semantico.bloques_validos
-            )
-
-            ejecucion_intermedia = interprete_triplos.ejecutar(
-                codigo_intermedio
-            )
-
-        except (ValueError, TypeError, OverflowError) as error:
-            # Protege los resultados VLSM existentes si falla
-            # la nueva representación intermedia.
-            codigo_intermedio = None
-            ejecucion_intermedia = None
-
-            diagnosticos_generales.append(
-                crear_diagnostico(
-                    codigo="GEN-002",
-                    mensaje=(
-                        "No fue posible generar o ejecutar "
-                        f"el código intermedio: {error}"
-                    )
+        codigo_intermedio = None  # Reserva la salida de triplos sin modificar el resultado VLSM existente.
+        ejecucion_intermedia = None  # Reserva las comprobaciones que producirá el intérprete.
+        try:  # Aísla los fallos previstos de la nueva representación intermedia.
+            generador_triplos = GeneradorTriplos()  # Prepara la fase que construye las operaciones del código intermedio.
+            interprete_triplos = InterpreteTriplos()  # Prepara la evaluación de operaciones y referencias entre triplos.
+            codigo_intermedio = generador_triplos.generar(resultado_semantico.bloques_validos)  # Utiliza únicamente los bloques aprobados por el semántico.
+            ejecucion_intermedia = interprete_triplos.ejecutar(codigo_intermedio)  # Calcula resultados y comprobaciones en el orden de los triplos.
+        except (ValueError, TypeError, OverflowError) as error:  # Captura fallos controlados sin borrar las subredes existentes.
+            codigo_intermedio = None  # Evita exponer una secuencia parcial si la generación o ejecución falla.
+            ejecucion_intermedia = None  # Descarta comprobaciones que no representan una ejecución terminada.
+            diagnosticos_generales.append(  # Incorpora el problema al mecanismo de diagnósticos ya existente.
+                crear_diagnostico(  # Construye un diagnóstico general sin inventar un error léxico o semántico.
+                    codigo="GEN-002",  # Identifica los fallos de generación o ejecución del código intermedio.
+                    mensaje="No fue posible generar o ejecutar el código intermedio: " f"{error}",  # Explica qué impidió completar la nueva fase.
                 )
             )
 
@@ -133,8 +118,8 @@ class FlujoCompilacion:  # Coordina en orden todas las etapas actualmente conect
             subredes_vlsm=subredes_vlsm,  # Incluye todas las subredes que pudieron calcularse correctamente.
             advertencias=advertencias,  # Incluye las recomendaciones que acompañan la compilación.
             diagnosticos_generales=diagnosticos_generales,  # Incluye cualquier protección técnica que haya sido necesaria.
-            codigo_intermedio=codigo_intermedio,
-            ejecucion_intermedia=ejecucion_intermedia,
+            codigo_intermedio=codigo_intermedio,  # Expone el código intermedio sin cambiar los argumentos anteriores.
+            ejecucion_intermedia=ejecucion_intermedia,  # Entrega sus comprobaciones al resultado final de compilación.
         )  # Devuelve a la interfaz una sola estructura con toda la información producida durante la compilación.
 
     def _localizar_token_host(self, tokens: list[Token], bloque: BloqueRed, indice_host: int) -> Token | None:  # Reconstruye el bloque original para localizar una cantidad HOSTS concreta.
