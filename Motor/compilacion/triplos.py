@@ -33,8 +33,10 @@ class OrigenTriplo:  # Conserva la línea, el bloque y la posición original de 
     def __post_init__(self):  # Valida los valores del modelo antes de permitir su uso.
         if type(self.linea_origen) is not int or self.linea_origen < 1:  # Impide valores de tipo incorrecto en esta operación.
             raise ValueError("La línea de origen debe ser un entero positivo")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if type(self.indice_bloque) is not int or self.indice_bloque < 0:  # Impide valores de tipo incorrecto en esta operación.
             raise ValueError("El índice del bloque debe ser un entero no negativo.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.indice_host is not None:  # Comprueba si se cumple la condición requerida para continuar.
             if type(self.indice_host) is not int or self.indice_host < 0:  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("El índice del host debe ser un entero no negativo.")  # Detiene el procesamiento cuando se incumple la condición requerida.
@@ -50,51 +52,70 @@ class Triplo:  # Guarda una operación de código intermedio con sus argumentos 
     def __post_init__(self):  # Valida los valores del modelo antes de permitir su uso.
         if type(self.indice) is not int or self.indice < 0:  # Impide valores de tipo incorrecto en esta operación.
             raise ValueError("El índice del triplo debe ser un entero no negativo.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if not isinstance(self.operador, str):  # Impide valores de tipo incorrecto en esta operación.
             raise ValueError("El operador debe ser una cadena de texto.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.operador not in OPERADORES_BINARIOS | OPERADORES_UNARIOS:  # Comprueba si se cumple la condición requerida para continuar.
             raise ValueError(f'Operador no reconocido: {self.operador}')  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.argumento1 is None:  # Comprueba si se cumple la condición requerida para continuar.
             raise ValueError("El triplo necesita un primer argumento.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.operador in OPERADORES_BINARIOS and self.argumento2 is None:  # Comprueba las reglas de argumentos de esta familia de operadores.
             raise ValueError(f'El operador {self.operador} necesita dos argumentos.')  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.operador in OPERADORES_UNARIOS and self.argumento2 is not None:  # Comprueba las reglas de argumentos de esta familia de operadores.
             raise ValueError(f'El operador {self.operador} solamente acepta un argumento.')  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.origen is not None:  # Comprueba si se cumple la condición requerida para continuar.
             if not isinstance(self.origen, OrigenTriplo):  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("El origen debe ser un objeto OrigenTriplo.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         for argumento in (self.argumento1, self.argumento2):  # Revisa los argumentos de la operación para validar sus tipos.
             if argumento is None:  # Omite el segundo argumento cuando el operador es unario.
                 continue  # Acepta este tipo de argumento y continúa la validación.
+            
             if type(argumento) is int:  # Impide valores de tipo incorrecto en esta operación.
                 continue  # Acepta este tipo de argumento y continúa la validación.
+            
             if isinstance(argumento, ReferenciaTriplo):  # Reconoce una referencia que debe sustituirse por su resultado.
                 continue  # Acepta este tipo de argumento y continúa la validación.
+            
             if isinstance(argumento, str) and argumento.strip():  # Impide valores de tipo incorrecto en esta operación.
                 continue  # Acepta este tipo de argumento y continúa la validación.
             raise ValueError("El triplo contiene un argumento no válido.")  # Detiene el procesamiento cuando se incumple la condición requerida.
         operadores_matematicos = {"+", "^", "LOG2", "CEIL"}  # Delimita las operaciones que solo admiten números o referencias.
         if self.operador in operadores_matematicos:  # Comprueba las reglas de argumentos de esta familia de operadores.
             argumentos = (self.argumento1, self.argumento2)  # Reúne los operandos para validar su tipo de forma uniforme.
+            
             for argumento in argumentos:  # Revisa los argumentos de la operación para validar sus tipos.
+                
                 if argumento is None:  # Omite el segundo argumento cuando el operador es unario.
                     continue  # Acepta este tipo de argumento y continúa la validación.
+                
                 if type(argumento) is int:  # Impide valores de tipo incorrecto en esta operación.
                     continue  # Acepta este tipo de argumento y continúa la validación.
+                
                 if isinstance(argumento, ReferenciaTriplo):  # Reconoce una referencia que debe sustituirse por su resultado.
                     continue  # Acepta este tipo de argumento y continúa la validación.
                 raise ValueError("Las operaciones matemáticas necesitan enteros o referencias.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         if self.operador == "INICIAR_RED":  # Comprueba que IP y máscara estén representadas como textos.
             if not (isinstance(self.argumento1, str) and isinstance(self.argumento2, str)):  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("INICIAR_RED necesita una IP y una máscara en texto.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         elif self.operador == "SOLICITUD":  # Valida hosts positivos y una referencia al tamaño requerido.
             if type(self.argumento1) is not int or self.argumento1 <= 0:  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("SOLICITUD necesita de una cantidad positiva de hosts.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+            
             if not isinstance(self.argumento2, ReferenciaTriplo):  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("SOLICITUD necesita una referencia al tamaño del bloque.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         elif self.operador == "ASIGNAR_VLSM":  # Comprueba que la asignación reciba dos referencias a resultados anteriores.
             if not (isinstance(self.argumento1, ReferenciaTriplo) and isinstance(self.argumento2, ReferenciaTriplo)):  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("ASIGNAR_VLSM necesita dos referencias.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         elif self.operador == "SIGUIENTE_CURSOR":  # Exige una referencia al triplo de asignación anterior.
             if not isinstance(self.argumento1, ReferenciaTriplo):  # Impide valores de tipo incorrecto en esta operación.
                 raise ValueError("SIGUIENTE_CURSOR necesita una referencia a una subred.")  # Detiene el procesamiento cuando se incumple la condición requerida.
@@ -119,5 +140,6 @@ class ResultadoIntermedio:  # Administra los triplos y garantiza una numeración
             if isinstance(argumento, ReferenciaTriplo):  # Reconoce una referencia que debe sustituirse por su resultado.
                 if argumento.indice >= indice:  # Impide referencias hacia el propio triplo o hacia operaciones futuras.
                     raise ValueError("La referencia debe apuntar a un triplo anterior.")  # Detiene el procesamiento cuando se incumple la condición requerida.
+        
         self._triplos.append(nuevo)  # Incorpora el nuevo triplo únicamente después de validar sus referencias.
         return nuevo  # Devuelve el triplo que ya quedó almacenado en su índice.

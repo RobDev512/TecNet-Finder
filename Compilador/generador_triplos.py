@@ -20,6 +20,7 @@ class GeneradorTriplos:  # Construye el código intermedio a partir de las redes
             inicio_red = resultado.agregar("INICIAR_RED", bloque.direccion_ip, bloque.mascara_subred, origen=origen)  # Emite la operación que identifica la red base y su máscara.
             cursor_actual = ReferenciaTriplo(inicio_red.indice)  # Inicia el cursor de este bloque sin reutilizar el de otra red.
             hosts_ordenados = sorted(enumerate(bloque.cantidades_hosts), key=lambda elemento: elemento[1], reverse=True)  # Ordena solicitudes de mayor a menor sin perder sus índices originales.
+            
             for indice_host, cantidad_hosts in hosts_ordenados:  # Genera las operaciones por host sin perder la posición original.
                 origen_host = OrigenTriplo(linea_origen=bloque.linea_origen, indice_bloque=indice, indice_host=indice_host)  # Asocia cada operación con la solicitud HOSTS de la que procede.
                 suma = resultado.agregar("+", cantidad_hosts, 2, origen=origen_host)  # Genera la suma de hosts más dos direcciones reservadas.
@@ -30,4 +31,5 @@ class GeneradorTriplos:  # Construye el código intermedio a partir de las redes
                 asignacion = resultado.agregar("ASIGNAR_VLSM", cursor_actual, ReferenciaTriplo(solicitud.indice), origen=origen_host)  # Asocia la solicitud VLSM con el cursor de la red.
                 siguiente = resultado.agregar("SIGUIENTE_CURSOR", ReferenciaTriplo(asignacion.indice), origen=origen_host)  # Recupera el cursor después de reservar la subred.
                 cursor_actual = ReferenciaTriplo(siguiente.indice)  # Encadena la siguiente asignación con el cursor que acaba de generarse.
+        
         return resultado  # Devuelve todas las operaciones generadas para las redes procesadas.
