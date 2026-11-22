@@ -197,12 +197,12 @@ Visor educativo de transformación DSL → triplos, con referencias y comprobaci
 
 - [x] **Etapa 1 — Modelos y referencias:** `Motor/compilacion/triplos.py` con `ReferenciaTriplo`, `OrigenTriplo`, `Triplo`, `ResultadoIntermedio`; validaciones de índices, referencias anteriores, operadores, argumentos y metadatos.
 - [x] **Etapa 1 — Pruebas:** `Pruebas/motor/prueba_modelos_triplos.py` con 15 pruebas nuevas; **333 pruebas totales aprobadas** en el equipo de desarrollo. Commit local `f25bcb2`; `main` intacta.
-- [x] **Etapa 2 — Primer avance manual:** creado localmente `Compilador/generador_triplos.py`; genera `INICIAR_RED` por bloque y `+` por cada solicitud `HOSTS` en orden descendente. Comprobado manualmente con dos bloques, conservando línea, índice de bloque e índice original del host. Este archivo aún no se ha integrado al flujo principal ni queda incluido en el commit de la Etapa 1.
+- [x] **Etapa 2 — Generador parcial (pasos 1 a 4):** creado localmente `Compilador/generador_triplos.py`; genera `INICIAR_RED` por bloque y, para cada solicitud `HOSTS` ordenada de mayor a menor, `+`, `LOG2`, `CEIL`, `^` y `SOLICITUD`, con referencias a triplos anteriores. Conserva línea, índice de bloque e índice original del host. Comprobado manualmente con varios bloques y con `HOSTS 10,50`: salida esperada de 11 triplos, incluido `(5): (SOLICITUD, 50, (4))` y `(10): (SOLICITUD, 10, (9))`. El archivo sigue sin incorporarse al flujo principal y figura como *untracked* hasta un futuro commit de la rama de trabajo.
 
 ### Próximos pasos y pendientes
 
-- [ ] **Etapa 2 — Continuar el generador manualmente:** por cada solicitud generar `LOG2`, `CEIL` y `^` mediante `ReferenciaTriplo` al resultado inmediatamente anterior.
-- [ ] Generar `SOLICITUD`, `ASIGNAR_VLSM` y `SIGUIENTE_CURSOR` para cada host; encadenar el cursor entre solicitudes, y reiniciar el contexto al pasar a otro bloque.
+- [x] **Etapa 2 — Operaciones matemáticas y solicitud:** por cada solicitud generar `LOG2`, `CEIL`, `^` y `SOLICITUD` mediante `ReferenciaTriplo`, conservando los metadatos de origen; verificado manualmente.
+- [ ] **Etapa 2 — Asignación VLSM y cursor:** generar `ASIGNAR_VLSM` y `SIGUIENTE_CURSOR` para cada host; encadenar el cursor entre solicitudes, y reiniciar el contexto al pasar a otro bloque.
 - [ ] Precisar contratos semánticos de los operadores: entradas, salidas, tipos y dependencias correctas de las referencias; conservar los metadatos, la identidad de `NAME` y la posición original de cada host.
 - [ ] Añadir pruebas automatizadas del generador con uno y varios bloques, solicitudes desordenadas y repetidas, y referencias/índices válidos.
 - [ ] **Etapa 3 — Intérprete y comprobación:** evaluar cada triplo, registrar los valores resultantes por índice y construir la comprobación que aparecerá junto a cada operación; comparar direcciones, tamaños, máscaras, rangos y broadcast con `Redes/calculadora_vlsm.py`.
