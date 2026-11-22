@@ -21,6 +21,8 @@ from dataclasses import dataclass, field  # Proporciona clases de datos y fábri
 
 from Motor.compilacion.diagnosticos import Diagnostico  # Permite utilizar la misma estructura de errores y advertencias en los resultados de todas las fases.
 
+from Motor.compilacion.triplos import ResultadoIntermedio
+from Motor.compilacion.interprete_triplos import ResultadoEjecucion
 
 @dataclass(frozen=True)  # Mantiene inmutable cada token después de que el analizador léxico lo reconoce.
 class Token:  # Representa un elemento individual reconocido dentro del código fuente.
@@ -102,6 +104,9 @@ class ResultadoCompilacion:  # Representa el resultado general que posteriorment
     subredes_vlsm: list[SubredVLSM] = field(default_factory=list)  # Guarda todas las subredes producidas a partir de los bloques finalmente válidos.
     advertencias: list[Diagnostico] = field(default_factory=list)  # Conserva recomendaciones no bloqueantes que acompañan al resultado.
     diagnosticos_generales: list[Diagnostico] = field(default_factory=list)  # Conserva fallos técnicos controlados que no pertenecen a una fase formal concreta.
+    codigo_intermedio: ResultadoIntermedio | None = None
+    ejecucion_intermedia: ResultadoEjecucion | None = None
+
 
     @property  # Construye dinámicamente una única colección con todos los diagnósticos existentes.
     def diagnosticos(self) -> list[Diagnostico]:  # Devuelve errores y advertencias respetando el orden de las etapas del flujo.
