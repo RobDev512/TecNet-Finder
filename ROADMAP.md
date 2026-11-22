@@ -4,8 +4,8 @@
 
 **Versión pública en GitHub:** v1.2.2
 **Última versión cerrada y publicada:** v1.2.2 — Stability & Polish
-**Estado general:** v1.2.2 cerrada, validada y publicada en GitHub Releases; v1.3.0 es la siguiente etapa.
-**Siguiente etapa planificada:** v1.3.0 — Intermediate Code Update
+**Estado general:** v1.2.2 cerrada, validada y publicada en GitHub Releases; v1.3.0 en desarrollo local.
+**Etapa activa:** v1.3.0 — Intermediate Code Update (Unidad 2; representación mediante triplos)
 
 > Cada versión debe cubrir una necesidad académica concreta y, además,
 > incorporar una mejora visible del producto.
@@ -172,23 +172,49 @@ Centro de estabilidad y mantenimiento.
 
 ## v1.3.0 — Intermediate Code Update
 
-**Estado:** Siguiente
+**Estado:** En desarrollo local — Unidad 2 (no publicada).
+**Rama de trabajo:** `feature/v1.3.0-triplos`. No desarrollar directamente en `main`.
+**Base estable:** v1.2.2; último commit de la Etapa 1: `f25bcb2` (local).
 
-Unidad 2: generación de código intermedio, tripletas, cuádruplos y Código P
-adaptados al DSL de redes.
+Implementar **triplos** como única representación principal de código intermedio para el DSL de redes IPv4 y planificación VLSM. No añadir cuádruplos, Código P, NPI ni estructuras `if`/`while`/`for` artificiales al DSL principal.
 
 ### Función estrella
 
-Visor de transformación DSL → representación intermedia.
+Visor educativo de transformación DSL → triplos, con referencias y comprobación de resultados paso a paso.
 
-### Objetivos
+### Convenciones y diseño acordados
 
-- Código normalizado.
-- Tripletas.
-- Cuádruplos.
-- Código P.
-- Copiar y exportar resultados.
-- Resaltado de la instrucción fuente asociada a cada operación intermedia.
+- Forma académica: `(n): (operador, argumento1, argumento2)`, con numeración consecutiva y referencias `(0)`, `(1)`, etc.
+- Las referencias se representan internamente mediante `ReferenciaTriplo`, no como texto; los metadatos `OrigenTriplo` conservan línea, índice de bloque e índice de host original.
+- Las solicitudes `HOSTS` se procesan de mayor a menor, sin perder su posición original; `NAME` debe preservarse al integrar la representación con las salidas.
+- Operadores matemáticos actuales: `+`, `LOG2`, `CEIL`, `^` (la potencia se interpreta con `**` en Python). La secuencia documentada para el tamaño de bloque es `hosts + 2` → `LOG2` → `CEIL` → `2 ^ exponente`; comprobar equivalencia y precisión respecto a la calculadora actual.
+- Operadores de red previstos: `INICIAR_RED`, `SOLICITUD`, `ASIGNAR_VLSM`, `SIGUIENTE_CURSOR`. Sus resultados deberán definirse e interpretarse explícitamente, sin efectos ocultos ni referencias ambiguas.
+- El visor futuro usará un formato compacto de **tres columnas**: `(n) | (Op, Arg1, Arg2) | Pila o comprobación`; la tercera columna mostrará principalmente la comprobación de cada operación y los valores de las referencias. Mostrar una pila solo si existe una pila real en la implementación: los triplos por sí solos no la requieren.
+- Presentar cálculos matemáticos con notación visual tipo LaTeX (por ejemplo, `log₂`, `⌈x⌉`, `2⁶`) al integrar PySide6; **no** almacenar LaTeX dentro de los modelos.
+- Mantener la tabla de triplos y las comprobaciones como vistas de la misma información, sin confundir el árbol sintáctico con el código intermedio.
+
+### Estado comprobado al 21 de noviembre de 2026
+
+- [x] **Etapa 1 — Modelos y referencias:** `Motor/compilacion/triplos.py` con `ReferenciaTriplo`, `OrigenTriplo`, `Triplo`, `ResultadoIntermedio`; validaciones de índices, referencias anteriores, operadores, argumentos y metadatos.
+- [x] **Etapa 1 — Pruebas:** `Pruebas/motor/prueba_modelos_triplos.py` con 15 pruebas nuevas; **333 pruebas totales aprobadas** en el equipo de desarrollo. Commit local `f25bcb2`; `main` intacta.
+- [x] **Etapa 2 — Primer avance manual:** creado localmente `Compilador/generador_triplos.py`; genera `INICIAR_RED` por bloque y `+` por cada solicitud `HOSTS` en orden descendente. Comprobado manualmente con dos bloques, conservando línea, índice de bloque e índice original del host. Este archivo aún no se ha integrado al flujo principal ni queda incluido en el commit de la Etapa 1.
+
+### Próximos pasos y pendientes
+
+- [ ] **Etapa 2 — Continuar el generador manualmente:** por cada solicitud generar `LOG2`, `CEIL` y `^` mediante `ReferenciaTriplo` al resultado inmediatamente anterior.
+- [ ] Generar `SOLICITUD`, `ASIGNAR_VLSM` y `SIGUIENTE_CURSOR` para cada host; encadenar el cursor entre solicitudes, y reiniciar el contexto al pasar a otro bloque.
+- [ ] Precisar contratos semánticos de los operadores: entradas, salidas, tipos y dependencias correctas de las referencias; conservar los metadatos, la identidad de `NAME` y la posición original de cada host.
+- [ ] Añadir pruebas automatizadas del generador con uno y varios bloques, solicitudes desordenadas y repetidas, y referencias/índices válidos.
+- [ ] **Etapa 3 — Intérprete y comprobación:** evaluar cada triplo, registrar los valores resultantes por índice y construir la comprobación que aparecerá junto a cada operación; comparar direcciones, tamaños, máscaras, rangos y broadcast con `Redes/calculadora_vlsm.py`.
+- [ ] Validar casos límite de precisión matemática, especialmente `LOG2` y tamaños potencia de dos, sin modificar todavía la calculadora VLSM estable.
+- [ ] **Etapa 4 — Integración:** incorporar la generación y sus resultados a `FlujoCompilacion`/`ResultadoCompilacion` usando únicamente `resultado_semantico.bloques_validos`; mantener diagnósticos, advertencias, recuperación parcial y errores técnicos.
+- [ ] **Etapa 5 — Interfaz:** reutilizar la pestaña reservada para «Código intermedio», implementar el visor compacto con comprobaciones, localización del origen, traducciones a los seis idiomas y representación matemática, respetando temas y tipografías.
+- [ ] Copiar/exportar triplos y comprobaciones, si la integración mantiene la funcionalidad prevista.
+- [ ] **Etapa 6 — Cierre:** ejecutar pruebas completas de regresión y las nuevas pruebas del generador/intérprete; actualizar documentación académica, README, roadmap y empaquetado solamente cuando corresponda. No anunciar ni publicar v1.3.0 antes de validarla.
+
+### Regla de desarrollo
+
+Implementar el **generador paso a paso y de forma manual** para comprenderlo. Para la futura integración de interfaz y cambios extensos, se podrán utilizar ZIP con archivos completos y rutas relativas. Cada paso debe probarse antes de declararlo terminado.
 
 ---
 
