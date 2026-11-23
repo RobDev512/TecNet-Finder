@@ -256,6 +256,15 @@ Laboratorio independiente de expresiones.
 - Generación de ejercicios.
 - Copia rápida de resultados.
 
+### Actualizaciones desde GitHub
+
+- Comprobar automáticamente, al iniciar la aplicación y cuando haya conexión a internet, si existe una versión estable más reciente en GitHub Releases.
+- Comparar la versión instalada con la última versión estable publicada, sin ofrecer versiones preliminares como si fueran estables.
+- Mostrar una notificación clara: «Hay una actualización disponible de TecNet Finder (vX.Y.Z). ¿Deseas actualizar ahora?», con opciones para actualizar o hacerlo después.
+- Agregar al Centro de mantenimiento una opción para buscar actualizaciones manualmente y consultar las novedades de la versión disponible.
+- Si el usuario acepta, descargar el instalador oficial, comprobar su integridad y preparar una actualización segura sin perder la configuración ni los archivos del usuario.
+- Evitar instalar o reiniciar la aplicación sin confirmación; si no hay internet o falla la descarga, permitir seguir trabajando y ofrecer la descarga manual.
+
 ---
 
 ## v1.4.0 — Optimizer Update
