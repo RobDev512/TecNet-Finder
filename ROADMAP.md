@@ -4,8 +4,8 @@
 
 **Versión pública en GitHub:** v1.2.2
 **Última versión cerrada y publicada:** v1.2.2 — Stability & Polish
-**Estado general:** v1.2.2 publicada; v1.3.0 implementada en su rama y pendiente de validar el empaquetado final.
-**Etapa activa:** v1.3.0 — Intermediate Code Update (Unidad 2; pruebas de release y documentación final)
+**Estado general:** v1.2.2 publicada; v1.3.0 con EXE e instalador preliminares probados, pendiente de reconstrucción final y publicación.
+**Etapa activa:** v1.3.0 — Intermediate Code Update (Unidad 2; candidata estable, empaquetado final y publicación pendientes)
 
 > Cada versión debe cubrir una necesidad académica concreta y, además,
 > incorporar una mejora visible del producto.
@@ -172,11 +172,11 @@ Centro de estabilidad y mantenimiento.
 
 ## v1.3.0 — Intermediate Code Update
 
-**Estado:** Implementación funcional comprobada en Windows; preparación de EXE, instalador y publicación pendiente.
+**Estado:** Implementación y prueba del instalador preliminar completadas en Windows; metadatos estables y artefactos de publicación en preparación.
 **Rama de trabajo:** `feature/v1.3.0-triplos` (publicada y sincronizada con GitHub).
 **Base pública estable:** v1.2.2 — Stability & Polish.
-**Commit de la interfaz verificado:** `14c73a3` (22 de noviembre de 2026).
-**Pruebas automatizadas:** 372 aprobadas en Windows (22 de noviembre de 2026).
+**Último commit de código validado:** `5e43384` (22 de noviembre de 2026).
+**Pruebas automatizadas:** 399 aprobadas en Windows antes de actualizar los metadatos de la candidata (22 de noviembre de 2026).
 
 ### Función estrella
 
@@ -191,8 +191,8 @@ Visor educativo de **código intermedio mediante triplos** con referencias a res
 - [x] **Errores controlados:** los fallos técnicos de generación o ejecución se transforman en diagnóstico `GEN-002` sin sustituir los resultados anteriores de VLSM.
 - [x] **Visor de PySide6:** `Interfaz/resultados/visor_triplos.py`, integrado en `Interfaz/resultados/panel_resultados.py` dentro de «Fases posteriores → Código intermedio». Tres columnas: `(n)`, `(Op, Arg1, Arg2)` y «Comprobación», con representación matemática de `log₂`, potencias y redondeos.
 - [x] **Experiencia de usuario:** botón de copiar con icono, ayudas de origen por línea/bloque/host, vaciado al modificar el código y adaptación a temas y seis idiomas.
-- [x] **Mantenimiento y versiones:** traducciones `mantenimiento.*` y `acerca.*` añadidas a los seis catálogos; `version_aplicacion.py` muestra **v1.3.0 en desarrollo** y mantiene **v1.2.2 como última versión estable publicada**.
-- [x] **Pruebas:** modelos, generación, ejecución, equivalencia VLSM, integración con recuperación parcial, visor y traducciones. Suite completa: **372 passed** en Windows.
+- [x] **Mantenimiento y versiones:** seis catálogos adaptados para mostrar la candidata **v1.3.0** como versión actual. La última release **pública** sigue siendo **v1.2.2** hasta publicar el instalador final.
+- [x] **Pruebas:** modelos, generación, ejecución, equivalencia VLSM, integración con recuperación parcial, visor, selectores y traducciones. Suite completa previa al cambio de metadatos: **399 passed** en Windows.
 - [x] **Control de versiones:** trabajo publicado en la rama `feature/v1.3.0-triplos`; el código estable en `main` no se ha reemplazado ni fusionado.
 
 ### Ejemplo comprobado
@@ -219,13 +219,13 @@ IP 192.168.2.0 MASK /24 HOSTS 100,50 NAME Oficina
 ### Validación pendiente antes del cierre y publicación
 
 - [x] Probar la generación, interpretación y visualización de triplos desde la aplicación en Windows.
-- [x] Confirmar 372 pruebas automatizadas y ausencia de fallos de regresión en esa ejecución.
+- [x] Confirmar 399 pruebas automatizadas y ausencia de fallos de regresión antes de modificar los metadatos finales.
 - [x] Corregir traducciones del Centro de mantenimiento y verificar visualmente su presentación.
-- [x] Preparar `Empaquetado/TecNetFinder.iss` y `Empaquetado/version_info.txt` para la candidata **v1.3.0**; el `.spec` se conserva porque ya funciona. Pendiente de recompilar y comprobar el instalador.
+- [x] Preparar `Empaquetado/TecNetFinder.iss` y `Empaquetado/version_info.txt` para **v1.3.0**; el `.spec` ya funciona y no requiere modificaciones.
 - [ ] Reconstruir EXE con PyInstaller después de cambiar los metadatos de versión y probar la aplicación empaquetada.
-- [ ] Compilar instalador con Inno Setup, comprobar instalación y apertura, y revisar la coexistencia/sustitución con la versión estable.
-- [ ] Obtener suma SHA-256 del instalador y generar los artefactos de distribución necesarios.
-- [ ] Tras la validación, finalizar versión y documentación, actualizar `site/project-config.json` y enlaces públicos únicamente cuando la release exista.
+- [x] Compilar el instalador preliminar con Inno Setup, comprobar su instalación y apertura y validar que reemplaza correctamente la instalación existente.
+- [x] Obtener la suma SHA-256 del **instalador preliminar**; se calculará un hash nuevo después del empaquetado final con metadatos estables.
+- [ ] Confirmar la suite después de modificar los metadatos estables y compilar nuevamente el EXE y el instalador finales; actualizar enlaces públicos únicamente cuando la release exista.
 - [ ] Evaluar la integración de la rama a `main` y publicar el tag/release v1.3.0 **solo después** de concluir las validaciones.
 - [ ] Elaborar un **PDF breve para los compañeros de Lenguajes y Autómatas II** centrado en qué archivos se crearon y modificaron, qué código se implementó, cómo se conectó y cómo probarlo; omitir explicaciones introductorias de compiladores o triplos.
 

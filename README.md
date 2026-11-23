@@ -2,9 +2,9 @@
 
 **TecNet Finder** es una aplicación de escritorio en Python y PySide6 que utiliza un lenguaje específico de dominio (DSL) para analizar instrucciones de redes IPv4 y calcular subredes mediante VLSM.
 
-La **v1.3.0 — Código intermedio y triplos** corresponde a la Unidad 2 de Lenguajes y Autómatas II. La implementación ya está integrada y probada en la rama [`feature/v1.3.0-triplos`](https://github.com/RobDev512/TecNet-Finder/tree/feature/v1.3.0-triplos), pero **todavía está pendiente validar su EXE e instalador definitivos y publicar la release**.
+La **v1.3.0 — Código intermedio y triplos** corresponde a la Unidad 2 de Lenguajes y Autómatas II. La rama [`feature/v1.3.0-triplos`](https://github.com/RobDev512/TecNet-Finder/tree/feature/v1.3.0-triplos) ya superó las pruebas y la instalación de una compilación candidata. Se prepara un último empaquetado con metadatos estables; **la release pública todavía no se ha publicado**.
 
-**Última versión pública estable:** [v1.2.2 — Stability & Polish](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2), cerrada en Windows con 318 pruebas. La v1.3.0 conserva las fases léxica, sintáctica y semántica y añade la generación y ejecución de triplos. Al 22 de noviembre de 2026, la suite completa de desarrollo alcanzó **372 pruebas aprobadas en Windows**.
+**Última release pública disponible:** [v1.2.2 — Stability & Polish](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2), cerrada en Windows con 318 pruebas. La candidata **v1.3.0** conserva las fases léxica, sintáctica y semántica y añade la generación y ejecución de triplos. Antes de ajustar los metadatos de publicación, alcanzó **399 pruebas aprobadas en Windows**.
 
 ## Lenguaje fuente
 
@@ -47,7 +47,7 @@ La representación intermedia **no es un programa ensamblador ni una pila**: sus
 ## Funcionalidad actual
 
 - Validación de instrucciones, diagnósticos léxicos, sintácticos y semánticos, advertencias y recuperación parcial.
-- Planificación VLSM, visualización de resultados y exportación; visor de triplos con comprobaciones matemáticas en la rama de desarrollo.
+- Planificación VLSM, visualización de resultados y exportación; visor de triplos con comprobaciones matemáticas en la candidata v1.3.0.
 - Visor de árbol sintáctico y exportación PNG HD, SVG y PDF.
 - Interfaz traducida a español, inglés, portugués, francés, alemán y latín; diez temas claros y oscuros.
 - Configuración de fuentes, tamaño, ventana, editor, navegación y asistencia de IA.
@@ -94,7 +94,7 @@ python -m PyInstaller --noconfirm --clean --workpath "$env:TEMP\TecNetFinder-Bui
 
 En ciertas instalaciones de Python desde Microsoft Store, esa ruta se redirige a `AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\Local\TecNetFinder-Pruebas\dist`. Comprueba la ubicación real antes de copiar **la carpeta `TecNetFinder` completa** a `dist` en el proyecto; no borres carpetas bloqueadas ni sobrescribas una compilación en ejecución.
 
-Cuando el EXE esté validado y se encuentre en `dist\TecNetFinder`, compila `Empaquetado/TecNetFinder.iss` con Inno Setup 6 o 7. El `.iss` y `version_info.txt` están preparados para **1.3.0**, pero esto no implica que la versión ya esté publicada. El instalador utiliza el mismo `AppId` que la versión 1.2.2: una instalación de prueba puede reemplazar la instalación estable del mismo usuario. Prueba primero el EXE y haz copia de tus datos necesarios.
+El EXE y el instalador preliminares de **1.3.0** ya fueron generados, abiertos y comprobados en Windows. Los metadatos de esta candidata se actualizan antes de **reconstruir ambos artefactos de publicación**. El archivo `.iss` utiliza el mismo `AppId` que la versión 1.2.2: instalar la nueva versión puede reemplazar la instalación anterior. El empaquetado local no significa que exista aún una release pública.
 
 Antes de distribuir la v1.3.0, verifica instalación, apertura, cálculo de triplos, desinstalación si corresponde y suma SHA-256 del instalador; únicamente después genera la release pública y actualiza los enlaces de descarga.
 

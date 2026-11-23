@@ -42,10 +42,15 @@ def prueba_catalogos_mantenimiento_completos():
         assert "{cantidad}" in catalogo["mantenimiento.registros.eventos"]  # Mantiene el contador de registros.
         assert "{error}" in catalogo["mantenimiento.registros.error_lectura"]  # Mantiene la descripción de errores.
         assert "pila" not in catalogo["resultados.triplos.comprobacion"].lower() if idioma == "es" else True  # Utiliza el nuevo encabezado.
+        assert catalogo["mantenimiento.version.titulo"].strip()  # Identifica la versión sin una etiqueta de desarrollo.
+        assert catalogo["mantenimiento.actualizacion.descripcion"].strip()  # Explica las funciones ya incluidas en la candidata.
+        assert "desarrollo" not in catalogo["mantenimiento.version.titulo"].lower() if idioma == "es" else True  # Evita rotular el lanzamiento como desarrollo.
+        assert "desarrollo" not in catalogo["mantenimiento.actualizacion.descripcion"].lower() if idioma == "es" else True  # No anuncia funciones todavía en construcción.
 
 
-def prueba_version_en_desarrollo_separada_de_la_estable():
-    from Motor.configuracion.version_aplicacion import VERSION_DESARROLLO, VERSION_ESTABLE, VERSION_VISIBLE  # Consulta la identificación central.
-    assert VERSION_ESTABLE == "1.2.2"  # Conserva intacta la versión pública mientras no se libere v1.3.0.
-    assert VERSION_DESARROLLO == "1.3.0"  # Identifica correctamente la fase de triplos en pruebas.
-    assert VERSION_VISIBLE == "v1.3.0"  # Utiliza la versión de desarrollo en la ventana de mantenimiento.
+def prueba_version_de_publicacion_corresponde_a_v130():
+    from Motor.configuracion.version_aplicacion import VERSION_ACTUAL, VERSION_DESARROLLO, VERSION_ESTABLE, VERSION_VISIBLE  # Consulta la única fuente de versión.
+    assert VERSION_ESTABLE == "1.3.0"  # Identifica la candidata estable una vez validado el instalador de prueba.
+    assert VERSION_DESARROLLO == VERSION_ESTABLE  # Mantiene la constante compatible hasta iniciar la siguiente versión.
+    assert VERSION_ACTUAL == VERSION_ESTABLE  # Evita presentar una compilación de desarrollo en la release final.
+    assert VERSION_VISIBLE == "v1.3.0"  # Muestra la identificación esperada en la interfaz.
