@@ -88,7 +88,7 @@
       <div class="tnf-showcase-intro">
         <span class="section-kicker">Vista previa de escritorio</span>
         <h2>Explora TecNet Finder</h2>
-        <p>Conoce el editor, los resultados y la configuración de la v1.2.2. Luego prueba una demostración de cálculo VLSM sin instalar nada.</p>
+        <p>Conoce la interfaz de TecNet Finder v1.3.0 y prueba una demostración educativa de VLSM en el navegador, sin instalar la aplicación de escritorio.</p>
       </div>
       <div class="tnf-showcase-grid">
         <article class="tnf-showcase-card">

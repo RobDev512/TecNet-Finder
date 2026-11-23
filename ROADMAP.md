@@ -2,10 +2,10 @@
 
 ## Estado actual
 
-**Versión pública en GitHub:** v1.2.2
-**Última versión cerrada y publicada:** v1.2.2 — Stability & Polish
-**Estado general:** v1.2.2 publicada; v1.3.0 con EXE e instalador preliminares probados, pendiente de reconstrucción final y publicación.
-**Etapa activa:** v1.3.0 — Intermediate Code Update (Unidad 2; candidata estable, empaquetado final y publicación pendientes)
+**Versión pública en GitHub:** [v1.3.0](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0)
+**Última versión cerrada y publicada:** v1.3.0 — Código intermedio y triplos
+**Estado general:** v1.3.0 publicada e instalada en Windows; 399 pruebas automatizadas aprobadas y SHA-256 del instalador verificado.
+**Siguiente etapa planificada:** v1.3.1 — Language Lab (pendiente; v1.4.0 optimización y v2.0.0 código objeto continúan en el roadmap).
 
 > Cada versión debe cubrir una necesidad académica concreta y, además,
 > incorporar una mejora visible del producto.
@@ -172,11 +172,13 @@ Centro de estabilidad y mantenimiento.
 
 ## v1.3.0 — Intermediate Code Update
 
-**Estado:** Implementación y prueba del instalador preliminar completadas en Windows; metadatos estables y artefactos de publicación en preparación.
-**Rama de trabajo:** `feature/v1.3.0-triplos` (publicada y sincronizada con GitHub).
-**Base pública estable:** v1.2.2 — Stability & Polish.
-**Último commit de código validado:** `5e43384` (22 de noviembre de 2026).
-**Pruebas automatizadas:** 399 aprobadas en Windows antes de actualizar los metadatos de la candidata (22 de noviembre de 2026).
+**Estado:** Publicada como release estable el 22 de noviembre de 2026 (hora de Nayarit), con instalador de Windows validado.
+**Rama estable:** `main` (integración *fast-forward* de `feature/v1.3.0-triplos`).
+**Versión anterior:** v1.2.2 — Stability & Polish.
+**Commit y tag de publicación:** [`885a2a3`](https://github.com/RobDev512/TecNet-Finder/commit/885a2a3) · [`v1.3.0`](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0).
+**Pruebas automatizadas:** **399 aprobadas** en Windows después de actualizar los metadatos de versión.
+**Instalador publicado:** [TecNet.Finder.1.3.0.Setup.exe](https://github.com/RobDev512/TecNet-Finder/releases/download/v1.3.0/TecNet.Finder.1.3.0.Setup.exe) (56 015 714 bytes).
+**SHA-256:** `ACC3BC65599A95DC0FFB2EAF107B07F15612A5C13EC152C3E77EA9B27CDE0424`.
 
 ### Función estrella
 
@@ -191,9 +193,9 @@ Visor educativo de **código intermedio mediante triplos** con referencias a res
 - [x] **Errores controlados:** los fallos técnicos de generación o ejecución se transforman en diagnóstico `GEN-002` sin sustituir los resultados anteriores de VLSM.
 - [x] **Visor de PySide6:** `Interfaz/resultados/visor_triplos.py`, integrado en `Interfaz/resultados/panel_resultados.py` dentro de «Fases posteriores → Código intermedio». Tres columnas: `(n)`, `(Op, Arg1, Arg2)` y «Comprobación», con representación matemática de `log₂`, potencias y redondeos.
 - [x] **Experiencia de usuario:** botón de copiar con icono, ayudas de origen por línea/bloque/host, vaciado al modificar el código y adaptación a temas y seis idiomas.
-- [x] **Mantenimiento y versiones:** seis catálogos adaptados para mostrar la candidata **v1.3.0** como versión actual. La última release **pública** sigue siendo **v1.2.2** hasta publicar el instalador final.
-- [x] **Pruebas:** modelos, generación, ejecución, equivalencia VLSM, integración con recuperación parcial, visor, selectores y traducciones. Suite completa previa al cambio de metadatos: **399 passed** en Windows.
-- [x] **Control de versiones:** trabajo publicado en la rama `feature/v1.3.0-triplos`; el código estable en `main` no se ha reemplazado ni fusionado.
+- [x] **Mantenimiento y versiones:** los seis catálogos muestran **v1.3.0** como versión actual y estable, con las novedades de código intermedio y triplos.
+- [x] **Pruebas:** modelos, generación, ejecución, equivalencia VLSM, recuperación parcial, visor, selectores y traducciones. Suite completa final: **399 passed** en Windows.
+- [x] **Control de versiones:** los 11 commits de `feature/v1.3.0-triplos` se integraron en `main` mediante *fast-forward*, y se publicó el tag `v1.3.0`.
 
 ### Ejemplo comprobado
 
@@ -216,18 +218,19 @@ IP 192.168.2.0 MASK /24 HOSTS 100,50 NAME Oficina
 - No se añadieron cuádruplos, Código P, NPI ni instrucciones artificiales `if`/`while`/`for` al DSL principal.
 - La optimización de código y la generación de código objeto **no forman parte de v1.3.0**.
 
-### Validación pendiente antes del cierre y publicación
+### Validación y publicación de v1.3.0
 
 - [x] Probar la generación, interpretación y visualización de triplos desde la aplicación en Windows.
-- [x] Confirmar 399 pruebas automatizadas y ausencia de fallos de regresión antes de modificar los metadatos finales.
+- [x] Confirmar 399 pruebas automatizadas y ausencia de regresiones después de modificar los metadatos finales.
 - [x] Corregir traducciones del Centro de mantenimiento y verificar visualmente su presentación.
 - [x] Preparar `Empaquetado/TecNetFinder.iss` y `Empaquetado/version_info.txt` para **v1.3.0**; el `.spec` ya funciona y no requiere modificaciones.
-- [ ] Reconstruir EXE con PyInstaller después de cambiar los metadatos de versión y probar la aplicación empaquetada.
-- [x] Compilar el instalador preliminar con Inno Setup, comprobar su instalación y apertura y validar que reemplaza correctamente la instalación existente.
-- [x] Obtener la suma SHA-256 del **instalador preliminar**; se calculará un hash nuevo después del empaquetado final con metadatos estables.
-- [ ] Confirmar la suite después de modificar los metadatos estables y compilar nuevamente el EXE y el instalador finales; actualizar enlaces públicos únicamente cuando la release exista.
-- [ ] Evaluar la integración de la rama a `main` y publicar el tag/release v1.3.0 **solo después** de concluir las validaciones.
+- [x] Reconstruir el EXE con PyInstaller después de cambiar los metadatos de versión y probar la aplicación empaquetada.
+- [x] Compilar el instalador definitivo con Inno Setup 7, comprobar su instalación y apertura y validar la actualización de la instalación existente.
+- [x] Verificar el SHA-256 del **instalador definitivo**: `ACC3BC65599A95DC0FFB2EAF107B07F15612A5C13EC152C3E77EA9B27CDE0424`.
+- [x] Confirmar la suite después de modificar los metadatos estables y recompilar EXE e instalador; comprobar que el archivo publicado coincide con su hash.
+- [x] Integrar la rama a `main` y publicar el tag y [release oficial v1.3.0](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0) después de concluir las validaciones.
 - [ ] Elaborar un **PDF breve para los compañeros de Lenguajes y Autómatas II** centrado en qué archivos se crearon y modificaron, qué código se implementó, cómo se conectó y cómo probarlo; omitir explicaciones introductorias de compiladores o triplos.
+- [ ] Sincronizar el repositorio separado del Hub de proyectos, si se utiliza; la página `site/` de TecNet Finder se mantiene en este repositorio.
 
 ### Regla de trabajo para esta fase
 
@@ -387,7 +390,7 @@ Nueva sintaxis orientada a redes y subredes.
 
 ## Prioridades
 
-- Mantener la v1.2.2 cerrada; nuevas funciones pertenecen a versiones posteriores.
+- Mantener v1.3.0 como versión estable publicada; las funciones de optimización y código objeto pertenecen a versiones posteriores.
 - Mantener enlazada la descarga publicada en GitHub Releases y sus verificaciones.
 - Desde v1.3.0, cada versión debe tener una función estrella visible.
 - Mantener separadas las herramientas educativas del DSL principal.

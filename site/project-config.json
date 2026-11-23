@@ -22,11 +22,11 @@
           "TecNet",
           "Finder"
         ],
-        "description": "DSL orientado al análisis y planificación de redes mediante VLSM, con lexer, parser, análisis semántico, diagnósticos y una interfaz gráfica construida con PySide6.",
+        "description": "DSL para analizar y planificar redes IPv4 mediante VLSM, con análisis léxico, sintáctico y semántico, generación de código intermedio con triplos y una interfaz PySide6.",
         "actions": [
           {
-            "label": "Descargar 1.2.2",
-            "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.2.2/TecNet.Finder.1.2.2.Setup.exe",
+            "label": "Descargar 1.3.0",
+            "url": "https://github.com/RobDev512/TecNet-Finder/releases/download/v1.3.0/TecNet.Finder.1.3.0.Setup.exe",
             "style": "primary",
             "external": true
           },
@@ -39,8 +39,8 @@
         ],
         "meta": [
           {
-            "strong": "v1.2.2",
-            "small": "Stability & Polish"
+            "strong": "v1.3.0",
+            "small": "Código intermedio y triplos"
           },
           {
             "strong": "DSL de redes",
@@ -66,26 +66,26 @@
           "text": "Validación de significado, diagnósticos y advertencias integradas."
         },
         {
-          "title": "VLSM",
-          "text": "Planificación de subredes, resultados visuales, exportación y herramientas de apoyo."
+          "title": "VLSM y triplos",
+          "text": "Planificación de subredes, exportación de resultados y generación, ejecución y comprobación de código intermedio mediante triplos."
         }
       ],
       "release": {
         "kicker": "Release actual",
-        "version": "v1.2.2",
-        "summary": "v1.2.2 consolida la estabilidad del compilador y mejora mantenimiento, preferencias y edición sin introducir todavía generación de código intermedio.",
+        "version": "v1.3.0",
+        "summary": "v1.3.0 incorpora la generación, interpretación y comprobación de triplos para instrucciones VLSM, conservando las fases anteriores del compilador y mejorando la visualización de resultados.",
         "status": "Publicada",
-        "title": "Stability & Polish",
+        "title": "Código intermedio y triplos",
         "items": [
-          "Logs rotativos y Centro de estabilidad y mantenimiento.",
-          "Restaurar, exportar e importar preferencias con respaldos.",
-          "Reporte local de errores inesperados.",
-          "Menú contextual traducido y completador local de palabras reservadas.",
-          "Correcciones visuales y funcionamiento conservado en seis idiomas y diez temas."
+          "Generación de código intermedio mediante triplos para redes IPv4 y solicitudes HOSTS.",
+          "Intérprete de triplos con comprobaciones matemáticas y asignaciones VLSM.",
+          "Visor agrupado por red, filtros por instrucción y referencias al código fuente.",
+          "Selectores unificados y mejoras del Centro de mantenimiento.",
+          "Seis idiomas y validación de 399 pruebas automatizadas en Windows."
         ],
         "link": {
-          "label": "Explorar historial en GitHub →",
-          "url": "https://github.com/RobDev512/TecNet-Finder",
+          "label": "Ver v1.3.0 en GitHub →",
+          "url": "https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0",
           "external": true
         }
       },
@@ -96,8 +96,8 @@
       },
       "nextRelease": {
         "kicker": "Siguiente etapa",
-        "title": "v1.3.0 · Intermediate Code Update",
-        "text": "Unidad 2: generación de código intermedio, tripletas, cuádruplos y Código P adaptados al DSL de redes."
+        "title": "v1.3.1 · Language Lab",
+        "text": "Laboratorio independiente de expresiones: conversión infija, prefija y postfija, árbol de expresión y ejercicios; sin alterar el DSL de redes."
       },
       "footer": {
         "left": "TecNet Finder · Proyecto personal en evolución",

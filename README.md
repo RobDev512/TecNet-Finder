@@ -2,9 +2,9 @@
 
 **TecNet Finder** es una aplicación de escritorio en Python y PySide6 que utiliza un lenguaje específico de dominio (DSL) para analizar instrucciones de redes IPv4 y calcular subredes mediante VLSM.
 
-La **v1.3.0 — Código intermedio y triplos** corresponde a la Unidad 2 de Lenguajes y Autómatas II. La rama [`feature/v1.3.0-triplos`](https://github.com/RobDev512/TecNet-Finder/tree/feature/v1.3.0-triplos) ya superó las pruebas y la instalación de una compilación candidata. Se prepara un último empaquetado con metadatos estables; **la release pública todavía no se ha publicado**.
+La **[v1.3.0 — Código intermedio y triplos](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0)** corresponde a la Unidad 2 de Lenguajes y Autómatas II. Ya se integró en `main`, se publicó con el tag `v1.3.0` y cuenta con un instalador de Windows verificado. La rama `feature/v1.3.0-triplos` conserva el historial de desarrollo.
 
-**Última release pública disponible:** [v1.2.2 — Stability & Polish](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2), cerrada en Windows con 318 pruebas. La candidata **v1.3.0** conserva las fases léxica, sintáctica y semántica y añade la generación y ejecución de triplos. Antes de ajustar los metadatos de publicación, alcanzó **399 pruebas aprobadas en Windows**.
+**Última release estable:** [v1.3.0 — Código intermedio y triplos](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0), publicada el 22 de noviembre de 2026 (hora de Nayarit) y validada con **399 pruebas automatizadas aprobadas en Windows**. Conserva las fases léxica, sintáctica y semántica y añade la generación, ejecución y visualización de triplos. La versión anterior, [v1.2.2 — Stability & Polish](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2), permanece disponible en el historial de releases.
 
 ## Lenguaje fuente
 
@@ -19,7 +19,7 @@ IP 192.168.1.0 MASK /24 HOSTS 50,30,10 NAME Oficina
 - [x] Análisis léxico.
 - [x] Análisis sintáctico.
 - [x] Análisis semántico.
-- [x] Generación de código intermedio mediante triplos (implementada en la rama v1.3.0; publicación pendiente).
+- [x] Generación, interpretación y visualización de código intermedio mediante triplos (publicada en v1.3.0).
 - [ ] Optimización de código.
 - [ ] Generación de código objeto.
 
@@ -47,7 +47,7 @@ La representación intermedia **no es un programa ensamblador ni una pila**: sus
 ## Funcionalidad actual
 
 - Validación de instrucciones, diagnósticos léxicos, sintácticos y semánticos, advertencias y recuperación parcial.
-- Planificación VLSM, visualización de resultados y exportación; visor de triplos con comprobaciones matemáticas en la candidata v1.3.0.
+- Planificación VLSM, visualización de resultados y exportación; visor de triplos con comprobaciones matemáticas incluido en v1.3.0.
 - Visor de árbol sintáctico y exportación PNG HD, SVG y PDF.
 - Interfaz traducida a español, inglés, portugués, francés, alemán y latín; diez temas claros y oscuros.
 - Configuración de fuentes, tamaño, ventana, editor, navegación y asistencia de IA.
@@ -94,13 +94,13 @@ python -m PyInstaller --noconfirm --clean --workpath "$env:TEMP\TecNetFinder-Bui
 
 En ciertas instalaciones de Python desde Microsoft Store, esa ruta se redirige a `AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\Local\TecNetFinder-Pruebas\dist`. Comprueba la ubicación real antes de copiar **la carpeta `TecNetFinder` completa** a `dist` en el proyecto; no borres carpetas bloqueadas ni sobrescribas una compilación en ejecución.
 
-El EXE y el instalador preliminares de **1.3.0** ya fueron generados, abiertos y comprobados en Windows. Los metadatos de esta candidata se actualizan antes de **reconstruir ambos artefactos de publicación**. El archivo `.iss` utiliza el mismo `AppId` que la versión 1.2.2: instalar la nueva versión puede reemplazar la instalación anterior. El empaquetado local no significa que exista aún una release pública.
+La **v1.3.0** se compiló con PyInstaller y se empaquetó mediante Inno Setup 7; su instalador definitivo fue probado en Windows y está disponible en [GitHub Releases](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0). El archivo `.iss` conserva el mismo `AppId` que la versión 1.2.2: la instalación de v1.3.0 puede actualizar la instalación anterior del mismo usuario.
 
-Antes de distribuir la v1.3.0, verifica instalación, apertura, cálculo de triplos, desinstalación si corresponde y suma SHA-256 del instalador; únicamente después genera la release pública y actualiza los enlaces de descarga.
+**Instalador oficial:** [TecNet.Finder.1.3.0.Setup.exe](https://github.com/RobDev512/TecNet-Finder/releases/download/v1.3.0/TecNet.Finder.1.3.0.Setup.exe) (Windows). **SHA-256:** `ACC3BC65599A95DC0FFB2EAF107B07F15612A5C13EC152C3E77EA9B27CDE0424`. Se verificaron instalación, apertura y cálculos de triplos; no se afirma haber probado exhaustivamente la desinstalación.
 
 **Importante:** el ejecutable `TecNetFinder.exe` depende de los archivos de la carpeta `TecNetFinder/_internal`. Para distribuirlo, conserva toda la carpeta o utiliza el instalador; no copies únicamente el EXE.
 
-Antes de publicar una versión, comprueba manualmente el EXE, realiza una prueba del instalador y verifica la suma SHA-256 del archivo final.
+Para futuras versiones, comprueba manualmente el EXE, prueba el instalador y verifica el SHA-256 del archivo final antes de publicarlo.
 
 ## Página web y demostración
 
@@ -109,14 +109,14 @@ La carpeta `site/` contiene la página del proyecto y una vista previa con slide
 
 ### Publicación y actualización de la página
 
-Hasta que se publique v1.3.0, la versión pública actual es [v1.2.2](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.2.2). El instalador oficial se ofrece desde GitHub Releases y la suma SHA-256 está escrita en la descripción de esa release.
+La última versión publicada es **[v1.3.0](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0)**. La descarga de Windows está disponible en [GitHub Releases](https://github.com/RobDev512/TecNet-Finder/releases/download/v1.3.0/TecNet.Finder.1.3.0.Setup.exe) y su SHA-256 coincide con el registrado en la descripción de la release.
 
-Cuando se publique una nueva versión, actualiza manualmente el enlace de descarga, la descripción, el estado de la versión y el roadmap en `site/project-config.json`, `ROADMAP.md`, `site/ROADMAP.md` y, en el repositorio separado del Hub, `data/project-pages.json` y `projects/tecnet-finder/ROADMAP.md`. Publica los cambios en GitHub cuando la nueva descarga exista realmente.
+La página de este repositorio utiliza `site/project-config.json`, `ROADMAP.md` y `site/ROADMAP.md` para mostrar la versión publicada. El **Hub de proyectos es un repositorio independiente**; si se utiliza, sus archivos `data/project-pages.json` y `projects/tecnet-finder/ROADMAP.md` requieren una actualización por separado. No se han modificado desde este paquete.
 
-El material informativo de la Unidad 2 para el equipo debe prepararse al terminar las comprobaciones del instalador y describirá **los archivos y cambios del código**, no teoría general sobre triplos.
+La guía técnica breve para el equipo de la Unidad 2 sigue pendiente: documentará **los archivos creados/modificados, la integración y las pruebas del código**, sin repetir teoría general sobre triplos.
 
 Los archivos `site/index.html`, `site/tecnet-showcase.css` y `site/tecnet-showcase.js` aportan la demo visual en la página propia. La página del Hub conserva sus equivalentes en `projects/tecnet-finder/`.
 
 ## Licencia y documentación
 
-Consulta `ROADMAP.md` para la evolución del producto. La preparación local de un instalador no equivale a publicar la release ni implica añadir funciones de las unidades siguientes. Las evidencias académicas anteriores permanecen separadas de la nueva entrega.
+Consulta `ROADMAP.md` para la evolución del producto. La release [v1.3.0](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0) cubre únicamente código intermedio y mejoras asociadas; no implica implementar las unidades siguientes. Las evidencias académicas anteriores permanecen separadas de la nueva entrega.
