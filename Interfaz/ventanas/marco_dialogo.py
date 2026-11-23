@@ -60,6 +60,13 @@ def preparar_dialogo_con_barra(dialogo: QDialog, titulo: str, *, horizontal: boo
     if dialogo.barra_titulo.boton_cerrar is not None:  # Comprueba que exista la acción de cierre.
         dialogo.barra_titulo.boton_cerrar.setToolTip(texto_cerrar)  # Traduce su ayuda.
         dialogo.barra_titulo.boton_cerrar.setAccessibleName(texto_cerrar)  # Traduce su nombre accesible.
+        if dialogo.objectName() == "VentanaMantenimiento":  # Ajusta solo la X del Centro de mantenimiento.
+            dialogo.barra_titulo.boton_cerrar.setStyleSheet("""
+                QPushButton#BotonCerrar { background-color: transparent; border: none; border-top-right-radius: 12px; padding: 0px; }
+                QPushButton#BotonCerrar:hover { background-color: #c42b1c; border: none; border-top-right-radius: 12px; }
+                QPushButton#BotonCerrar:pressed { background-color: #a52016; border: none; border-top-right-radius: 12px; }
+                QPushButton#BotonCerrar:disabled { background-color: transparent; border: none; border-top-right-radius: 12px; }
+            """)  # Corrige únicamente la esquina roja que cubría el borde curvo del diálogo.
     diseno_cabecera.addWidget(dialogo.barra_titulo)  # Coloca la barra dentro del marco.
     diseno_marco.addWidget(cabecera)  # Inserta la barra en la parte superior.
 
@@ -128,6 +135,7 @@ class AjusteMantenimiento(QObject):  # Centra el diálogo y uniforma la lista de
         self.ubicacion_pendiente = False  # Impide programar varias correcciones simultáneas.
 
     def eventFilter(self, objeto, evento) -> bool:  # Atiende solo la primera apertura y los cambios de tamaño del selector.
+        if not hasattr(self, "dialogo"): return False  # Ignora eventos recibidos durante la construcción o destrucción del filtro de Qt.
         if objeto is self.dialogo and evento.type() == QEvent.Type.Show and self.primera_apertura:
             self.primera_apertura = False  # Programa el centrado una sola vez por instancia del diálogo.
             QTimer.singleShot(0, self._finalizar_primera_apertura)  # Espera que Windows y Qt asignen la geometría definitiva.
