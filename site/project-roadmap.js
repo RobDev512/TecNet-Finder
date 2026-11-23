@@ -120,6 +120,7 @@ function getExcerpt(lines) {
       !line ||
       line === "---" ||
       line.startsWith("**Estado:**") ||
+      /^\*\*[^*]+:\*\*/.test(line) ||
       line.startsWith("###") ||
       line.startsWith("-")
     ) {
@@ -529,10 +530,6 @@ function showRoadmapDetail(version) {
       </span>
 
     </div>
-
-    <p class="roadmap-detail-summary">
-      ${escapeHtml(item.excerpt)}
-    </p>
 
     <div class="roadmap-detail-body">
       ${renderRoadmapBody(item.lines)}

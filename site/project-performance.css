@@ -1,0 +1,18 @@
+/* =========================================================
+   TECNET FINDER · FONDO ESTÁTICO
+   =========================================================
+
+   Desactiva las dos capas ambientales animadas de project-page.css.
+   Se conserva el fondo con degradados estáticos de body y no se
+   modifican los efectos de botones, el visor, el roadmap o la demo.
+
+   Evita mantener superficies fijas de gran tamaño con blur(72px),
+   animaciones infinitas y repintados asociados a su movimiento.
+*/
+
+body::before,
+body::after {
+  content: none !important;
+  animation: none !important;
+  filter: none !important;
+}

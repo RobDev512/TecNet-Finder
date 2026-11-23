@@ -172,7 +172,7 @@ Centro de estabilidad y mantenimiento.
 
 ## v1.3.0 — Intermediate Code Update
 
-**Estado:** Publicada como release estable el 22 de noviembre de 2026 (hora de Nayarit), con instalador de Windows validado.
+**Estado:** Aplicada
 **Rama estable:** `main` (integración *fast-forward* de `feature/v1.3.0-triplos`).
 **Versión anterior:** v1.2.2 — Stability & Polish.
 **Commit y tag de publicación:** [`885a2a3`](https://github.com/RobDev512/TecNet-Finder/commit/885a2a3) · [`v1.3.0`](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0).
@@ -220,6 +220,7 @@ IP 192.168.2.0 MASK /24 HOSTS 100,50 NAME Oficina
 
 ### Validación y publicación de v1.3.0
 
+- [x] Publicada como release estable el 22 de noviembre de 2026 (hora de Nayarit), con instalador de Windows validado.
 - [x] Probar la generación, interpretación y visualización de triplos desde la aplicación en Windows.
 - [x] Confirmar 399 pruebas automatizadas y ausencia de regresiones después de modificar los metadatos finales.
 - [x] Corregir traducciones del Centro de mantenimiento y verificar visualmente su presentación.
@@ -229,8 +230,6 @@ IP 192.168.2.0 MASK /24 HOSTS 100,50 NAME Oficina
 - [x] Verificar el SHA-256 del **instalador definitivo**: `ACC3BC65599A95DC0FFB2EAF107B07F15612A5C13EC152C3E77EA9B27CDE0424`.
 - [x] Confirmar la suite después de modificar los metadatos estables y recompilar EXE e instalador; comprobar que el archivo publicado coincide con su hash.
 - [x] Integrar la rama a `main` y publicar el tag y [release oficial v1.3.0](https://github.com/RobDev512/TecNet-Finder/releases/tag/v1.3.0) después de concluir las validaciones.
-- [ ] Elaborar un **PDF breve para los compañeros de Lenguajes y Autómatas II** centrado en qué archivos se crearon y modificaron, qué código se implementó, cómo se conectó y cómo probarlo; omitir explicaciones introductorias de compiladores o triplos.
-- [ ] Sincronizar el repositorio separado del Hub de proyectos, si se utiliza; la página `site/` de TecNet Finder se mantiene en este repositorio.
 
 ### Regla de trabajo para esta fase
 
