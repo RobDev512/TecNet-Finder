@@ -587,5 +587,10 @@
     "resultados.triplos.ayuda.iniciar_red": "Rete principale et primam inscriptionem liberam constituit.",
     "resultados.triplos.ayuda.solicitud": "Computat numerum hospitum et magnitudinem segmenti necessariam.",
     "resultados.triplos.ayuda.asignar_vlsm": "Subrete ab inscriptione praesenti attribuit et inscriptionem finalem computat.",
-    "resultados.triplos.ayuda.siguiente_cursor": "Ad inscriptionem post ultimam pro subrete sequente progreditur."
+    "resultados.triplos.ayuda.siguiente_cursor": "Ad inscriptionem post ultimam pro subrete sequente progreditur.",
+    "resultados.triplos.todas": "Omnes instructiones",
+    "resultados.triplos.linea": "Linea {linea}",
+    "resultados.triplos.fuente": "Elige instructionem ut codicem fontis videas.",
+    "resultados.triplos.contador_filtrado": "Tripla: {visibles} ex {total}",
+    "resultados.triplos.grupo": "Rete: {nombre}    |    IP primaria: {ip}    |    Linea: {linea}"
 }

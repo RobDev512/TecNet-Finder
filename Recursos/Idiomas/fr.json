@@ -587,5 +587,10 @@
     "resultados.triplos.ayuda.iniciar_red": "Définit le réseau de base et la première adresse disponible.",
     "resultados.triplos.ayuda.solicitud": "Associe les hôtes demandés à la taille de bloc calculée.",
     "resultados.triplos.ayuda.asignar_vlsm": "Réserve le sous-réseau au curseur actuel et calcule son adresse de diffusion.",
-    "resultados.triplos.ayuda.siguiente_cursor": "Avance à l’adresse suivant la diffusion pour le prochain sous-réseau."
+    "resultados.triplos.ayuda.siguiente_cursor": "Avance à l’adresse suivant la diffusion pour le prochain sous-réseau.",
+    "resultados.triplos.todas": "Toutes les instructions",
+    "resultados.triplos.linea": "Ligne {linea}",
+    "resultados.triplos.fuente": "Sélectionnez une instruction pour voir son code source.",
+    "resultados.triplos.contador_filtrado": "Triplets : {visibles} sur {total}",
+    "resultados.triplos.grupo": "Réseau : {nombre}    |    IP de base : {ip}    |    Ligne : {linea}"
 }

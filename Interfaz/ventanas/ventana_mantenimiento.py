@@ -20,6 +20,7 @@ from PySide6.QtGui import QColor, QDesktopServices, QIcon, QPalette, QPixmap  # 
 from PySide6.QtWidgets import QAbstractItemView, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton, QScrollArea, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget  # Construye controles y tabla de registros.
 
 from Interfaz.ventanas.marco_dialogo import preparar_dialogo_con_barra  # Integra la misma barra oficial utilizada por Diagnósticos.
+from Interfaz.ventanas.selector_niveles_registros import SelectorNivelesRegistros  # Reutiliza el selector redondeado de triplos para los niveles del registro.
 from Interfaz.apariencia.recursos_tema import ruta_marca  # Localiza los logotipos oficiales.
 from Motor.configuracion.catalogo_temas import obtener_tema  # Recupera los colores de la variante visual activa.
 from Motor.configuracion.preferencias_aplicacion import PreferenciasAplicacion  # Consulta el idioma confirmado del usuario.
@@ -278,7 +279,7 @@ class VentanaMantenimiento(QDialog):  # Presenta información de estabilidad sin
         marco_nivel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Garantiza que Qt dibuje las esquinas.
         diseno_nivel = QHBoxLayout(marco_nivel)  # Aloja el selector sin que cubra el borde curvo.
         diseno_nivel.setContentsMargins(1, 1, 1, 1)  # Deja visible el contorno exterior.
-        self.selector_nivel = QComboBox()  # Permite visualizar un nivel de registro específico.
+        self.selector_nivel = SelectorNivelesRegistros()  # Conserva el filtro original con el estilo del visor de triplos.
         self.selector_nivel.setObjectName("MantenimientoNivel")  # Mantiene el nombre utilizado por los temas.
         self.selector_nivel.setMinimumWidth(152)  # Evita que el texto y la flecha se recorten.
         self.selector_nivel.addItem(self._t("mantenimiento.registros.todos_niveles"), "")  # Incluye inicialmente todos los niveles.
@@ -375,8 +376,9 @@ class VentanaMantenimiento(QDialog):  # Presenta información de estabilidad sin
             QLineEdit#MantenimientoBuscar {{ background-color: {c["editor"]}; color: {c["texto"]}; border: 1px solid {c["borde_fuerte"]}; border-radius: 8px; padding: 7px 10px; }}
             QLineEdit#MantenimientoBuscar:focus {{ border-color: {c["acento"]}; }}
             QFrame#MantenimientoMarcoNivel {{ background-color: {c["editor"]}; border: 1px solid {c["borde_fuerte"]}; border-radius: 8px; }}
-            QComboBox#MantenimientoNivel {{ background: transparent; color: {c["texto"]}; border: none; border-radius: 7px; padding: 7px 9px; }}
+            QComboBox#MantenimientoNivel {{ background: transparent; color: {c["texto"]}; border: none; border-radius: 7px; padding: 7px 30px 7px 9px; }}
             QComboBox#MantenimientoNivel::drop-down {{ background: transparent; border: none; border-top-right-radius: 7px; border-bottom-right-radius: 7px; width: 25px; }}
+            QComboBox#MantenimientoNivel::down-arrow {{ image: none; width: 0px; height: 0px; }}
             QComboBox#MantenimientoNivel QAbstractItemView {{ background-color: {c["panel"]}; color: {c["texto"]}; selection-background-color: {c["superficie_hover"]}; selection-color: {c["texto"]}; }}
             QFrame#MantenimientoMarcoTabla {{ background-color: {c["editor"]}; border: 1px solid {c["borde_fuerte"]}; border-radius: 11px; }}
             QTableWidget#MantenimientoTabla {{ background-color: {c["editor"]}; color: {c["texto"]}; alternate-background-color: {c["panel"]}; border: none; border-radius: 4px; selection-background-color: {c["superficie_hover"]}; selection-color: {c["texto"]}; }}
@@ -390,6 +392,7 @@ class VentanaMantenimiento(QDialog):  # Presenta información de estabilidad sin
             QPushButton#MantenimientoCerrar {{ background-color: {c["acento"]}; color: {c["texto_inverso"]}; border-color: {c["acento"]}; min-width: 95px; }}
             QPushButton#MantenimientoCerrar:hover {{ background-color: {c["acento_hover"]}; color: {c["texto_inverso"]}; }}
         """)  # Evita colores fijos y mantiene todos los temas compatibles.
+        self.selector_nivel.aplicar_tema(c)  # Sincroniza el menú de niveles con el tema y los colores de hover del visor de triplos.
 
         paleta = self.tabla_registros.palette()  # Recupera la paleta real del visor estructurado.
         paleta.setColor(QPalette.ColorRole.Base, QColor(c["editor"]))  # Impone un fondo claro en temas claros y oscuro en los demás.

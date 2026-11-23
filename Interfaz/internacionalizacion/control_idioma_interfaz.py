@@ -506,6 +506,11 @@ class ControlIdiomaInterfaz:
             contador=self._t("resultados.triplos.contador"),  # Conserva la plantilla numérica del idioma elegido.
             origen=self._t("resultados.triplos.origen"),  # Traduce la línea y el bloque de procedencia.
             host=self._t("resultados.triplos.host"),  # Traduce la posición original de la solicitud HOSTS.
+            todas=self._t("resultados.triplos.todas"),  # Traduce la opción de mostrar todas las instrucciones.
+            linea=self._t("resultados.triplos.linea"),  # Traduce el número de línea del selector.
+            fuente=self._t("resultados.triplos.fuente"),  # Explica cómo consultar la expresión original.
+            contador_filtrado=self._t("resultados.triplos.contador_filtrado"),  # Traduce el número de operaciones visibles respecto al total.
+            grupo=self._t("resultados.triplos.grupo"),  # Presenta los encabezados agrupados de cada red en el idioma vigente.
             ayudas={
                 "INICIAR_RED": self._t("resultados.triplos.ayuda.iniciar_red"),
                 "SOLICITUD": self._t("resultados.triplos.ayuda.solicitud"),

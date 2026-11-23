@@ -587,5 +587,10 @@
     "resultados.triplos.ayuda.iniciar_red": "Legt das Basisnetz und die erste verfügbare Adresse fest.",
     "resultados.triplos.ayuda.solicitud": "Verknüpft angeforderte Hosts mit der berechneten Blockgröße.",
     "resultados.triplos.ayuda.asignar_vlsm": "Reserviert das Subnetz am aktuellen Zeiger und berechnet die Broadcast-Adresse.",
-    "resultados.triplos.ayuda.siguiente_cursor": "Wechselt zur Adresse nach dem Broadcast für das nächste Subnetz."
+    "resultados.triplos.ayuda.siguiente_cursor": "Wechselt zur Adresse nach dem Broadcast für das nächste Subnetz.",
+    "resultados.triplos.todas": "Alle Anweisungen",
+    "resultados.triplos.linea": "Zeile {linea}",
+    "resultados.triplos.fuente": "Wählen Sie eine Anweisung, um den Quelltext anzuzeigen.",
+    "resultados.triplos.contador_filtrado": "Tripel: {visibles} von {total}",
+    "resultados.triplos.grupo": "Netz: {nombre}    |    Basis-IP: {ip}    |    Zeile: {linea}"
 }

@@ -1,5 +1,5 @@
 ﻿#define MyAppName "TecNet Finder"
-#define MyAppVersion "1.2.2"
+#define MyAppVersion "1.3.0"
 #define MyAppPublisher "RobDev512"
 #define MyAppExeName "TecNetFinder.exe"
 

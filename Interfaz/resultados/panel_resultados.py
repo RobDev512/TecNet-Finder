@@ -674,7 +674,7 @@ class PanelResultados(QTabWidget):  # Organiza el área central de resultados de
         self._mostrar_vlsm(resultado)  # Actualiza las subredes VLSM.
         self._mostrar_tokens(resultado)  # Actualiza los tokens.
         self._mostrar_reservadas(resultado)  # Actualiza el conteo de palabras reservadas.
-        self.visor_triplos.mostrar_resultado(resultado)  # Actualiza el código intermedio de los bloques aceptados.
+        self.visor_triplos.mostrar_resultado(resultado, self.codigo_fuente_resultado)  # Presenta triplos y relaciona cada bloque con la línea original del editor.
         self._mostrar_advertencias_compactas(resultado)  # Actualiza u oculta la sección inferior según la preferencia actual.
 
         sintactico = resultado.resultado_sintactico  # Obtiene una referencia corta al resultado del parser.

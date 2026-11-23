@@ -588,5 +588,10 @@
     "resultados.triplos.ayuda.iniciar_red": "Establece la red base y la primera dirección disponible.",
     "resultados.triplos.ayuda.solicitud": "Relaciona los hosts solicitados con el tamaño de bloque calculado.",
     "resultados.triplos.ayuda.asignar_vlsm": "Reserva la subred desde el cursor actual y calcula su broadcast.",
-    "resultados.triplos.ayuda.siguiente_cursor": "Avanza a la dirección posterior al broadcast para la siguiente subred."
+    "resultados.triplos.ayuda.siguiente_cursor": "Avanza a la dirección posterior al broadcast para la siguiente subred.",
+    "resultados.triplos.todas": "Todas las instrucciones",
+    "resultados.triplos.linea": "Línea {linea}",
+    "resultados.triplos.fuente": "Selecciona una instrucción para ver su código fuente.",
+    "resultados.triplos.contador_filtrado": "Triplos: {visibles} de {total}",
+    "resultados.triplos.grupo": "Red: {nombre}    |    IP base: {ip}    |    Línea: {linea}"
 }

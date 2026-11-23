@@ -587,5 +587,10 @@
     "resultados.triplos.ayuda.iniciar_red": "Sets the base network and the first available address.",
     "resultados.triplos.ayuda.solicitud": "Links requested hosts to the calculated block size.",
     "resultados.triplos.ayuda.asignar_vlsm": "Allocates the subnet at the current cursor and calculates its broadcast address.",
-    "resultados.triplos.ayuda.siguiente_cursor": "Moves to the address after the broadcast for the next subnet."
+    "resultados.triplos.ayuda.siguiente_cursor": "Moves to the address after the broadcast for the next subnet.",
+    "resultados.triplos.todas": "All instructions",
+    "resultados.triplos.linea": "Line {linea}",
+    "resultados.triplos.fuente": "Select an instruction to view its source code.",
+    "resultados.triplos.contador_filtrado": "Triples: {visibles} of {total}",
+    "resultados.triplos.grupo": "Network: {nombre}    |    Base IP: {ip}    |    Line: {linea}"
 }

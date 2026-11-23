@@ -160,6 +160,8 @@ class AjusteMantenimiento(QObject):  # Centra el diálogo y uniforma la lista de
     def _preparar_selector_niveles(self) -> None:  # Integra un indicador visible y un desplegable temático.
         selector = self.dialogo.findChild(QComboBox, "MantenimientoNivel")  # Ubica el filtro existente sin reconstruirlo.
         if selector is None: return  # Permite abrir la ventana aunque cambie su estructura en el futuro.
+        if hasattr(selector, "vista_opciones") and hasattr(selector, "delegado_opciones"):
+            return  # El nuevo selector ya dibuja flecha, selección y hover; no debe reemplazarse su delegado al abrir el diálogo.
         self.selector = selector  # Conserva la referencia necesaria para recolocar la flecha.
         colores = self.paleta  # Simplifica el uso de la paleta confirmada.
 
